@@ -119,17 +119,41 @@ void mecDecompositionPrintTests() {
             storm::storage::MaximalEndComponent::set_type stateSet = mec->getStateSet();
             for (storm::storage::MaximalEndComponent::set_type::const_iterator state = stateSet.begin();
                     state != stateSet.end(); ++state){
-                std::cout << *state << ": ";
+                std::cout << "state " << *state << "-> actions = ";
                 storm::storage::MaximalEndComponent::set_type actionSet = mec->getChoicesForState(*state);
                 for (storm::storage::MaximalEndComponent::set_type::const_iterator action = actionSet.begin();
-                     action != actionSet.end(); ++action) {
-                    std::cout << *action << ", ";
+                         action != actionSet.end(); ++action) {
+                     std::cout << *action << ", ";
                 }
+                std::cout << std::endl;
             }
             std::cout << std::endl;
         }
 
-
+        std::cout << std::endl;
+        std::cout << "SPARSE MATRIX" << std::endl;
+        std::cout << " by iterating on rows with getRowGroupIndices() " << std::endl;
+        std::vector<storm::storage::SparseMatrix< double >::index_type > groups = originalMatrix.getRowGroupIndices();
+        for (uint_fast64_t s = 0; s < mdp->getNumberOfStates(); ++s){
+            std::cout << "State " << s << std::endl;
+            for (uint_fast64_t row = groups[s]; row < groups[s + 1]; ++ row) {
+                std::cout << "  row number " << row << " ---> ";
+                for (auto entry : originalMatrix.getRow(row)) {
+                    std::cout << entry << ", ";
+                }
+                std::cout << std::endl;
+            }
+        }
+        std::cout << " -------------------- " << std::endl;
+        std::cout << " with getRowGroup(state) " << std::endl;
+        for (uint_fast64_t s = 0; s < mdp->getNumberOfStates(); ++s){
+            std::cout << "State " << s << std::endl;
+            std::cout << "    ";
+            for (auto entry : originalMatrix.getRowGroup(s)) {
+                    std::cout << entry << ", ";
+                }
+                std::cout << std::endl;
+        }
 };
 
 
