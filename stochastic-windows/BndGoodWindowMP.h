@@ -28,8 +28,8 @@ namespace sw {
             // (successor states, probabilities) for each of its enabled actions that are ordered according to the
             // ordering of enabled actions of each state of the MEC.
             std::vector<std::vector<std::vector<std::tuple<uint_fast64_t, ValueType>>>> newRowGroupEntries;
-            // Array mapping for each state of the original MDP a tuple containing, at the first position, the index of
-            // the new matrix containing it (i.e., the index of the corresponding MEC), and, at the second position,
+            // Array mapping for each state of the original MDP a tuple containing, at first position, the index of
+            // the new matrix containing it (i.e., the index of the corresponding MEC), and, at second position,
             // an array of size l_max containing in each position l a hash table mapping a (current negative) weight w
             // to an index in the new matrix corresponding to the the following tuple :
             // (s, w, l), where s is the original state of the MDP, w is the current value of the window (sum of
@@ -63,18 +63,32 @@ namespace sw {
             result.oldToNewStateMapping = std::vector<std::tuple<uint_fast64_t, std::vector<std::map<ValueType, uint_fast64_t>>>>(mdp->getNumberOfStates());
             storm::storage::MaximalEndComponent mec;
             for (int k = 0; k < mecDecomposition.size(); ++k){
-                 mec = mecDecomposition[k];
-                 // initialize the new row group entries for the mec k
-                 result.newRowGroupEntries.emplace_back();
-                 storm::storage::SparseMatrixBuilder<ValueType> matrixBuilder = storm::storage::SparseMatrixBuilder<ValueType>::SparseMatrixBuilder();
-                 for (auto state : mec.getStateSet()) {
-                     // Initialize a tuple with the mec containing state and an empty vector of size l_max
-                     result.oldToNewStateMapping[state] = std::make_tuple(k, std::vector<std::map<ValueType, uint_fast64_t>>(l_max + 1));
-                 }
-                 // Unfold the kth MEC
-                 for (auto state: mec.getStateSet()) {
-                     unfoldFrom(state, 0., 0, l_max, originalMatrix, rewardModel, mec, result);
-                 }
+                mec = mecDecomposition[k];
+                // initialize the new row group entries for the mec k
+                result.newRowGroupEntries.emplace_back();
+                storm::storage::SparseMatrixBuilder<ValueType> matrixBuilder = storm::storage::SparseMatrixBuilder<ValueType>::SparseMatrixBuilder();
+                for (auto state : mec.getStateSet()) {
+                    // Initialize a tuple with the mec containing state and an empty vector of size l_max
+                    result.oldToNewStateMapping[state] = std::make_tuple(k, std::vector<std::map<ValueType, uint_fast64_t>>(l_max + 1));
+                }
+                // Unfold the kth MEC
+                for (auto state: mec.getStateSet()) {
+                    unfoldFrom(state, 0., 0, l_max, originalMatrix, rewardModel, mec, result);
+                }
+                // Build the new matrix w.r.t. the new row group entries computed during the unfolding
+                // uint_fast64_t numberOfRowGroups = result.newRowGroupEntries[k].size();
+                uint_fast64_t newRow = 0;
+                uint_fast64_t column;
+                ValueType p;
+                for (auto newRowGroupEntries : result.newRowGroupEntries[k]) {
+                    matrixBuilder.newRowGroup(newRow);
+                    for (auto entry : newRowGroupEntries) {
+                        std::tie(column, p) = entry;
+                        matrixBuilder.addNextValue(newRow, column, p);
+                        ++newRow;
+                    }
+                }
+
                 result.matrices[k] = matrixBuilder.build();
             }
             return result;
