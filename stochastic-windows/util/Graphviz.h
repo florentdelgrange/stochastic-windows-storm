@@ -22,26 +22,28 @@ namespace Nodes {
     struct State { std::string id; };
     struct Action { std::string id; double weight = 0; };
 
-    static inline std::ostream& operator<<(std::ostream& os, State const& s) { return os << "s" << s.id; }
-    static inline std::ostream& operator<<(std::ostream& os, Action const& a) { return os << "a" << a.id << " | " << a.weight; }
+    static inline std::ostream& operator<<(std::ostream& os, State const& s) { return os << s.id; }
+    static inline std::ostream& operator<<(std::ostream& os, Action const& a) { return os << "a" << a.id; }
 
     std::string id_of(State const& s) { return "state" + s.id; }
     std::string id_of(Action const& a) { return "action" + a.id; }
     std::string label_of(State const& s) { return ""; }
     std::string label_of(Action const &a) {
         if (a.weight != 0.)
-            return boost::lexical_cast<std::string>(a);
+            return boost::lexical_cast<std::string>(a.weight) + "  ";
         else
-            return "a" + a.id;
+            return "";
     }
     std::string shape_of(State const& s) { return "circle"; }
     std::string shape_of(Action const& a) { return "point"; }
 }
 namespace Transitions {
-    struct Choice {};
+    struct Choice { double weight = 0; };
     struct ProbabilityTransition { double probability; };
 
-    static inline std::ostream& operator<<(std::ostream& os, Choice const& t) { return os << ""; }
+    static inline std::ostream& operator<<(std::ostream& os, Choice const& c) {
+        if (c.weight != 0.) return os << c.weight; else return os << "";
+    }
     static inline std::ostream& operator<<(std::ostream& os, ProbabilityTransition const& p) {
         if (p.probability < 1)
             return os << p.probability;
@@ -73,22 +75,22 @@ namespace sw {
 
             static void mdpGraphExport(storm::storage::SparseMatrix<double> const &matrix,
                                        std::vector<double> rewardVector = std::vector<double>(),
-                                       std::string graphName,
+                                       std::string graphName = "mdp",
                                        std::vector<std::string> stateNames = std::vector<std::string>()) {
 
-                assert(rewardVector.size() == matrix.getRowCount());
                 if (rewardVector.empty()) {
                     std::vector<double> zeroRewards(matrix.getRowCount(), 0.);
                     rewardVector.reserve(zeroRewards.size());
                     rewardVector.insert(rewardVector.end(), zeroRewards.begin(), zeroRewards.end());
                 }
+                else assert(rewardVector.size() == matrix.getRowCount());
 
-                assert(stateNames.size() == matrix.getRowGroupCount());
                 if (stateNames.empty()) {
                     std::vector<std::string> noName(matrix.getRowGroupCount(), "");
                     stateNames.reserve(noName.size());
                     stateNames.insert(stateNames.end(), noName.begin(), noName.end());
                 }
+                else assert(stateNames.size() == matrix.getRowGroupCount());
 
                 typedef adjacency_list<vecS, vecS, directedS, Vertex, Edge> Graph;
 
@@ -100,7 +102,11 @@ namespace sw {
                 std::vector<Graph::vertex_descriptor> actionVertices(matrix.getRowCount());
 
                 for (uint_fast64_t state = 0; state < matrix.getRowGroupCount(); ++state) {
-                    Graph::vertex_descriptor s = add_vertex(Nodes::State{std::to_string(state)}, g);
+                    Graph::vertex_descriptor s;
+                    if (stateNames[state] == "")
+                        s = add_vertex(Nodes::State{'s' + std::to_string(state)}, g);
+                    else
+                        s = add_vertex(Nodes::State{stateNames[state]}, g);
                     stateVertices[state] = s;
                     for (uint_fast64_t row = groups[state]; row < groups[state + 1]; ++row) {
                         Graph::vertex_descriptor a = add_vertex(Nodes::Action{std::to_string(row), rewardVector[row]},
