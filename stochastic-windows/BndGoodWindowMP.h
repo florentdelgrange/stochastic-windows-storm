@@ -25,9 +25,9 @@ namespace sw {
              * @param rewardModelName name of the reward model following which the mdp will be unfolded
              * @param l_max the maximum length of windows to consider
              */
-            ECsUnfolding(std::shared_ptr<storm::models::sparse::Mdp<ValueType>> mdp,
+            ECsUnfolding(storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                          std::string const& rewardModelName,
-                         uint_fast64_t const &l_max);
+                         uint_fast64_t const& l_max);
             /**
              * Get the index of the MEC containing the input state. Note that 0 is a special value indicating that the
              * input state does not belong to any MEC

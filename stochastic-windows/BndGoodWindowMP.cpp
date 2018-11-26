@@ -9,25 +9,27 @@
 #include <storm/storage/MaximalEndComponentDecomposition.h>
 #include "stochastic-windows/BndGoodWindowMP.h"
 
-template <typename ValueType>
-sw::BndGoodWindowMP::ECsUnfolding<ValueType>::ECsUnfolding(std::shared_ptr <storm::models::sparse::Mdp<ValueType>> mdp,
-                                                std::string const &rewardModelName, uint_fast64_t const &l_max) {
-    storm::storage::SparseMatrix<ValueType> originalMatrix = mdp->getTransitionMatrix();
-    assert(mdp->hasRewardModel(rewardModelName));
-    storm::models::sparse::StandardRewardModel<ValueType> rewardModel = mdp->getRewardModel(rewardModelName);
+
+template<typename ValueType>
+sw::BndGoodWindowMP::ECsUnfolding<ValueType>::ECsUnfolding(storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
+                                                           std::string const& rewardModelName,
+                                                           uint_fast64_t const& l_max) {
+    storm::storage::SparseMatrix<ValueType> originalMatrix = mdp.getTransitionMatrix();
+    assert(mdp.asRewardModel(rewardModelName));
+    storm::models::sparse::StandardRewardModel<ValueType> rewardModel = mdp.getRewardModel(rewardModelName);
     assert(rewardModel.hasStateActionRewards());
     std::vector<ValueType> stateActionRewardsVector = rewardModel.getStateActionRewardVector();
     storm::storage::MaximalEndComponentDecomposition<ValueType> mecDecomposition(*mdp);
 
     matrices = std::vector<storm::storage::SparseMatrix<ValueType>>(mecDecomposition.size() + 1);
     // vector containing all data about the unfolding
-    windowVector = std::vector<std::vector<std::unordered_map<ValueType, uint_fast64_t>>>(mdp->getNumberOfStates());
+    windowVector = std::vector<std::vector<std::unordered_map<ValueType, uint_fast64_t>>>(mdp.getNumberOfStates());
     storm::storage::MaximalEndComponent mec;
     // k = 0 is a special value meaning that the state does not belong to any MEC
     newRowGroupEntries.emplace_back();
     for (uint_fast64_t k = 1; k < mecDecomposition.size() + 1; ++k) {
         mec = mecDecomposition[k - 1];
-        // initialize the new row group entries for the mec k
+        // initialize the new row group entries for the kth mec
         newRowGroupEntries.emplace_back();
         storm::storage::SparseMatrixBuilder<ValueType> matrixBuilder;
         for (auto state : mec.getStateSet()) {
@@ -141,3 +143,4 @@ template <typename ValueType>
 storm::storage::SparseMatrix<ValueType> sw::BndGoodWindowMP::ECsUnfolding<ValueType>::getUnfoldedMatrix(uint_fast64_t mec) {
     return matrices[mec - 1];
 }
+
