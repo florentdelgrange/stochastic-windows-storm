@@ -11,8 +11,9 @@
 #include "storm/builder/ExplicitModelBuilder.h"
 #include "storm/storage/SymbolicModelDescription.h"
 #include "storm-parsers/parser/PrismParser.h"
-#include<iostream>
-#include <stochastic-windows/StochasticWindows.h>
+#include <iostream>
+#include <stochastic-windows/FooBar.h>
+#include <stochastic-windows/ECsUnfolding.h>
 
 
 #include "storm/utility/initialize.h"
@@ -47,6 +48,7 @@
 
 #include "storm/api/storm.h"
 
+#include "stochastic-windows/util/Graphviz.h"
 
 /*!
  * Initialize the settings manager.
@@ -73,7 +75,7 @@ void initializeSettings() {
 }
 
 
-void mecDecompositionPrintTests() {
+void mecDecompositionPrintExamples() {
 
         std::string prismModelPath = STORM_TEST_RESOURCES_DIR "/mdp/sensors.prism";
         storm::storage::SymbolicModelDescription modelDescription = storm::parser::PrismParser::parse(prismModelPath);
@@ -88,7 +90,7 @@ void mecDecompositionPrintTests() {
 
         storm::storage::MaximalEndComponentDecomposition<double> mecDecomposition(*mdp);
 
-        std::cout << "MDP 1: Transition Matrix" << std::endl;
+        std::cout << "MDP 1: Choice Matrix" << std::endl;
         std::cout << mdp->getTransitionMatrix() << std::endl;
         std::cout << "Number of states: ";
         std::cout << mdp->getNumberOfStates() << std::endl;
@@ -105,9 +107,14 @@ void mecDecompositionPrintTests() {
         std::cout << "Reward Model" << std::endl;
         std::cout << rewardModel << std::endl;
         std::vector<double> rewardVector = rewardModel.getStateActionRewardVector();
-        // Note that each row of the transition matrix corresponds to an action in a given state.
-        for (std::vector<double>::const_iterator i = rewardVector.begin(); i != rewardVector.end(); ++i)
-            std::cout << *i << ' ';
+        // Note that each row of the transition matrix corresponds to an action in the state associated with the linked
+        // row group.
+        uint_fast64_t row = 0;
+        for (auto reward : rewardVector) {
+            std::cout << "action " << row << ": reward=" << reward << std::endl;
+            row++;
+        }
+        std::cout << std::endl;
 
         // create a vector of size |MECs|
         // std::vector<storm::storage::SparseMatrix<double>> matrices(mecDecomposition.size());
@@ -133,13 +140,13 @@ void mecDecompositionPrintTests() {
         std::cout << std::endl;
         std::cout << "SPARSE MATRIX" << std::endl;
         std::cout << " by iterating on rows with getRowGroupIndices() " << std::endl;
-        std::vector<storm::storage::SparseMatrix< double >::index_type > groups = originalMatrix.getRowGroupIndices();
+        std::vector<storm::storage::SparseMatrix< double >::index_type> groups = originalMatrix.getRowGroupIndices();
         for (uint_fast64_t s = 0; s < mdp->getNumberOfStates(); ++s){
             std::cout << "State " << s << std::endl;
             for (uint_fast64_t row = groups[s]; row < groups[s + 1]; ++ row) {
                 std::cout << "  row number " << row << " ---> ";
                 for (auto entry : originalMatrix.getRow(row)) {
-                    std::cout << entry << ", ";
+                    std::cout <<  "p=" << entry.getValue() << ": s'=" << entry.getColumn() << "; ";
                 }
                 std::cout << std::endl;
             }
@@ -154,17 +161,78 @@ void mecDecompositionPrintTests() {
                 }
                 std::cout << std::endl;
         }
+
+    std::cout << std::endl;
+    std::cout << std::endl;
+    // now some examples about vectors
+    std::cout << "Vectors initialization example" << std::endl;
+    std::vector<std::vector<std::vector<std::tuple<uint_fast64_t, double>>>> newRowGroupEntries;
+    std::cout << "init : std::vector<std::vector<std::vector<std::tuple<uint_fast64_t, double>>>> newRowGroupEntries;" << std::endl;
+    std::cout << "declaration, newRowGroupEntries.size()=" << newRowGroupEntries.size() << std::endl;
+    newRowGroupEntries.emplace_back();
+    std::cout << "newRowGroupEntries.emplace_back();" << std::endl;
+    std::cout << "=> add an empty vector in it; newRowGroupEntries.size()=" << newRowGroupEntries.size() << std::endl;
+    std::cout << "newRowGroupEntries[0].size()=" << newRowGroupEntries[0].size() << std::endl;
+
 };
+
+
+void boundedGoodWindowExamples(){
+    std::string prismModelPath = STORM_TEST_RESOURCES_DIR "/mdp/BndGWMP.prism";
+    storm::storage::SymbolicModelDescription modelDescription = storm::parser::PrismParser::parse(prismModelPath);
+    storm::prism::Program program = modelDescription.preprocess().asPrismProgram();
+    storm::builder::BuilderOptions options = storm::builder::BuilderOptions(true, true);
+    std::shared_ptr<storm::models::sparse::Model<double>> model = storm::builder::ExplicitModelBuilder<double>(program, options).build();
+
+    std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = model->as<storm::models::sparse::Mdp<double>>();
+    storm::storage::MaximalEndComponentDecomposition<double> mecDecomposition(*mdp);
+
+    mdp->printModelInformationToStream(std::cout);
+
+    std::cout << mecDecomposition << std::endl;
+
+    // maximum windows length is 3
+    sw::BndGoodWindowMP::ECsUnfolding<double> result(*mdp, "weights", 3);
+    std::cout << "unfolded matrices: " << endl;
+    for (uint_fast64_t k = 1; k <= mecDecomposition.size(); ++ k) {
+        std::cout << result.getUnfoldedMatrix(k) << std::endl;
+    }
+    // Graphviz
+    storm::storage::SparseMatrix<double> matrix = mdp->getTransitionMatrix();
+    storm::models::sparse::StandardRewardModel<double> rewardModel = model->getRewardModel("weights");
+    std::vector<double> rewardVector = rewardModel.getStateActionRewardVector();
+
+    sw::util::graphviz::GraphVizBuilder::mdpGraphExport(matrix, rewardVector);
+    sw::util::graphviz::GraphVizBuilder::bndGWMPUnfoldedECsExport(result);
+}
+
+
+void graphVizExample(){
+    std::string prismModelPath = STORM_TEST_RESOURCES_DIR "/mdp/BndGWMP.prism";
+    storm::storage::SymbolicModelDescription modelDescription = storm::parser::PrismParser::parse(prismModelPath);
+    storm::prism::Program program = modelDescription.preprocess().asPrismProgram();
+    storm::builder::BuilderOptions options = storm::builder::BuilderOptions(true, true);
+    std::shared_ptr<storm::models::sparse::Model<double>> model = storm::builder::ExplicitModelBuilder<double>(program, options).build();
+
+    std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = model->as<storm::models::sparse::Mdp<double>>();
+
+    storm::storage::SparseMatrix<double> matrix = mdp->getTransitionMatrix();
+    storm::models::sparse::StandardRewardModel<double> rewardModel = model->getRewardModel("weights");
+    std::vector<double> rewardVector = rewardModel.getStateActionRewardVector();
+
+    sw::util::graphviz::GraphVizBuilder::mdpGraphExport(matrix, rewardVector);
+}
 
 
 int main(const int argc, const char** argv){
 
-    storm::utility::setUp();
+    // storm::utility::setUp();
     storm::cli::printHeader("Stochastic Windows (Storm backend)", argc, argv);
     initializeSettings();
 
-    mecDecompositionPrintTests();
-
+    // mecDecompositionPrintExamples();
+    graphVizExample();
+    boundedGoodWindowExamples();
 
     return 0;
 }
