@@ -2,8 +2,8 @@
 // Created by Florent Delgrange on 2018-11-23.
 //
 
-#include <stochastic-windows/BndGoodWindowMP.h>
-#include "BndGoodWindowMP.h"
+#include <stochastic-windows/ECsUnfolding.h>
+#include "ECsUnfolding.h"
 
 
 template<typename ValueType>
