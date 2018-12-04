@@ -2,12 +2,10 @@
 // Created by Florent Delgrange on 2018-11-23.
 //
 
-#include <stochastic-windows/ECsUnfolding.h>
-#include "ECsUnfolding.h"
-
+#include "stochastic-windows/ECsUnfolding.h"
 
 template<typename ValueType>
-sw::BndGoodWindowMP::ECsUnfolding<ValueType>::ECsUnfolding(storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
+sw::WindowMP::ECsUnfolding<ValueType>::ECsUnfolding(storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                                                            std::string const& rewardModelName,
                                                            uint_fast64_t const& l_max) {
     const storm::storage::SparseMatrix<ValueType> &originalMatrix = mdp.getTransitionMatrix();
@@ -63,14 +61,14 @@ sw::BndGoodWindowMP::ECsUnfolding<ValueType>::ECsUnfolding(storm::models::sparse
 }
 
 template <typename ValueType>
-uint_fast64_t sw::BndGoodWindowMP::ECsUnfolding<ValueType>::getMecIndex(uint_fast64_t state) {
+uint_fast64_t sw::WindowMP::ECsUnfolding<ValueType>::getMecIndex(uint_fast64_t state) {
     return mecIndices[state];
 }
 
 template <typename ValueType>
-const std::pair<uint_fast64_t, uint_fast64_t> sw::BndGoodWindowMP::ECsUnfolding<ValueType>::getNewIndex(uint_fast64_t state,
-                                                                                                        ValueType currentSumOfWeights,
-                                                                                                        uint_fast64_t currentWindowLength) {
+std::pair<uint_fast64_t, uint_fast64_t> sw::WindowMP::ECsUnfolding<ValueType>::getNewIndex(uint_fast64_t state,
+                                                                                           ValueType currentSumOfWeights,
+                                                                                           uint_fast64_t currentWindowLength) {
     uint_fast64_t k = getMecIndex(state);
     if ( !k ) return std::make_pair(0, 0);
     auto keyValue = windowVector[state][currentWindowLength].find(currentSumOfWeights);
@@ -83,12 +81,12 @@ const std::pair<uint_fast64_t, uint_fast64_t> sw::BndGoodWindowMP::ECsUnfolding<
 }
 
 template <typename ValueType>
-uint_fast64_t sw::BndGoodWindowMP::ECsUnfolding<ValueType>::unfoldFrom(uint_fast64_t const& state,
-                                                                       ValueType const& currentSumOfWeights,
-                                                                       uint_fast64_t const& l,
-                                                                       storm::storage::SparseMatrix<ValueType> const &originalMatrix,
-                                                                       std::vector<ValueType> const& stateActionRewardsVector,
-                                                                       storm::storage::MaximalEndComponent const &currentMec){
+uint_fast64_t sw::WindowMP::ECsUnfolding<ValueType>::unfoldFrom(uint_fast64_t const& state,
+                                                                ValueType const& currentSumOfWeights,
+                                                                uint_fast64_t const& l,
+                                                                storm::storage::SparseMatrix<ValueType> const &originalMatrix,
+                                                                std::vector<ValueType> const& stateActionRewardsVector,
+                                                                storm::storage::MaximalEndComponent const &currentMec){
     // k is the index of the current MEC containing the state
     uint_fast64_t k = getMecIndex(state);
     assert(newRowGroupEntries.size() > k);
@@ -152,25 +150,25 @@ uint_fast64_t sw::BndGoodWindowMP::ECsUnfolding<ValueType>::unfoldFrom(uint_fast
 }
 
 template <typename ValueType>
-const storm::storage::SparseMatrix<ValueType> sw::BndGoodWindowMP::ECsUnfolding<ValueType>::getUnfoldedMatrix(uint_fast64_t mec) {
-    return matrices[mec];
+storm::storage::SparseMatrix<ValueType>& sw::WindowMP::ECsUnfolding<ValueType>::getUnfoldedMatrix(uint_fast64_t mec) {
+    return this->matrices[mec];
 }
 
 template<typename ValueType>
-uint_fast64_t sw::BndGoodWindowMP::ECsUnfolding<ValueType>::getNumberOfUnfoldedECs() {
-    return matrices.size() - 1;
+uint_fast64_t sw::WindowMP::ECsUnfolding<ValueType>::getNumberOfUnfoldedECs() {
+    return this->matrices.size() - 1;
 }
 
 template<typename ValueType>
-uint_fast64_t sw::BndGoodWindowMP::ECsUnfolding<ValueType>::getMaximumWindowsLength() {
+uint_fast64_t sw::WindowMP::ECsUnfolding<ValueType>::getMaximumWindowsLength() {
     return l_max;
 }
 
 template<typename ValueType>
-const std::vector<sw::BndGoodWindowMP::StateWeightWindowLength<ValueType>>
-sw::BndGoodWindowMP::ECsUnfolding<ValueType>::getNewStatesMeaning(uint_fast64_t k) {
+std::vector<sw::WindowMP::StateWeightWindowLength<ValueType>>
+sw::WindowMP::ECsUnfolding<ValueType>::getNewStatesMeaning(uint_fast64_t k) {
 
-    std::vector<sw::BndGoodWindowMP::StateWeightWindowLength<ValueType>> unfoldedStates(newRowGroupEntries[k].size());
+    std::vector<sw::WindowMP::StateWeightWindowLength<ValueType>> unfoldedStates(newRowGroupEntries[k].size());
 
     for (uint_fast64_t state = 0; state < mecIndices.size(); ++ state) {
         if (mecIndices[state] == k) {
@@ -188,5 +186,5 @@ sw::BndGoodWindowMP::ECsUnfolding<ValueType>::getNewStatesMeaning(uint_fast64_t 
 }
 
 
-template class sw::BndGoodWindowMP::ECsUnfolding<double>;
-template class sw::BndGoodWindowMP::ECsUnfolding<storm::RationalNumber>;
+template class sw::WindowMP::ECsUnfolding<double>;
+template class sw::WindowMP::ECsUnfolding<storm::RationalNumber>;

@@ -9,11 +9,11 @@
 #include <storm/storage/MaximalEndComponentDecomposition.h>
 #include <storm/models/sparse/Mdp.h>
 
-#ifndef STORM_BNDGOODWINDOWMP_H
-#define STORM_BNDGOODWINDOWMP_H
+#ifndef STORM_ECSUNFOLDING_H
+#define STORM_ECSUNFOLDING_H
 
 namespace sw {
-    namespace BndGoodWindowMP {
+    namespace WindowMP {
 
         template<typename ValueType>
         struct StateWeightWindowLength{
@@ -55,14 +55,14 @@ namespace sw {
              * @param currentSumOfWeights value of the current sum of weights in the window
              * @param currentWindowLength value of the current window length
              */
-            const std::pair<uint_fast64_t, uint_fast64_t> getNewIndex(uint_fast64_t state,
-                                                                      ValueType currentSumOfWeights,
-                                                                      uint_fast64_t currentWindowLength);
+            std::pair<uint_fast64_t, uint_fast64_t> getNewIndex(uint_fast64_t state,
+                                                                ValueType currentSumOfWeights,
+                                                                uint_fast64_t currentWindowLength);
             /*!
              * Returns the matrix representing the unfolding of the kth MEC of the original MDP.
              * Note that 0 is a special value and does not represent any MEC.
              */
-            const storm::storage::SparseMatrix<ValueType> getUnfoldedMatrix(uint_fast64_t mec);
+            storm::storage::SparseMatrix<ValueType>& getUnfoldedMatrix(uint_fast64_t mec);
 
             /*!
              * Get the number of unfolded ECs.
@@ -82,7 +82,7 @@ namespace sw {
              *
              * @param k the index of the MEC containing the state for which the meaning is explained.
              */
-            const std::vector<StateWeightWindowLength<ValueType>> getNewStatesMeaning(uint_fast64_t k);
+            std::vector<StateWeightWindowLength<ValueType>> getNewStatesMeaning(uint_fast64_t k);
 
         private:
 
@@ -138,4 +138,4 @@ namespace sw {
     }
 }
 
-#endif //STORM_BNDGOODWINDOWMP_H
+#endif //STORM_ECSUNFOLDING_H
