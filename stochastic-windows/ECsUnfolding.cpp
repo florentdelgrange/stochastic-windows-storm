@@ -6,8 +6,8 @@
 
 template<typename ValueType>
 sw::WindowMP::ECsUnfolding<ValueType>::ECsUnfolding(storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
-                                                           std::string const& rewardModelName,
-                                                           uint_fast64_t const& l_max) {
+                                                    std::string const& rewardModelName,
+                                                    uint_fast64_t const& l_max) {
     const storm::storage::SparseMatrix<ValueType> &originalMatrix = mdp.getTransitionMatrix();
     assert(mdp.hasRewardModel(rewardModelName));
     storm::models::sparse::StandardRewardModel<ValueType> rewardModel = mdp.getRewardModel(rewardModelName);
@@ -185,6 +185,21 @@ sw::WindowMP::ECsUnfolding<ValueType>::getNewStatesMeaning(uint_fast64_t k) {
     return unfoldedStates;
 }
 
+template<typename ValueType>
+void sw::WindowMP::ECsUnfolding<ValueType>::printToStream(std::ostream &out, uint_fast64_t k) {
+    out << this->getUnfoldedMatrix(k) << "\n";
+    out << "where" << "\n";
+    std::vector<sw::WindowMP::StateWeightWindowLength<ValueType>>
+            newStatesMeaning = this->getNewStatesMeaning(k);
+    out << "state 0 is ⊥" << "\n";
+    for(uint_fast64_t state = 1; state < this->getUnfoldedMatrix(k).getRowGroupCount(); ++ state) {
+        std::ostringstream stream;
+        stream << "(s" << newStatesMeaning[state].state << ", " <<
+               newStatesMeaning[state].currentSumOfWeights << ", " <<
+               newStatesMeaning[state].currentWindowLength << ")";
+        out << "state " << state << " is " << stream.str() << "\n";
+    }
+}
 
 template class sw::WindowMP::ECsUnfolding<double>;
 template class sw::WindowMP::ECsUnfolding<storm::RationalNumber>;

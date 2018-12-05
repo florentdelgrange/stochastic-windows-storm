@@ -84,6 +84,13 @@ namespace sw {
              */
             std::vector<StateWeightWindowLength<ValueType>> getNewStatesMeaning(uint_fast64_t k);
 
+            /*!
+             * Prints the unfolding of the given mec to the given output stream.
+             * @param out The output stream
+             * @param k The index of the unfolded MEC
+             */
+            void printToStream(std::ostream& out, uint_fast64_t k);
+
         private:
 
             /*!
