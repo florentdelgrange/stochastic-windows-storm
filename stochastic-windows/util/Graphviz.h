@@ -26,7 +26,14 @@ namespace sw {
                 struct Action { std::string id; double weight = 0; };
 
                 static inline std::ostream& operator<<(std::ostream& os, State const& s) { return os << s.id; }
-                static inline std::ostream& operator<<(std::ostream& os, Action const& a) { return os << "a" << a.id; }
+                static inline std::ostream& operator<<(std::ostream& os, Action const& a) {
+                    if (a.weight == 0) {
+                        return os << "a" << a.id;
+                    }
+                    else {
+                        return os << "a" << a.id << " | " << a.weight;
+                    }
+                }
 
                 std::string id_of(State const& s) { return "state" + s.id; }
                 std::string id_of(Action const& a) { return "action" + a.id; }
@@ -38,7 +45,7 @@ namespace sw {
                         return "";
                 }
                 std::string shape_of(State const& s) { return "circle"; }
-                std::string shape_of(Action const& a) { return "point"; }
+                std::string shape_of(Action const& a) { return "diamond"; }
             }
             namespace Transitions {
                 struct Choice { double weight = 0; };
@@ -83,7 +90,8 @@ namespace sw {
                                            std::vector<double> rewardVector = std::vector<double>(),
                                            std::string graphName = "mdp",
                                            std::string outputDir = "/tmp",
-                                           std::vector<std::string> stateNames = std::vector<std::string>()) {
+                                           std::vector<std::string> stateNames = std::vector<std::string>(),
+                                           bool xlabels = false) {
 
                     if (rewardVector.empty()) {
                         std::vector<double> zeroRewards(matrix.getRowCount(), 0.);
@@ -148,9 +156,11 @@ namespace sw {
                         dp.property("label", boost::make_transform_value_property_map(
                                 [](Vertex const &v) { return boost::lexical_cast<std::string>(v); },
                                 boost::get(boost::vertex_bundle, g)));
-                        dp.property("xlabel", boost::make_transform_value_property_map(&sw::util::graphviz::label_of,
-                                                                                       boost::get(boost::vertex_bundle,
-                                                                                                  g)));
+                        if (xlabels) {
+                            dp.property("xlabel", boost::make_transform_value_property_map(&sw::util::graphviz::label_of,
+                                                                                           boost::get(boost::vertex_bundle,
+                                                                                                      g)));
+                        }
                         dp.property("label", boost::make_transform_value_property_map(
                                 [](Edge const &e) { return boost::lexical_cast<std::string>(e); },
                                 boost::get(boost::edge_bundle, g)));
@@ -159,12 +169,12 @@ namespace sw {
                     }
                 }
 
-                static void bndGWMPUnfoldedECsExport(sw::BndGoodWindowMP::ECsUnfolding<double> &unfoldedECs,
+                static void bndGWMPUnfoldedECsExport(sw::WindowMP::ECsUnfolding<double> &unfoldedECs,
                                                      std::string graphName = "mdp",
                                                      std::string outputDir = "/tmp") {
 
                     for (uint_fast64_t k = 1; k <= unfoldedECs.getNumberOfUnfoldedECs(); ++ k) {
-                        std::vector<sw::BndGoodWindowMP::StateWeightWindowLength<double>>
+                        std::vector<sw::WindowMP::StateWeightWindowLength<double>>
                             newStatesMeaning = unfoldedECs.getNewStatesMeaning(k);
                         std::vector<std::string> stateNames = std::vector<std::string>(newStatesMeaning.size());
                         // the state with index 0 in the unfolding is the sink state
