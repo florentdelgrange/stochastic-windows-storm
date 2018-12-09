@@ -30,7 +30,6 @@ sw::WindowMP::ECsUnfolding<ValueType>::ECsUnfolding(storm::models::sparse::Mdp<V
         mec = mecDecomposition[k - 1];
         // initialize the new row group entries for the kth mec
         newRowGroupEntries.emplace_back();
-        storm::storage::SparseMatrixBuilder<ValueType> matrixBuilder(0, 0, 0, true, true);
         for (auto state : mec.getStateSet()) {
             mecIndices[state] = k;
             windowVector[state] = std::vector<std::unordered_map<ValueType, uint_fast64_t>>(l_max + 1);
@@ -39,10 +38,13 @@ sw::WindowMP::ECsUnfolding<ValueType>::ECsUnfolding(storm::models::sparse::Mdp<V
         for (auto state: mec.getStateSet()) {
             unfoldFrom(state, 0., 0, originalMatrix, stateActionRewardsVector, mec);
         }
+        // tricky: this line allows to have the same number of columns and rowGroups in the sparse matrix
+        newRowGroupEntries[k][0][0].push_back(std::make_pair(newRowGroupEntries[k].size() - 1, 0.));
         // Build the new matrix w.r.t. the new row group entries computed during the unfolding
         uint_fast64_t newRow = 0;
         uint_fast64_t column;
         ValueType p;
+        storm::storage::SparseMatrixBuilder<ValueType> matrixBuilder(0, 0, 0, true, true);
         // iterate on states (new row groups) of the unfolding of the kth MEC
         for (const auto &newRowGroup : newRowGroupEntries[k]) {
             matrixBuilder.newRowGroup(newRow);
