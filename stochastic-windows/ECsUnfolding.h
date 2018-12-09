@@ -7,7 +7,9 @@
 #include <storm/storage/SparseMatrix.h>
 #include <storm/storage/MaximalEndComponent.h>
 #include <storm/storage/MaximalEndComponentDecomposition.h>
-#include <storm/models/sparse/Mdp.h>
+#include <storm/utility/builder.h>
+#include <storm/storage/sparse/ModelComponents.h>
+#include <storm/models/sparse/StateLabeling.h>
 
 #ifndef STORM_ECSUNFOLDING_H
 #define STORM_ECSUNFOLDING_H
@@ -83,6 +85,14 @@ namespace sw {
              * @param k the index of the MEC containing the state for which the meaning is explained.
              */
             std::vector<StateWeightWindowLength<ValueType>> getNewStatesMeaning(uint_fast64_t k);
+
+            /*!
+             * Build the refined sub-MDP of the kth MEC corresponding to the unfolding of the kth MEC for the bound l_max.
+             * Note that the MDP built has no label.
+             * @param k the index of the MEC for which the unfolding has been built
+             * @return the MDP of the unfolding of the kth MEC
+             */
+            std::shared_ptr<storm::models::sparse::Mdp<ValueType>> unfoldingAsMDP(uint_fast64_t k);
 
             /*!
              * Prints the unfolding of the given mec to the given output stream.

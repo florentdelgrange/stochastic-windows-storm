@@ -203,5 +203,15 @@ void sw::WindowMP::ECsUnfolding<ValueType>::printToStream(std::ostream &out, uin
     }
 }
 
+template<typename ValueType>
+std::shared_ptr<storm::models::sparse::Mdp<ValueType>> sw::WindowMP::ECsUnfolding<ValueType>::unfoldingAsMDP(uint_fast64_t k) {
+    storm::storage::SparseMatrix<ValueType> *unfoldedECMatrix = &(this->getUnfoldedMatrix(k));
+    storm::storage::sparse::ModelComponents<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> modelComponents(*unfoldedECMatrix, storm::models::sparse::StateLabeling(unfoldedECMatrix->getColumnCount()));
+    std::shared_ptr<storm::models::sparse::Model<ValueType>> unfoldedECModel =
+            storm::utility::builder::buildModelFromComponents(storm::models::ModelType::Mdp, std::move(modelComponents));
+    std::shared_ptr<storm::models::sparse::Mdp<ValueType>> new_mdp = unfoldedECModel->template as<storm::models::sparse::Mdp<ValueType>>();
+    return new_mdp;
+}
+
 template class sw::WindowMP::ECsUnfolding<double>;
 template class sw::WindowMP::ECsUnfolding<storm::RationalNumber>;
