@@ -12,6 +12,7 @@
 #include <boost/variant.hpp>
 #include <fstream>
 #include <stochastic-windows/ECsUnfolding.h>
+#include <storm/utility/constants.h>
 
 #ifndef STORM_GRAPHVIZ_H
 #define STORM_GRAPHVIZ_H
@@ -22,22 +23,34 @@ namespace sw {
 
             using namespace boost;
             namespace Nodes {
-                struct State { std::string id; };
+                struct State { std::string id; double priority = -1; };
                 struct Action { std::string id; double weight = 0; };
 
-                static inline std::ostream& operator<<(std::ostream& os, State const& s) { return os << s.id; }
+                static inline std::ostream& operator<<(std::ostream& os, State const& s) {
+                    if (s.priority < 0) {
+                        return os << s.id;
+                    }
+                    else {
+                        return os << s.id << ", p=" << s.priority;
+                    }
+                }
                 static inline std::ostream& operator<<(std::ostream& os, Action const& a) {
                     if (a.weight == 0) {
                         return os << "a" << a.id;
                     }
                     else {
-                        return os << "a" << a.id << " | " << a.weight;
+                        return os << "a" << a.id << ", " << a.weight;
                     }
                 }
 
                 std::string id_of(State const& s) { return "state" + s.id; }
                 std::string id_of(Action const& a) { return "action" + a.id; }
-                std::string label_of(State const& s) { return ""; }
+                std::string label_of(State const& s) {
+                    if (s.priority >= 0)
+                        return boost::lexical_cast<std::string>(s.priority) + "  ";
+                    else
+                        return "";
+                }
                 std::string label_of(Action const &a) {
                     if (a.weight != 0.)
                         return boost::lexical_cast<std::string>(a.weight) + "  ";
@@ -82,23 +95,32 @@ namespace sw {
                 /**
                  * Export the MDP (encoded as a sparse matrix) to a dot file depicting the MDP
                  * @param matrix
-                 * @param rewardVector
+                 * @param weightVector
+                 * @param priorityVector
                  * @param graphName
                  * @param stateNames
                  */
                 static void mdpGraphExport(storm::storage::SparseMatrix<double> const &matrix,
-                                           std::vector<double> rewardVector = std::vector<double>(),
+                                           std::vector<double> weightVector = std::vector<double>(),
+                                           std::vector<double> priorityVector = std::vector<double>(),
                                            std::string graphName = "mdp",
                                            std::string outputDir = "/tmp",
                                            std::vector<std::string> stateNames = std::vector<std::string>(),
                                            bool xlabels = false) {
 
-                    if (rewardVector.empty()) {
+                    if (weightVector.empty()) {
                         std::vector<double> zeroRewards(matrix.getRowCount(), 0.);
-                        rewardVector.reserve(zeroRewards.size());
-                        rewardVector.insert(rewardVector.end(), zeroRewards.begin(), zeroRewards.end());
+                        weightVector.reserve(zeroRewards.size());
+                        weightVector.insert(weightVector.end(), zeroRewards.begin(), zeroRewards.end());
                     } else
-                        assert(rewardVector.size() == matrix.getRowCount());
+                        assert(weightVector.size() == matrix.getRowCount());
+
+                    if (priorityVector.empty()) {
+                        std::vector<double> noPriority(matrix.getRowGroupCount(), -1.);
+                        priorityVector.reserve(noPriority.size());
+                        priorityVector.insert(priorityVector.end(), noPriority.begin(), noPriority.end());
+                    } else
+                        assert(priorityVector.size() == matrix.getRowGroupCount());
 
                     if (stateNames.empty()) {
                         std::vector<std::string> noName(matrix.getRowGroupCount(), "");
@@ -119,14 +141,13 @@ namespace sw {
                     for (uint_fast64_t state = 0; state < matrix.getRowGroupCount(); ++state) {
                         Graph::vertex_descriptor s;
                         if (stateNames[state] == "")
-                            s = add_vertex(Nodes::State{'s' + std::to_string(state)}, g);
+                            s = add_vertex(Nodes::State{'s' + std::to_string(state), priorityVector[state]}, g);
                         else
-                            s = add_vertex(Nodes::State{stateNames[state]}, g);
+                            s = add_vertex(Nodes::State{stateNames[state], priorityVector[state]}, g);
                         stateVertices[state] = s;
                         for (uint_fast64_t row = groups[state]; row < groups[state + 1]; ++row) {
-                            Graph::vertex_descriptor a = add_vertex(
-                                    Nodes::Action{std::to_string(row), rewardVector[row]},
-                                    g);
+                            Graph::vertex_descriptor a = add_vertex(Nodes::Action{std::to_string(row),
+                                                                                  weightVector[row]}, g);
                             add_edge(s, a, Transitions::Choice{}, g);
                             actionVertices[row] = a;
                         }
@@ -137,8 +158,10 @@ namespace sw {
                             for (auto entry : matrix.getRow(row)) {
                                 nextState = entry.getColumn();
                                 p = entry.getValue();
-                                add_edge(actionVertices[row], stateVertices[nextState],
-                                         Transitions::ProbabilityTransition{p}, g);
+                                if (p != storm::utility::zero<double>()) {
+                                    add_edge(actionVertices[row], stateVertices[nextState],
+                                             Transitions::ProbabilityTransition{p}, g);
+                                }
                             }
                         }
                     }
@@ -169,9 +192,9 @@ namespace sw {
                     }
                 }
 
-                static void bndGWMPUnfoldedECsExport(sw::WindowMP::ECsUnfolding<double> &unfoldedECs,
-                                                     std::string graphName = "mdp",
-                                                     std::string outputDir = "/tmp") {
+                static void unfoldedECsExport(sw::WindowMP::ECsUnfolding<double> &unfoldedECs,
+                                              std::string graphName = "mdp",
+                                              std::string outputDir = "/tmp") {
 
                     for (uint_fast64_t k = 1; k <= unfoldedECs.getNumberOfUnfoldedECs(); ++ k) {
                         std::vector<sw::WindowMP::StateWeightWindowLength<double>>
@@ -188,8 +211,8 @@ namespace sw {
                         }
                         std::ostringstream stream;
                         stream << graphName << "_unfoldedEC_" << k;
-                        mdpGraphExport(unfoldedECs.getUnfoldedMatrix(k), std::vector<double>(), stream.str(), outputDir,
-                                       stateNames);
+                        mdpGraphExport(unfoldedECs.getUnfoldedMatrix(k), std::vector<double>(), std::vector<double>(),
+                                stream.str(), outputDir, stateNames);
                     }
                 }
             };
