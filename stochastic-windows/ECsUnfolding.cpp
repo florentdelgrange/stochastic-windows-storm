@@ -39,7 +39,7 @@ sw::WindowMP::ECsUnfolding<ValueType>::ECsUnfolding(storm::models::sparse::Mdp<V
             unfoldFrom(state, 0., 0, originalMatrix, stateActionRewardsVector, mec);
         }
         // tricky: this line allows to have the same number of columns and rowGroups in the sparse matrix
-        newRowGroupEntries[k][0][0].push_back(std::make_pair(newRowGroupEntries[k].size() - 1, 0.));
+        newRowGroupEntries[k][0][0].push_back(std::make_pair(newRowGroupEntries[k].size() - 1, storm::utility::zero<ValueType>()));
         // Build the new matrix w.r.t. the new row group entries computed during the unfolding
         uint_fast64_t newRow = 0;
         uint_fast64_t column;
@@ -59,6 +59,10 @@ sw::WindowMP::ECsUnfolding<ValueType>::ECsUnfolding(storm::models::sparse::Mdp<V
             }
         }
         matrices[k] = matrixBuilder.build();
+        matrices[k].makeRowDirac(0, 0);
+        // storm::storage::BitVector absorbingSink(matrices[k].getRowCount(), false);
+        //absorbingSink.set(0, true);
+        //matrices[k].makeRowsAbsorbing(absorbingSink);
     }
 }
 
