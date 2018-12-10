@@ -32,7 +32,7 @@ sw::WindowMP::ECsUnfolding<ValueType>::ECsUnfolding(storm::models::sparse::Mdp<V
         newRowGroupEntries.emplace_back();
         for (auto state : mec.getStateSet()) {
             mecIndices[state] = k;
-            windowVector[state] = std::vector<std::unordered_map<ValueType, uint_fast64_t>>(l_max + 1);
+            windowVector[state] = std::vector<std::unordered_map<ValueType, uint_fast64_t>>(l_max);
         }
         // Unfold the kth MEC
         for (auto state: mec.getStateSet()) {
@@ -98,7 +98,7 @@ uint_fast64_t sw::WindowMP::ECsUnfolding<ValueType>::unfoldFrom(uint_fast64_t co
     assert(newRowGroupEntries.size() > k);
     // Initialization of the new row group entries for the MEC k
     if (newRowGroupEntries[k].empty()) {
-        // the index 0 is the index of the sink state corresponding to states (s, w, l) where l > l_max and w < 0
+        // the index 0 is the index of the sink state corresponding to states (s, w, l) where l >= l_max and w < 0
         newRowGroupEntries[k].emplace_back();
         newRowGroupEntries[k][0].push_back({std::make_pair(0, 1.)});
     }
@@ -113,9 +113,9 @@ uint_fast64_t sw::WindowMP::ECsUnfolding<ValueType>::unfoldFrom(uint_fast64_t co
         // assert( windowVector[state][l].find( currentSumOfWeights )->second == i );
         // as i was not in the map of weights, unfold the EC from the ith state s_i
         ValueType updatedSumOfWeights;
+        uint_fast64_t l_new = l + 1;
         for (auto action : currentMec.getChoicesForState(state)) {
             updatedSumOfWeights = currentSumOfWeights + stateActionRewardsVector[action];
-            uint_fast64_t l_new = l + 1;
             // add the current action to the new row group entries
             newRowGroupEntries[k][i].emplace_back();
             uint_fast64_t newAction = newRowGroupEntries[k][i].size() - 1;
@@ -132,7 +132,7 @@ uint_fast64_t sw::WindowMP::ECsUnfolding<ValueType>::unfoldFrom(uint_fast64_t co
                     newRowGroupEntries[k][i][newAction].push_back(std::make_pair(j, p));
                 }
             }
-            else if (l_new <= l_max) {
+            else if (l_new < l_max) {
                 for (const auto &entry : originalMatrix.getRow(action)) {
                     uint_fast64_t successorState = entry.getColumn();
                     ValueType p = entry.getValue();
@@ -178,7 +178,7 @@ sw::WindowMP::ECsUnfolding<ValueType>::getNewStatesMeaning(uint_fast64_t k) {
 
     for (uint_fast64_t state = 0; state < mecIndices.size(); ++ state) {
         if (mecIndices[state] == k) {
-            for (uint_fast64_t l = 0; l <= l_max; ++ l) {
+            for (uint_fast64_t l = 0; l < l_max; ++ l) {
                 for (const auto &keyValue : windowVector[state][l]) {
                     unfoldedStates[keyValue.second].state = state;
                     unfoldedStates[keyValue.second].currentSumOfWeights = keyValue.first;
