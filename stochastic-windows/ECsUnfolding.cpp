@@ -144,11 +144,8 @@ uint_fast64_t sw::WindowMP::ECsUnfolding<ValueType>::unfoldFrom(uint_fast64_t co
             }
             else {
                 // if s_i = (s, w, l_max) with w < 0, then the bounded window objective happens with
-                // probability zero. Then, s_i transitions to the sink state.
+                // probability zero. Then, s_i is the actual sink state.
                 newRowGroupEntries[k][i][newAction] = {std::make_pair(0, 1.)};
-                // Since the bound l_max is exceeded, we can ignore other useless actions necessarily leading to the
-                // sink state.
-                break;
             }
         }
     }
