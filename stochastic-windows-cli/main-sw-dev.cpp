@@ -12,9 +12,8 @@
 #include "storm/storage/SymbolicModelDescription.h"
 #include "storm-parsers/parser/PrismParser.h"
 #include <iostream>
-#include <stochastic-windows/FooBar.h>
-#include <stochastic-windows/ECsUnfolding.h>
-
+#include <stochastic-windows/fixedwindow/ECsUnfoldingMeanPayoff.h>
+#include <stochastic-windows/fixedwindow/MeanPayoff.h>
 
 #include "storm/utility/initialize.h"
 
@@ -42,6 +41,9 @@
 #include "storm/settings/modules/MultiObjectiveSettings.h"
 
 #include "storm/analysis/GraphConditions.h"
+#include <storm/utility/builder.h>
+#include <storm/storage/sparse/ModelComponents.h>
+#include <storm/models/sparse/StateLabeling.h>
 
 #include "storm-cli-utilities/cli.h"
 #include "storm-cli-utilities/model-handling.h"
@@ -177,8 +179,9 @@ void mecDecompositionPrintExamples() {
 };
 
 
-void boundedGoodWindowExamples(){
+void fixedWindowMPExamples(){
     std::string prismModelPath = STORM_TEST_RESOURCES_DIR "/mdp/BndGWMP.prism";
+    //std::string prismModelPath = STORM_TEST_RESOURCES_DIR "/mdp/sw_simple_example.prism";
     storm::storage::SymbolicModelDescription modelDescription = storm::parser::PrismParser::parse(prismModelPath);
     storm::prism::Program program = modelDescription.preprocess().asPrismProgram();
     storm::builder::BuilderOptions options = storm::builder::BuilderOptions(true, true);
@@ -191,19 +194,27 @@ void boundedGoodWindowExamples(){
 
     std::cout << mecDecomposition << std::endl;
 
-    // maximum windows length is 3
-    sw::BndGoodWindowMP::ECsUnfolding<double> result(*mdp, "weights", 3);
+    // maximum window size is 3
+    sw::FixedWindow::ECsUnfoldingMeanPayoff<double> unfolding(*mdp, "weights", 3);
     std::cout << "unfolded matrices: " << endl;
     for (uint_fast64_t k = 1; k <= mecDecomposition.size(); ++ k) {
-        std::cout << result.getUnfoldedMatrix(k) << std::endl;
+        unfolding.printToStream(std::cout, k);
+        std::shared_ptr<storm::models::sparse::Mdp<double>> new_mdp = unfolding.unfoldingAsMDP(k);
+        new_mdp->printModelInformationToStream(std::cout);
     }
+
     // Graphviz
     storm::storage::SparseMatrix<double> matrix = mdp->getTransitionMatrix();
-    storm::models::sparse::StandardRewardModel<double> rewardModel = model->getRewardModel("weights");
-    std::vector<double> rewardVector = rewardModel.getStateActionRewardVector();
+    storm::models::sparse::StandardRewardModel<double> weights = model->getRewardModel("weights");
+    // storm::models::sparse::StandardRewardModel<double> priorities = model->getRewardModel("priorities");
+    std::vector<double> weightVector = weights.getStateActionRewardVector();
+    // std::vector<double> priorityVector = priorities.getStateRewardVector();
 
-    sw::util::graphviz::GraphVizBuilder::mdpGraphExport(matrix, rewardVector);
-    sw::util::graphviz::GraphVizBuilder::bndGWMPUnfoldedECsExport(result);
+    sw::util::graphviz::GraphVizBuilder::mdpGraphExport(matrix, weightVector);
+    sw::util::graphviz::GraphVizBuilder::unfoldedECsExport(unfolding, "mdp_unfolding");
+
+    sw::FixedWindow::MeanPayoff<double> fixedWindow(*mdp, "weights", 3);
+
 }
 
 
@@ -232,7 +243,7 @@ int main(const int argc, const char** argv){
 
     // mecDecompositionPrintExamples();
     graphVizExample();
-    boundedGoodWindowExamples();
+    fixedWindowMPExamples();
 
     return 0;
 }
