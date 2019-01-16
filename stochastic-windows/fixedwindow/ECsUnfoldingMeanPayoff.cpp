@@ -8,13 +8,12 @@ template<typename ValueType>
 sw::FixedWindow::ECsUnfoldingMeanPayoff<ValueType>::ECsUnfoldingMeanPayoff(
         storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>>& mdp,
         std::string const& rewardModelName,
-        uint_fast64_t const& l_max) {
+        uint_fast64_t const& l_max)
+        : mecDecomposition(mdp){
 
-    storm::storage::MaximalEndComponentDecomposition<ValueType> mecDecomposition(mdp);
     this->mecIndices = std::vector<uint_fast64_t>(mdp.getNumberOfStates());
     uint_fast64_t k = 0;
-
-    for (storm::storage::MaximalEndComponent const &mec: mecDecomposition){
+    for (storm::storage::MaximalEndComponent const &mec: this->mecDecomposition){
         ++ k;
         storm::storage::BitVector initialStates(mdp.getNumberOfStates(), false);
         std::vector<std::vector<uint_fast64_t>> enabledActions(mdp.getNumberOfStates());
@@ -32,6 +31,12 @@ sw::FixedWindow::ECsUnfoldingMeanPayoff<ValueType>::ECsUnfoldingMeanPayoff(
                         mdp, rewardModelName, l_max, initialStates, enabledActions
                         ));
     }
+}
+
+template <typename ValueType>
+storm::storage::MaximalEndComponentDecomposition<ValueType>&
+sw::FixedWindow::ECsUnfoldingMeanPayoff<ValueType>::getMaximalEndComponentDecomposition() {
+    return this->mecDecomposition;
 }
 
 template <typename ValueType>
@@ -74,7 +79,7 @@ void sw::FixedWindow::ECsUnfoldingMeanPayoff<ValueType>::printToStream(std::ostr
     for(uint_fast64_t state = 1; state < this->getUnfoldedMatrix(k).getRowGroupCount(); ++ state) {
         std::ostringstream stream;
         stream << "(s" << newStatesMeaning[state].state << ", " <<
-               newStatesMeaning[state].currentSumOfWeights << ", " <<
+               newStatesMeaning[state].currentValue << ", " <<
                newStatesMeaning[state].currentWindowSize << ")";
         out << "state " << state << " is " << stream.str() << "\n";
     }

@@ -11,7 +11,7 @@
 #include <boost/graph/graph_utility.hpp>
 #include <boost/variant.hpp>
 #include <fstream>
-#include <stochastic-windows/ECsUnfolding.h>
+#include <stochastic-windows/fixedwindow/ECsUnfoldingMeanPayoff.h>
 #include <storm/utility/constants.h>
 
 #ifndef STORM_GRAPHVIZ_H
@@ -106,6 +106,7 @@ namespace sw {
                                            std::string graphName = "mdp",
                                            std::string outputDir = "/tmp",
                                            std::vector<std::string> stateNames = std::vector<std::string>(),
+                                           std::vector<std::string> actionNames = std::vector<std::string>(),
                                            bool xlabels = false) {
 
                     if (weightVector.empty()) {
@@ -129,6 +130,13 @@ namespace sw {
                     } else
                         assert(stateNames.size() == matrix.getRowGroupCount());
 
+                    if (actionNames.empty()) {
+                        std::vector<std::string> noName(matrix.getRowCount(), "");
+                        actionNames.reserve(noName.size());
+                        actionNames.insert(actionNames.end(), noName.begin(), noName.end());
+                    } else
+                        assert(actionNames.size() == matrix.getRowCount());
+
                     typedef adjacency_list<vecS, vecS, directedS, Vertex, Edge> Graph;
 
                     Graph g;
@@ -146,8 +154,11 @@ namespace sw {
                             s = add_vertex(Nodes::State{stateNames[state], priorityVector[state]}, g);
                         stateVertices[state] = s;
                         for (uint_fast64_t row = groups[state]; row < groups[state + 1]; ++row) {
-                            Graph::vertex_descriptor a = add_vertex(Nodes::Action{std::to_string(row),
-                                                                                  weightVector[row]}, g);
+                            Graph::vertex_descriptor a;
+                            if (actionNames[row] == "")
+                                a = add_vertex(Nodes::Action{std::to_string(row), weightVector[row]}, g);
+                            else
+                                a = add_vertex(Nodes::Action{actionNames[row], weightVector[row]}, g);
                             add_edge(s, a, Transitions::Choice{}, g);
                             actionVertices[row] = a;
                         }
@@ -192,27 +203,44 @@ namespace sw {
                     }
                 }
 
-                static void unfoldedECsExport(sw::WindowMP::ECsUnfolding<double> &unfoldedECs,
-                                              std::string graphName = "mdp",
-                                              std::string outputDir = "/tmp") {
+                static void unfoldedECsExport(
+                        storm::storage::SparseMatrix<double> &originalMatrix,
+                        sw::FixedWindow::ECsUnfoldingMeanPayoff<double> &unfoldedECs,
+                        std::string graphName = "mdp",
+                        std::string outputDir = "/tmp") {
+
+                    storm::storage::MaximalEndComponentDecomposition<double> mecDecomposition =
+                            unfoldedECs.getMaximalEndComponentDecomposition();
 
                     for (uint_fast64_t k = 1; k <= unfoldedECs.getNumberOfUnfoldedECs(); ++ k) {
-                        std::vector<sw::WindowMP::StateWeightWindowLength<double>>
+                        storm::storage::MaximalEndComponent mec = mecDecomposition.getBlock(k - 1);
+                        std::vector<uint_fast64_t> groups = unfoldedECs.getUnfoldedMatrix(k).getRowGroupIndices();
+                        std::vector<sw::DirectFixedWindow::StateValueWindowSize<double>>
                             newStatesMeaning = unfoldedECs.getNewStatesMeaning(k);
                         std::vector<std::string> stateNames = std::vector<std::string>(newStatesMeaning.size());
+                        std::vector<std::string> actionNames = std::vector<std::string>(unfoldedECs.getUnfoldedMatrix(k).getRowCount());
                         // the state with index 0 in the unfolding is the sink state
                         stateNames[0] = "⊥";
+                        actionNames[0] = "⊥";
                         for (uint_fast64_t i = 1; i < newStatesMeaning.size(); ++ i) {
                             std::ostringstream stream;
-                            stream << "(s" << newStatesMeaning[i].state << ", " <<
-                                newStatesMeaning[i].currentSumOfWeights << ", " <<
-                                newStatesMeaning[i].currentWindowLength << ")";
+                            uint_fast64_t state = newStatesMeaning[i].state;
+                            stream << "(s" << state << ", " <<
+                                newStatesMeaning[i].currentValue << ", " <<
+                                newStatesMeaning[i].currentWindowSize << ")";
                             stateNames[i] = stream.str();
+                            uint_fast64_t action = groups[i];
+                            for (uint_fast64_t enabledAction: mec.getChoicesForState(state)) {
+                                std::ostringstream stream;
+                                stream << action << " (a" << enabledAction << ")";
+                                actionNames[action] = stream.str();
+                                ++ action;
+                            }
                         }
                         std::ostringstream stream;
                         stream << graphName << "_unfoldedEC_" << k;
                         mdpGraphExport(unfoldedECs.getUnfoldedMatrix(k), std::vector<double>(), std::vector<double>(),
-                                stream.str(), outputDir, stateNames);
+                                stream.str(), outputDir, stateNames, actionNames);
                     }
                 }
             };

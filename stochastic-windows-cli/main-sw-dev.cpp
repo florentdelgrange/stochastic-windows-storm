@@ -211,7 +211,7 @@ void fixedWindowMPExamples(){
     // std::vector<double> priorityVector = priorities.getStateRewardVector();
 
     sw::util::graphviz::GraphVizBuilder::mdpGraphExport(matrix, weightVector);
-    sw::util::graphviz::GraphVizBuilder::unfoldedECsExport(unfolding, "mdp_unfolding");
+    sw::util::graphviz::GraphVizBuilder::unfoldedECsExport(matrix, unfolding, "mdp_unfolding");
 
     sw::FixedWindow::MeanPayoff<double> fixedWindow(*mdp, "weights", 3);
 

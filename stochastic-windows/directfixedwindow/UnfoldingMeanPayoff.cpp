@@ -25,7 +25,6 @@ sw::DirectFixedWindow::UnfoldingMeanPayoff<ValueType>::UnfoldingMeanPayoff(
     this->stateActionRewardsVector = rewardModel.getStateActionRewardVector();
     // vector containing data about states of the unfolding
     this->windowVector = std::vector<std::vector<std::unordered_map<ValueType, uint_fast64_t>>>(mdp.getNumberOfStates());
-    newRowGroupEntries.emplace_back();
     for (uint_fast64_t state = 0; state < mdp.getNumberOfStates(); ++state) {
         this->windowVector[state] = std::vector<std::unordered_map<ValueType, uint_fast64_t>>(l_max);
     }
@@ -34,7 +33,7 @@ sw::DirectFixedWindow::UnfoldingMeanPayoff<ValueType>::UnfoldingMeanPayoff(
         unfoldFrom(state, 0., 0);
     }
     // this line allows to have the same number of columns and rowGroups in the sparse matrix
-    newRowGroupEntries[0][0].push_back(std::make_pair(newRowGroupEntries.size() - 1, storm::utility::zero<ValueType>()));
+    this->newRowGroupEntries[0][0].push_back(std::make_pair(newRowGroupEntries.size() - 1, storm::utility::zero<ValueType>()));
     // Build the new matrix w.r.t. the new row group entries computed during the unfolding
     uint_fast64_t newRow = 0;
     uint_fast64_t column;
@@ -50,12 +49,12 @@ sw::DirectFixedWindow::UnfoldingMeanPayoff<ValueType>::UnfoldingMeanPayoff(
                 std::tie(column, p) = entry;
                 matrixBuilder.addNextValue(newRow, column, p);
             }
-            ++ newRow;
+            ++newRow;
         }
-        this->matrix = matrixBuilder.build();
-        this->matrix.makeRowDirac(0, 0);
-        assert(this->matrix.getRowGroupCount() == this->matrix.getColumnCount());
     }
+    this->matrix = matrixBuilder.build();
+    this->matrix.makeRowDirac(0, 0);
+    assert(this->matrix.getRowGroupCount() == this->matrix.getColumnCount());
 }
 
 template<typename ValueType>
@@ -129,7 +128,7 @@ uint_fast64_t sw::DirectFixedWindow::UnfoldingMeanPayoff<ValueType>::unfoldFrom(
             if (updatedSumOfWeights >= 0 and l_new <= l_max) {
                 // the indices in the enumeration of enabled action for each state correspond to the
                 // indices of rows in the original matrix
-                for (const auto &entry : this->matrix.getRow(action)) {
+                for (const auto &entry : this->originalMatrix.getRow(action)) {
                     uint_fast64_t successorState = entry.getColumn();
                     ValueType p = entry.getValue();
                     // j is the index of successorState
@@ -162,16 +161,16 @@ storm::storage::SparseMatrix<ValueType>& sw::DirectFixedWindow::UnfoldingMeanPay
 }
 
 template<typename ValueType>
-std::vector<sw::DirectFixedWindow::StateWeightWindowSize<ValueType>>
+std::vector<sw::DirectFixedWindow::StateValueWindowSize<ValueType>>
 sw::DirectFixedWindow::UnfoldingMeanPayoff<ValueType>::getNewStatesMeaning() {
 
-    std::vector<sw::DirectFixedWindow::StateWeightWindowSize<ValueType>> unfoldingStates(this->newRowGroupEntries.size());
+    std::vector<sw::DirectFixedWindow::StateValueWindowSize<ValueType>> unfoldingStates(this->newRowGroupEntries.size());
 
     for (uint_fast64_t state = 0; state < this->originalMatrix.getRowGroupCount(); ++ state) {
         for (uint_fast64_t l = 0; l < l_max; ++ l) {
             for (const auto &keyValue : this->windowVector[state][l]) {
                 unfoldingStates[keyValue.second].state = state;
-                unfoldingStates[keyValue.second].currentSumOfWeights = keyValue.first;
+                unfoldingStates[keyValue.second].currentValue = keyValue.first;
                 unfoldingStates[keyValue.second].currentWindowSize = l;
             }
         }

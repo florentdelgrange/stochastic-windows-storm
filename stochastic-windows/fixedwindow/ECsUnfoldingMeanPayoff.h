@@ -40,6 +40,8 @@ namespace sw {
              */
             uint_fast64_t getMecIndex(uint_fast64_t state);
 
+            storm::storage::MaximalEndComponentDecomposition<ValueType>& getMaximalEndComponentDecomposition();
+
             /*!
              * Get the index k of the MEC containing the input state as well as the index of the state
              * (state, currentSumOfWeights, currentWindowLength) in the kth matrix, being the matrix representing the
@@ -101,6 +103,8 @@ namespace sw {
              * Note that 0 is a special value indicating that the state does not belong to any MEC.
              */
             std::vector<uint_fast64_t> mecIndices;
+
+            storm::storage::MaximalEndComponentDecomposition<ValueType> mecDecomposition;
 
 
     //       /*!
