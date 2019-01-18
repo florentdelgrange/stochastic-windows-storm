@@ -27,9 +27,8 @@ sw::FixedWindow::ECsUnfoldingMeanPayoff<ValueType>::ECsUnfoldingMeanPayoff(
         }
 
         this->unfoldedECs.push_back(
-                sw::DirectFixedWindow::UnfoldingMeanPayoff<ValueType>(
-                        mdp, rewardModelName, l_max, initialStates, enabledActions
-                        ));
+                sw::DirectFixedWindow::WindowUnfoldingMeanPayoff<ValueType>(
+                        mdp, rewardModelName, l_max, initialStates, enabledActions));
     }
 }
 

@@ -20,19 +20,17 @@ namespace sw {
         };
 
         template<typename ValueType>
-        class UnfoldingMeanPayoff {
+        class WindowUnfolding {
         public:
 
-            UnfoldingMeanPayoff(storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>>& mdp,
-                                std::string const& rewardModelName,
-                                uint_fast64_t const& l_max,
-                                storm::storage::BitVector const& initialStates);
-
-            UnfoldingMeanPayoff(storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>>& mdp,
-                    std::string const& rewardModelName,
-                    uint_fast64_t const& l_max,
-                    storm::storage::BitVector const& initialStates,
-                    std::vector<std::vector<uint_fast64_t>> enabledActions);
+            WindowUnfolding(storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>>& mdp,
+                            std::string const& rewardModelName,
+                            uint_fast64_t const& l_max,
+                            std::vector<std::vector<uint_fast64_t>> enabledActions = std::vector<std::vector<uint_fast64_t>>());
+            /*
+             * Make destructor virtual to allow deleting objects through pointer to base classe(s).
+             */
+            virtual ~WindowUnfolding() {}
 
             storm::storage::SparseMatrix<ValueType>& getMatrix();
 
@@ -47,7 +45,7 @@ namespace sw {
              */
             std::vector<StateValueWindowSize<ValueType>> getNewStatesMeaning();
 
-        private:
+        protected:
 
             /*!
              * Maximum window size
@@ -62,9 +60,7 @@ namespace sw {
              */
             storm::storage::SparseMatrix<ValueType>& originalMatrix;
 
-            std::vector<ValueType> stateActionRewardsVector;
-
-            std::vector<std::vector<uint_fast64_t>>& enabledActions;
+            std::vector<std::vector<uint_fast64_t>> enabledActions;
 
             /*!
              * This vector contains the index of each original state s in the unfolding regarding to
@@ -79,15 +75,42 @@ namespace sw {
              * Dimensions = (0: state, 1: action, 2: pairs of (s', p) where p is the probability to go to s').
              */
             std::vector<std::vector<std::vector<std::pair<uint_fast64_t, ValueType>>>> newRowGroupEntries;
+
+            storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel;
+
             /*!
-             * Unfold an MDP from a given state. The vectors oldToNewStateMapping and newRowGroupEntries are
+             * Unfold an MDP from a given state. The vectors windowVector and newRowGroupEntries are
              * filled accordingly.
              *
              * @return the index of the input state in the new matrix
              */
-            uint_fast64_t unfoldFrom(uint_fast64_t const& state, ValueType const& currentSumOfWeights, uint_fast64_t const& l);
+            virtual uint_fast64_t unfoldFrom(uint_fast64_t const& state, ValueType const& value, uint_fast64_t const& l);
 
-            std::vector<std::vector<uint_fast64_t>> const enableAllActions(storm::storage::SparseMatrix<ValueType> const& originalMatrix);
+            /*!
+             * Constructs the matrix representing the unfolding of the original matrix for the window objective from the
+             * initial states given as parameter
+             * @param initialStates states of the original MDP from which it will be unfolded
+             */
+            void generateMatrix(storm::storage::BitVector const &initialStates);
+
+
+        private:
+            void enableAllActions();
+        };
+
+        template<typename ValueType>
+        class WindowUnfoldingMeanPayoff : public WindowUnfolding<ValueType> {
+        public:
+
+            WindowUnfoldingMeanPayoff(
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                    std::string const &rewardModelName,
+                    uint_fast64_t const &l_max,
+                    storm::storage::BitVector const &initialStates,
+                    std::vector<std::vector<uint_fast64_t>> enabledActions = std::vector<std::vector<uint_fast64_t>>());
+
+        protected:
+            uint_fast64_t unfoldFrom(uint_fast64_t const &state, ValueType const &value, uint_fast64_t const &l);
         };
     }
 }

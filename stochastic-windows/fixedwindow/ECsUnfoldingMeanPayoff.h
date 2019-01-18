@@ -10,7 +10,7 @@
 #include <storm/utility/builder.h>
 #include <storm/storage/sparse/ModelComponents.h>
 #include <storm/models/sparse/StateLabeling.h>
-#include <stochastic-windows/directfixedwindow/UnfoldingMeanPayoff.h>
+#include <stochastic-windows/directfixedwindow/WindowUnfolding.h>
 
 #ifndef STORM_ECSUNFOLDING_H
 #define STORM_ECSUNFOLDING_H
@@ -96,7 +96,7 @@ namespace sw {
 
        private:
 
-            std::vector<sw::DirectFixedWindow::UnfoldingMeanPayoff<ValueType>> unfoldedECs;
+            std::vector<sw::DirectFixedWindow::WindowUnfolding<ValueType>> unfoldedECs;
 
             /*!
              * Vector containing the index of the MEC of each state.
