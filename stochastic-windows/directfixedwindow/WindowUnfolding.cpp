@@ -12,37 +12,47 @@ namespace sw {
                 storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
                 std::string const& rewardModelName,
                 uint_fast64_t const &l_max,
-                std::vector<std::vector<uint_fast64_t>> enabledActions)
-                : originalMatrix(mdp.getTransitionMatrix()),
+                storm::storage::BitVector enabledActions)
+                : l_max(l_max),
+                  originalMatrix(mdp.getTransitionMatrix()),
                   enabledActions(enabledActions),
-                  rewardModel(mdp.getRewardModel(rewardModelName)),
-                  l_max(l_max) {
+                  rewardModel(mdp.getRewardModel(rewardModelName)) {
 
-            if (this->enabledActions.empty()){
-                enableAllActions();
-            }
-
-            assert(this->enabledActions.size() == mdp.getNumberOfStates());
+            assert(this->enabledActions.size() == mdp.getNumberOfChoices());
 
             // vector containing data about states of the unfolding
-            this->windowVector = std::vector<std::vector<std::unordered_map<ValueType, uint_fast64_t>>>(
-                    mdp.getNumberOfStates());
+            this->windowVector = std::vector<std::vector<std::unordered_map<ValueType, uint_fast64_t>>>(mdp.getNumberOfStates());
             for (uint_fast64_t state = 0; state < mdp.getNumberOfStates(); ++state) {
                 this->windowVector[state] = std::vector<std::unordered_map<ValueType, uint_fast64_t>>(l_max);
             }
         }
 
+        template<typename ValueType>
+        WindowUnfolding<ValueType>::WindowUnfolding(
+                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                std::string const& rewardModelName,
+                uint_fast64_t const &l_max)
+                : WindowUnfolding(mdp, rewardModelName, l_max,
+                        storm::storage::BitVector(mdp.getTransitionMatrix().getRowCount(), true)) {}
 
         template<typename ValueType>
         WindowUnfoldingMeanPayoff<ValueType>::WindowUnfoldingMeanPayoff(
                 storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
                 std::string const &rewardModelName, uint_fast64_t const &l_max,
                 storm::storage::BitVector const &initialStates,
-                std::vector<std::vector<uint_fast64_t>> enabledActions)
+                storm::storage::BitVector enabledActions)
                 : WindowUnfolding<ValueType>(mdp, rewardModelName, l_max, enabledActions) {
             assert(initialStates.size() == mdp.getNumberOfStates());
             WindowUnfolding<ValueType>::generateMatrix(initialStates);
         }
+
+        template<typename ValueType>
+        WindowUnfoldingMeanPayoff<ValueType>::WindowUnfoldingMeanPayoff(
+                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                std::string const &rewardModelName, uint_fast64_t const &l_max,
+                storm::storage::BitVector const &initialStates)
+                : WindowUnfoldingMeanPayoff<ValueType>(mdp, rewardModelName, l_max, initialStates,
+                        storm::storage::BitVector(mdp.getTransitionMatrix().getRowCount(), true)) {}
 
         template<typename ValueType>
         void WindowUnfolding<ValueType>::generateMatrix(storm::storage::BitVector const &initialStates) {
@@ -74,18 +84,6 @@ namespace sw {
             this->matrix = matrixBuilder.build();
             this->matrix.makeRowDirac(0, 0);
             assert(this->matrix.getRowGroupCount() == this->matrix.getColumnCount());
-        }
-
-        template<typename ValueType>
-        void WindowUnfolding<ValueType>::enableAllActions() {
-
-            for (uint_fast64_t state = 0; state < originalMatrix.getRowGroupCount(); ++state) {
-                enabledActions[state] = std::vector<uint_fast64_t>(
-                        originalMatrix.getRowGroup(state).getNumberOfEntries());
-                for (uint_fast64_t action = 0; action < enabledActions[state].size(); ++action) {
-                    enabledActions[state][action] = action;
-                }
-            }
         }
 
         template<typename ValueType>
@@ -153,6 +151,8 @@ namespace sw {
                 uint_fast64_t const &l) {
 
             std::vector<ValueType> const& stateActionRewardsVector = this->rewardModel.getStateActionRewardVector();
+            std::vector<uint_fast64_t> actionIndices = this->originalMatrix.getRowGroupIndices();
+            this->originalMatrix.getRowGroupIndices();
 
             // Initialization
             if (this->newRowGroupEntries.empty()) {
@@ -170,7 +170,9 @@ namespace sw {
                 // as i was not in the map of weights, unfold the EC from the ith state s_i
                 ValueType updatedSumOfWeights;
                 uint_fast64_t l_new = l + 1;
-                for (auto action : this->enabledActions[state]) {
+                for (uint_fast64_t action = this->enabledActions.getNextSetIndex(actionIndices[state]);
+                        action < actionIndices[state + 1];
+                        action = this->enabledActions.getNextSetIndex(action + 1)) {
                     updatedSumOfWeights = value + stateActionRewardsVector[action];
                     // add the current action to the new row group entries
                     this->newRowGroupEntries[i].emplace_back();

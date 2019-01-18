@@ -16,12 +16,12 @@ sw::FixedWindow::ECsUnfoldingMeanPayoff<ValueType>::ECsUnfoldingMeanPayoff(
     for (storm::storage::MaximalEndComponent const &mec: this->mecDecomposition){
         ++ k;
         storm::storage::BitVector initialStates(mdp.getNumberOfStates(), false);
-        std::vector<std::vector<uint_fast64_t>> enabledActions(mdp.getNumberOfStates());
+        storm::storage::BitVector enabledActions(mdp.getNumberOfChoices());
 
         for (auto state: mec.getStateSet()){
             initialStates.set(state, true);
             for (auto action: mec.getChoicesForState(state)) {
-                enabledActions[state].push_back(action);
+                enabledActions.set(action, true);
             }
             this->mecIndices[state] = k;
         }
