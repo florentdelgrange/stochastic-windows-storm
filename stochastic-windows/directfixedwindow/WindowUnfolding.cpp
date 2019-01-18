@@ -37,7 +37,7 @@ namespace sw {
         void WindowUnfolding<ValueType>::generateMatrix(storm::storage::BitVector const &initialStates) {
             // Unfold the MDP from the initial states
             for (auto state: initialStates) {
-                unfoldFrom(state, 0., 0);
+                unfoldFrom(state, initialStateValue(state), 0);
             }
             // this line allows to have the same number of columns and rowGroups in the sparse matrix
             this->newRowGroupEntries[0][0].push_back(
@@ -75,6 +75,11 @@ namespace sw {
                     enabledActions[state][action] = action;
                 }
             }
+        }
+
+        template<typename ValueType>
+        ValueType WindowUnfolding<ValueType>::initialStateValue(uint_fast64_t initialState) {
+            return 0;
         }
 
         template<typename ValueType>
@@ -127,6 +132,10 @@ namespace sw {
                     WindowUnfolding<ValueType>::generateMatrix(initialStates);
                 }
 
+        template<typename ValueType>
+        ValueType WindowUnfoldingMeanPayoff<ValueType>::initialStateValue(uint_fast64_t initialState) {
+            return 0;
+        }
 
         template<typename ValueType>
         uint_fast64_t WindowUnfolding<ValueType>::unfoldFrom(uint_fast64_t const &state, ValueType const &value, uint_fast64_t const &l) {

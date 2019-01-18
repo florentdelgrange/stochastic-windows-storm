@@ -93,6 +93,11 @@ namespace sw {
              */
             void generateMatrix(storm::storage::BitVector const &initialStates);
 
+            /*!
+             * Gives the initial value of the input initial state in the unfolding
+             */
+            virtual ValueType initialStateValue(uint_fast64_t initialState);
+
 
         private:
             void enableAllActions();
@@ -111,6 +116,7 @@ namespace sw {
 
         protected:
             uint_fast64_t unfoldFrom(uint_fast64_t const &state, ValueType const &value, uint_fast64_t const &l);
+            ValueType initialStateValue(uint_fast64_t state);
         };
     }
 }
