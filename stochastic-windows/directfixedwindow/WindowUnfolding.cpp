@@ -15,7 +15,8 @@ namespace sw {
                 std::vector<std::vector<uint_fast64_t>> enabledActions)
                 : originalMatrix(mdp.getTransitionMatrix()),
                   enabledActions(enabledActions),
-                  rewardModel(mdp.getRewardModel(rewardModelName)) {
+                  rewardModel(mdp.getRewardModel(rewardModelName)),
+                  l_max(l_max) {
 
             if (this->enabledActions.empty()){
                 enableAllActions();
@@ -23,14 +24,24 @@ namespace sw {
 
             assert(this->enabledActions.size() == mdp.getNumberOfStates());
 
-
-            this->l_max = l_max;
             // vector containing data about states of the unfolding
             this->windowVector = std::vector<std::vector<std::unordered_map<ValueType, uint_fast64_t>>>(
                     mdp.getNumberOfStates());
             for (uint_fast64_t state = 0; state < mdp.getNumberOfStates(); ++state) {
                 this->windowVector[state] = std::vector<std::unordered_map<ValueType, uint_fast64_t>>(l_max);
             }
+        }
+
+
+        template<typename ValueType>
+        WindowUnfoldingMeanPayoff<ValueType>::WindowUnfoldingMeanPayoff(
+                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                std::string const &rewardModelName, uint_fast64_t const &l_max,
+                storm::storage::BitVector const &initialStates,
+                std::vector<std::vector<uint_fast64_t>> enabledActions)
+                : WindowUnfolding<ValueType>(mdp, rewardModelName, l_max, enabledActions) {
+            assert(initialStates.size() == mdp.getNumberOfStates());
+            WindowUnfolding<ValueType>::generateMatrix(initialStates);
         }
 
         template<typename ValueType>
@@ -83,6 +94,11 @@ namespace sw {
         }
 
         template<typename ValueType>
+        ValueType WindowUnfoldingMeanPayoff<ValueType>::initialStateValue(uint_fast64_t initialState) {
+            return 0;
+        }
+
+        template<typename ValueType>
         uint_fast64_t WindowUnfolding<ValueType>::getNewIndex(
                 uint_fast64_t state,
                 ValueType value,
@@ -122,23 +138,10 @@ namespace sw {
         }
 
         template<typename ValueType>
-        WindowUnfoldingMeanPayoff<ValueType>::WindowUnfoldingMeanPayoff(
-                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
-                std::string const &rewardModelName, uint_fast64_t const &l_max,
-                storm::storage::BitVector const &initialStates,
-                std::vector<std::vector<uint_fast64_t>> enabledActions)
-                : WindowUnfolding<ValueType>(mdp, rewardModelName, l_max, enabledActions) {
-                    assert(initialStates.size() == mdp.getNumberOfStates());
-                    WindowUnfolding<ValueType>::generateMatrix(initialStates);
-                }
-
-        template<typename ValueType>
-        ValueType WindowUnfoldingMeanPayoff<ValueType>::initialStateValue(uint_fast64_t initialState) {
-            return 0;
-        }
-
-        template<typename ValueType>
-        uint_fast64_t WindowUnfolding<ValueType>::unfoldFrom(uint_fast64_t const &state, ValueType const &value, uint_fast64_t const &l) {
+        uint_fast64_t WindowUnfolding<ValueType>::unfoldFrom(
+                uint_fast64_t const &state,
+                ValueType const &value,
+                uint_fast64_t const &l) {
             // To override
             return 0;
         }

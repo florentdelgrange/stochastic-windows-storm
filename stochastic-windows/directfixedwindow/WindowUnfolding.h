@@ -89,6 +89,7 @@ namespace sw {
             /*!
              * Constructs the matrix representing the unfolding of the original matrix for the window objective from the
              * initial states given as parameter
+             *
              * @param initialStates states of the original MDP from which it will be unfolded
              */
             void generateMatrix(storm::storage::BitVector const &initialStates);
