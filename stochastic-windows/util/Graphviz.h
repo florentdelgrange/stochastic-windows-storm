@@ -23,8 +23,8 @@ namespace sw {
 
             using namespace boost;
             namespace Nodes {
-                struct State { std::string id; double priority = -1; };
-                struct Action { std::string id; double weight = 0; };
+                struct State { std::string id; double priority = -1;};
+                struct Action { std::string id; double weight = 0; uint_fast64_t id_enum = 0; };
 
                 static inline std::ostream& operator<<(std::ostream& os, State const& s) {
                     if (s.priority < 0) {
@@ -44,7 +44,7 @@ namespace sw {
                 }
 
                 std::string id_of(State const& s) { return "state" + s.id; }
-                std::string id_of(Action const& a) { return "action" + a.id; }
+                std::string id_of(Action const& a) { return "action" + boost::lexical_cast<std::string>(a.id_enum); }
                 std::string label_of(State const& s) {
                     if (s.priority >= 0)
                         return boost::lexical_cast<std::string>(s.priority) + "  ";
@@ -156,9 +156,9 @@ namespace sw {
                         for (uint_fast64_t row = groups[state]; row < groups[state + 1]; ++row) {
                             Graph::vertex_descriptor a;
                             if (actionNames[row] == "")
-                                a = add_vertex(Nodes::Action{std::to_string(row), weightVector[row]}, g);
+                                a = add_vertex(Nodes::Action{std::to_string(row), weightVector[row], row}, g);
                             else
-                                a = add_vertex(Nodes::Action{actionNames[row], weightVector[row]}, g);
+                                a = add_vertex(Nodes::Action{actionNames[row], weightVector[row], row}, g);
                             add_edge(s, a, Transitions::Choice{}, g);
                             actionVertices[row] = a;
                         }
@@ -231,9 +231,9 @@ namespace sw {
                             stateNames[i] = stream.str();
                             uint_fast64_t action = groups[i];
                             for (uint_fast64_t enabledAction: mec.getChoicesForState(state)) {
-                                std::ostringstream stream;
-                                stream << action << " (a" << enabledAction << ")";
-                                actionNames[action] = stream.str();
+                                // std::ostringstream stream;
+                                // stream << action << " (a" << enabledAction << ")";
+                                actionNames[action] = boost::lexical_cast<std::string>(enabledAction);
                                 ++ action;
                             }
                         }
