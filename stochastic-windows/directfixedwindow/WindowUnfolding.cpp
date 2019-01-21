@@ -18,6 +18,7 @@ namespace sw {
                   enabledActions(enabledActions),
                   rewardModel(mdp.getRewardModel(rewardModelName)) {
 
+            assert(this->l_max > 0);
             assert(this->enabledActions.size() == mdp.getNumberOfChoices());
 
             // vector containing data about states of the unfolding
@@ -55,6 +56,25 @@ namespace sw {
                         storm::storage::BitVector(mdp.getTransitionMatrix().getRowCount(), true)) {}
 
         template<typename ValueType>
+        WindowUnfoldingParity<ValueType>::WindowUnfoldingParity(
+                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                std::string const &rewardModelName, uint_fast64_t const &l_max,
+                storm::storage::BitVector const &initialStates,
+                storm::storage::BitVector enabledActions)
+                : WindowUnfolding<ValueType>(mdp, rewardModelName, l_max, enabledActions) {
+            assert(initialStates.size() == mdp.getNumberOfStates());
+            WindowUnfolding<ValueType>::generateMatrix(initialStates);
+        }
+
+        template<typename ValueType>
+        WindowUnfoldingParity<ValueType>::WindowUnfoldingParity(
+                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                std::string const &rewardModelName, uint_fast64_t const &l_max,
+                storm::storage::BitVector const &initialStates)
+                : WindowUnfoldingParity<ValueType>(mdp, rewardModelName, l_max, initialStates,
+                        storm::storage::BitVector(mdp.getTransitionMatrix().getRowCount(), true)) {}
+
+        template<typename ValueType>
         void WindowUnfolding<ValueType>::generateMatrix(storm::storage::BitVector const &initialStates) {
             // Unfold the MDP from the initial states
             for (auto state: initialStates) {
@@ -88,12 +108,17 @@ namespace sw {
 
         template<typename ValueType>
         ValueType WindowUnfolding<ValueType>::initialStateValue(uint_fast64_t initialState) {
-            return 0;
+            return storm::utility::zero<ValueType>();
         }
 
         template<typename ValueType>
         ValueType WindowUnfoldingMeanPayoff<ValueType>::initialStateValue(uint_fast64_t initialState) {
-            return 0;
+            return storm::utility::zero<ValueType>();
+        }
+
+        template<typename ValueType>
+        ValueType WindowUnfoldingParity<ValueType>::initialStateValue(uint_fast64_t initialState) {
+            return this->rewardModel.getStateReward(initialState);
         }
 
         template<typename ValueType>
@@ -151,16 +176,15 @@ namespace sw {
                 uint_fast64_t const &l) {
 
             std::vector<ValueType> const& stateActionRewardsVector = this->rewardModel.getStateActionRewardVector();
-            std::vector<uint_fast64_t> actionIndices = this->originalMatrix.getRowGroupIndices();
-            this->originalMatrix.getRowGroupIndices();
+            std::vector<uint_fast64_t> const& actionIndices = this->originalMatrix.getRowGroupIndices();
 
             // Initialization
             if (this->newRowGroupEntries.empty()) {
                 // the index 0 is the index of the sink state corresponding to states (s, w, l) where l >= l_max and w < 0
                 this->newRowGroupEntries.emplace_back();
-                this->newRowGroupEntries[0].push_back({std::make_pair(0, 1.)});
+                this->newRowGroupEntries[0].push_back({std::make_pair(0, storm::utility::one<ValueType>())});
             }
-            // i is the row group index of (state, value, l) in the new matrix
+            // i is the index of (state, value, l) in the new matrix
             uint_fast64_t i = this->getNewIndex(state, value, l);
             if (!i) {
                 // If the unfolding state (state, value, l) does not yet exist, fill newRowGroupEntries accordingly
@@ -177,15 +201,13 @@ namespace sw {
                     // add the current action to the new row group entries
                     this->newRowGroupEntries[i].emplace_back();
                     uint_fast64_t newAction = this->newRowGroupEntries[i].size() - 1;
-                    // if reward(s_i, action) is >= 0 and l_new <= l_max, the window is closed
-                    if (updatedSumOfWeights >= 0 and l_new <= this->l_max) {
-                        // the indices in the enumeration of enabled action for each state correspond to the
-                        // indices of rows in the original matrix
+                    if (updatedSumOfWeights >= 0) {
+                        // if the sum of weights is >= 0, then the window closes
                         for (const auto &entry : this->originalMatrix.getRow(action)) {
                             uint_fast64_t successorState = entry.getColumn();
                             ValueType p = entry.getValue();
                             // j is the index of successorState
-                            uint_fast64_t j = unfoldFrom(successorState, 0., 0);
+                            uint_fast64_t j = unfoldFrom(successorState, storm::utility::zero<ValueType>(), 0);
                             this->newRowGroupEntries[i][newAction].push_back(std::make_pair(j, p));
                         }
                     } else if (l_new < this->l_max) {
@@ -197,9 +219,69 @@ namespace sw {
                             this->newRowGroupEntries[i][newAction].push_back(std::make_pair(j, p));
                         }
                     } else {
-                        // if s_i = (s, w, l_max) with w < 0, then the bounded window objective happens with
-                        // probability zero. Then, s_i is the actual sink state.
-                        this->newRowGroupEntries[i][newAction] = {std::make_pair(0, 1.)};
+                        // if updatedSumOfWeights < 0 and l_new = l_max, then the bounded window objective happens with
+                        // probability zero and the window remains open.
+                        // Then, s_i transits to the sink state with probability one.
+                        this->newRowGroupEntries[i][newAction] = {std::make_pair(0, storm::utility::one<ValueType>())};
+                    }
+                }
+            }
+            return i;
+        }
+
+        template<typename ValueType>
+        bool WindowUnfoldingParity<ValueType>::isEven(ValueType const& priority) {
+            return storm::utility::isZero(storm::utility::mod<ValueType>(priority, 2));
+        }
+
+        template<typename ValueType>
+        uint_fast64_t WindowUnfoldingParity<ValueType>::unfoldFrom(
+                uint_fast64_t const &state,
+                ValueType const &value,
+                uint_fast64_t const &l) {
+
+            std::vector<ValueType> const& priority = this->rewardModel.getStateRewardVector();
+            std::vector<uint_fast64_t> const& stateActionIndices = this->originalMatrix.getRowGroupIndices();
+
+            // Initialization
+            if (this->newRowGroupEntries.empty()) {
+                // the index 0 is the index of the sink state corresponding to states (s, c, l)
+                // where l >= l_max - 1 and c is odd.
+                this->newRowGroupEntries.emplace_back();
+                this->newRowGroupEntries[0].push_back({std::make_pair(0, storm::utility::one<ValueType>())});
+            }
+            // i is the index of (state, value, l) in the new matrix
+            uint_fast64_t i = this->getNewIndex(state, value, l);
+            if (!i) {
+                // If the unfolding state (state, value, l) does not yet exist, fill newRowGroupEntries accordingly
+                i = this->newRowGroupEntries.size();
+                this->newRowGroupEntries.emplace_back();
+                this->windowVector[state][l][value] = i;
+                // as i was not in the map of weights, unfold the EC from the ith state s_i
+                uint_fast64_t l_new = l + 1;
+                for (uint_fast64_t action = this->enabledActions.getNextSetIndex(stateActionIndices[state]);
+                     action < stateActionIndices[state + 1];
+                     action = this->enabledActions.getNextSetIndex(action + 1)) {
+                    // add the current action to the new row group entries
+                    this->newRowGroupEntries[i].emplace_back();
+                    uint_fast64_t newAction = this->newRowGroupEntries[i].size() - 1;
+                    for (const auto &entry : this->originalMatrix.getRow(action)) {
+                        uint_fast64_t successorState = entry.getColumn();
+                        ValueType p = entry.getValue();
+                        ValueType const& updatedPriority = storm::utility::min<ValueType>(value, priority[successorState]);
+                        // j is the index of successorState
+                        uint_fast64_t j;
+                        if (this->isEven(updatedPriority)) {
+                            // if the updated priority is even, then the window closes
+                            j = unfoldFrom(successorState, priority[successorState], 0);
+                        } else if (l_new < this->l_max - 1) {
+                            j = unfoldFrom(successorState, updatedPriority, l_new);
+                        } else {
+                            // if updatedPriority is odd and l_new = l_max - 1, then the bounded window objective happens
+                            // with probability zero and the window remains open. Then, s_i transits to the sink state.
+                            j = 0;
+                        }
+                        this->newRowGroupEntries[i][newAction].push_back(std::make_pair(j, p));
                     }
                 }
             }
@@ -210,5 +292,6 @@ namespace sw {
         template class WindowUnfolding<storm::RationalNumber>;
         template class WindowUnfoldingMeanPayoff<double>;
         template class WindowUnfoldingMeanPayoff<storm::RationalNumber>;
+        template class WindowUnfoldingParity<double>;
     }
 }

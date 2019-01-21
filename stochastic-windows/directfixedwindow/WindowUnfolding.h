@@ -5,6 +5,7 @@
 #include <storm/storage/BitVector.h>
 #include <storm/models/sparse/Mdp.h>
 #include <storm/storage/SparseMatrix.h>
+#include <storm/utility/constants.h>
 
 #ifndef STORM_UNFOLDING_H
 #define STORM_UNFOLDING_H
@@ -124,6 +125,30 @@ namespace sw {
         protected:
             uint_fast64_t unfoldFrom(uint_fast64_t const &state, ValueType const &value, uint_fast64_t const &l);
             ValueType initialStateValue(uint_fast64_t state);
+        };
+
+        template<typename ValueType>
+        class WindowUnfoldingParity : public WindowUnfolding<ValueType> {
+        public:
+
+            WindowUnfoldingParity(
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                    std::string const &rewardModelName,
+                    uint_fast64_t const &l_max,
+                    storm::storage::BitVector const &initialStates,
+                    storm::storage::BitVector enabledActions);
+
+            WindowUnfoldingParity(
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                    std::string const &rewardModelName,
+                    uint_fast64_t const &l_max,
+                    storm::storage::BitVector const &initialStates);
+
+        protected:
+            uint_fast64_t unfoldFrom(uint_fast64_t const &state, ValueType const &value, uint_fast64_t const &l);
+            ValueType initialStateValue(uint_fast64_t state);
+        private:
+            bool isEven(ValueType const& priority);
         };
     }
 }
