@@ -176,7 +176,7 @@ namespace sw {
                 uint_fast64_t const &l) {
 
             std::vector<ValueType> const& stateActionRewardsVector = this->rewardModel.getStateActionRewardVector();
-            std::vector<uint_fast64_t> const& actionIndices = this->originalMatrix.getRowGroupIndices();
+            std::vector<uint_fast64_t> const& stateActionIndices = this->originalMatrix.getRowGroupIndices();
 
             // Initialization
             if (this->newRowGroupEntries.empty()) {
@@ -194,8 +194,8 @@ namespace sw {
                 // as i was not in the map of weights, unfold the EC from the ith state s_i
                 ValueType updatedSumOfWeights;
                 uint_fast64_t l_new = l + 1;
-                for (uint_fast64_t action = this->enabledActions.getNextSetIndex(actionIndices[state]);
-                        action < actionIndices[state + 1];
+                for (uint_fast64_t action = this->enabledActions.getNextSetIndex(stateActionIndices[state]);
+                        action < stateActionIndices[state + 1];
                         action = this->enabledActions.getNextSetIndex(action + 1)) {
                     updatedSumOfWeights = value + stateActionRewardsVector[action];
                     // add the current action to the new row group entries

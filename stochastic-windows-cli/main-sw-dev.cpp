@@ -12,7 +12,7 @@
 #include "storm/storage/SymbolicModelDescription.h"
 #include "storm-parsers/parser/PrismParser.h"
 #include <iostream>
-#include <stochastic-windows/fixedwindow/ECsUnfoldingMeanPayoff.h>
+#include <stochastic-windows/fixedwindow/MECsUnfolding.h>
 #include <stochastic-windows/fixedwindow/MeanPayoff.h>
 
 #include "storm/utility/initialize.h"
@@ -179,8 +179,8 @@ void mecDecompositionPrintExamples() {
 };
 
 
-void fixedWindowMPExamples(){
-    std::string prismModelPath = STORM_TEST_RESOURCES_DIR "/mdp/BndGWMP.prism";
+void windowExamples(){
+    std::string prismModelPath = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples/window_mp_par.prism";
     //std::string prismModelPath = STORM_TEST_RESOURCES_DIR "/mdp/sw_simple_example.prism";
     storm::storage::SymbolicModelDescription modelDescription = storm::parser::PrismParser::parse(prismModelPath);
     storm::prism::Program program = modelDescription.preprocess().asPrismProgram();
@@ -195,26 +195,35 @@ void fixedWindowMPExamples(){
     std::cout << mecDecomposition << std::endl;
 
     // maximum window size is 3
-    sw::FixedWindow::ECsUnfoldingMeanPayoff<double> unfolding(*mdp, "weights", 3);
-    std::cout << "unfolded matrices: " << endl;
+    // Mean Payoff
+    sw::FixedWindow::MECsUnfoldingMeanPayoff<double> unfoldingMp(*mdp, "weights", 3);
+    std::cout << "unfolded matrices Mean Payoff: " << endl;
     for (uint_fast64_t k = 1; k <= mecDecomposition.size(); ++ k) {
-        unfolding.printToStream(std::cout, k);
-        std::shared_ptr<storm::models::sparse::Mdp<double>> new_mdp = unfolding.unfoldingAsMDP(k);
+        unfoldingMp.printToStream(std::cout, k);
+        std::shared_ptr<storm::models::sparse::Mdp<double>> new_mdp = unfoldingMp.unfoldingAsMDP(k);
+        new_mdp->printModelInformationToStream(std::cout);
+    }
+    // Parity
+    sw::FixedWindow::MECsUnfoldingParity<double> unfoldingPar(*mdp, "priorities", 3);
+    std::cout << "unfolded matrices Parity: " << endl;
+    for (uint_fast64_t k = 1; k <= mecDecomposition.size(); ++ k) {
+        unfoldingPar.printToStream(std::cout, k);
+        std::shared_ptr<storm::models::sparse::Mdp<double>> new_mdp = unfoldingPar.unfoldingAsMDP(k);
         new_mdp->printModelInformationToStream(std::cout);
     }
 
     // Graphviz
     storm::storage::SparseMatrix<double> matrix = mdp->getTransitionMatrix();
     storm::models::sparse::StandardRewardModel<double> weights = model->getRewardModel("weights");
-    // storm::models::sparse::StandardRewardModel<double> priorities = model->getRewardModel("priorities");
+    storm::models::sparse::StandardRewardModel<double> priorities = model->getRewardModel("priorities");
     std::vector<double> weightVector = weights.getStateActionRewardVector();
-    // std::vector<double> priorityVector = priorities.getStateRewardVector();
+    std::vector<double> priorityVector = priorities.getStateRewardVector();
 
-    sw::util::graphviz::GraphVizBuilder::mdpGraphExport(matrix, weightVector);
-    sw::util::graphviz::GraphVizBuilder::unfoldedECsExport(matrix, unfolding, "mdp_unfolding");
+    sw::util::graphviz::GraphVizBuilder::mdpGraphExport(matrix, weightVector, priorityVector);
+    sw::util::graphviz::GraphVizBuilder::unfoldedECsExport(matrix, unfoldingMp, "mp");
+    sw::util::graphviz::GraphVizBuilder::unfoldedECsExport(matrix, unfoldingPar, "par");
 
-    sw::FixedWindow::MeanPayoff<double> fixedWindow(*mdp, "weights", 3);
-
+    // sw::FixedWindow::MeanPayoff<double> fixedWindow(*mdp, "weights", 3);
 }
 
 
@@ -243,7 +252,7 @@ int main(const int argc, const char** argv){
 
     // mecDecompositionPrintExamples();
     graphVizExample();
-    fixedWindowMPExamples();
+    windowExamples();
 
     return 0;
 }
