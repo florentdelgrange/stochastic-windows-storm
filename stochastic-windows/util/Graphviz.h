@@ -11,7 +11,7 @@
 #include <boost/graph/graph_utility.hpp>
 #include <boost/variant.hpp>
 #include <fstream>
-#include <stochastic-windows/fixedwindow/ECsUnfoldingMeanPayoff.h>
+#include <stochastic-windows/fixedwindow/MECsUnfolding.h>
 #include <storm/utility/constants.h>
 
 #ifndef STORM_GRAPHVIZ_H
@@ -104,7 +104,7 @@ namespace sw {
                                            std::vector<double> weightVector = std::vector<double>(),
                                            std::vector<double> priorityVector = std::vector<double>(),
                                            std::string graphName = "mdp",
-                                           std::string outputDir = "/tmp",
+                                           std::string outputDir = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples",
                                            std::vector<std::string> stateNames = std::vector<std::string>(),
                                            std::vector<std::string> actionNames = std::vector<std::string>(),
                                            bool xlabels = false) {
@@ -205,9 +205,9 @@ namespace sw {
 
                 static void unfoldedECsExport(
                         storm::storage::SparseMatrix<double> &originalMatrix,
-                        sw::FixedWindow::ECsUnfoldingMeanPayoff<double> &unfoldedECs,
+                        sw::FixedWindow::MECsUnfolding<double> &unfoldedECs,
                         std::string graphName = "mdp",
-                        std::string outputDir = "/tmp") {
+                        std::string outputDir = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples") {
 
                     storm::storage::MaximalEndComponentDecomposition<double> mecDecomposition =
                             unfoldedECs.getMaximalEndComponentDecomposition();
@@ -238,7 +238,7 @@ namespace sw {
                             }
                         }
                         std::ostringstream stream;
-                        stream << graphName << "_unfoldedEC_" << k;
+                        stream << graphName << "_ECUnfolding_" << k;
                         mdpGraphExport(unfoldedECs.getUnfoldedMatrix(k), std::vector<double>(), std::vector<double>(),
                                 stream.str(), outputDir, stateNames, actionNames);
                     }
