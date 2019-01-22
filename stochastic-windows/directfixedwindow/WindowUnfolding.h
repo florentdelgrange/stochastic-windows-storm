@@ -24,14 +24,16 @@ namespace sw {
         class WindowUnfolding {
         public:
 
-            WindowUnfolding(storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>>& mdp,
-                            std::string const& rewardModelName,
-                            uint_fast64_t const& l_max,
-                            storm::storage::BitVector enabledActions);
+            WindowUnfolding(
+                    storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
+                    std::string const& rewardModelName,
+                    uint_fast64_t const& l_max,
+                    storm::storage::BitVector const& enabledActions);
 
-            WindowUnfolding(storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>>& mdp,
-                            std::string const& rewardModelName,
-                            uint_fast64_t const& l_max);
+            WindowUnfolding(
+                    storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
+                    std::string const& rewardModelName,
+                    uint_fast64_t const& l_max);
             /*
              * Make destructor virtual to allow deleting objects through pointer to base classe(s).
              */
@@ -63,9 +65,9 @@ namespace sw {
              * This matrix represents the unfolding of the MDP for the window mean payoff
              * objective.
              */
-            storm::storage::SparseMatrix<ValueType>& originalMatrix;
+            storm::storage::SparseMatrix<ValueType> const& originalMatrix;
 
-            storm::storage::BitVector enabledActions;
+            storm::storage::BitVector const& enabledActions;
 
             /*!
              * This vector contains the index of each original state s in the unfolding regarding to
@@ -110,14 +112,14 @@ namespace sw {
         public:
 
             WindowUnfoldingMeanPayoff(
-                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max,
                     storm::storage::BitVector const &initialStates,
-                    storm::storage::BitVector enabledActions);
+                    storm::storage::BitVector const& enabledActions);
 
             WindowUnfoldingMeanPayoff(
-                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max,
                     storm::storage::BitVector const &initialStates);
@@ -132,14 +134,14 @@ namespace sw {
         public:
 
             WindowUnfoldingParity(
-                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max,
                     storm::storage::BitVector const &initialStates,
-                    storm::storage::BitVector enabledActions);
+                    storm::storage::BitVector const& enabledActions);
 
             WindowUnfoldingParity(
-                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max,
                     storm::storage::BitVector const &initialStates);

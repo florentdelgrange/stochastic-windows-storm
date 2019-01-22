@@ -8,7 +8,7 @@ namespace sw {
     namespace FixedWindow {
 
         template <typename ValueType>
-        MeanPayoff<ValueType>::MeanPayoff(storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>>& mdp,
+        MeanPayoff<ValueType>::MeanPayoff(storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                                             std::string const& rewardModelName,
                                             uint_fast64_t const& l_max)
                                             : unfoldedECs(mdp, rewardModelName, l_max),

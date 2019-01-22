@@ -3,7 +3,7 @@
 //
 
 #include <storm/models/sparse/Mdp.h>
-#include <stochastic-windows/fixedwindow/ECsUnfoldingMeanPayoff.h>
+#include <stochastic-windows/fixedwindow/MECsUnfolding.h>
 #include <storm/utility/graph.h>
 #include <storm/storage/BitVector.h>
 #include <storm/storage/Scheduler.h>
@@ -18,7 +18,7 @@ namespace sw {
         class MeanPayoff {
 
         public:
-            MeanPayoff(storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>>& mdp,
+            MeanPayoff(storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                         std::string const& rewardModelName,
                         uint_fast64_t const& l_max);
 
@@ -30,7 +30,7 @@ namespace sw {
             /*!
              * unfolding of the end components
              */
-            ECsUnfoldingMeanPayoff<ValueType> unfoldedECs;
+            MECsUnfoldingMeanPayoff<ValueType> unfoldedECs;
             /*!
              * A good EC is an EC where there exists a strategy almost surely closing windows in at most l_max steps.
              */

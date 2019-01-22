@@ -1,3 +1,5 @@
+#include <utility>
+
 //
 // Created by Florent Delgrange on 2019-01-14.
 //
@@ -9,10 +11,10 @@ namespace sw {
 
         template<typename ValueType>
         WindowUnfolding<ValueType>::WindowUnfolding(
-                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                 std::string const& rewardModelName,
                 uint_fast64_t const &l_max,
-                storm::storage::BitVector enabledActions)
+                storm::storage::BitVector const& enabledActions)
                 : l_max(l_max),
                   originalMatrix(mdp.getTransitionMatrix()),
                   enabledActions(enabledActions),
@@ -30,7 +32,7 @@ namespace sw {
 
         template<typename ValueType>
         WindowUnfolding<ValueType>::WindowUnfolding(
-                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                 std::string const& rewardModelName,
                 uint_fast64_t const &l_max)
                 : WindowUnfolding(mdp, rewardModelName, l_max,
@@ -38,10 +40,10 @@ namespace sw {
 
         template<typename ValueType>
         WindowUnfoldingMeanPayoff<ValueType>::WindowUnfoldingMeanPayoff(
-                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                 std::string const &rewardModelName, uint_fast64_t const &l_max,
                 storm::storage::BitVector const &initialStates,
-                storm::storage::BitVector enabledActions)
+                storm::storage::BitVector const& enabledActions)
                 : WindowUnfolding<ValueType>(mdp, rewardModelName, l_max, enabledActions) {
             assert(initialStates.size() == mdp.getNumberOfStates());
             WindowUnfolding<ValueType>::generateMatrix(initialStates);
@@ -49,7 +51,7 @@ namespace sw {
 
         template<typename ValueType>
         WindowUnfoldingMeanPayoff<ValueType>::WindowUnfoldingMeanPayoff(
-                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                 std::string const &rewardModelName, uint_fast64_t const &l_max,
                 storm::storage::BitVector const &initialStates)
                 : WindowUnfoldingMeanPayoff<ValueType>(mdp, rewardModelName, l_max, initialStates,
@@ -57,10 +59,10 @@ namespace sw {
 
         template<typename ValueType>
         WindowUnfoldingParity<ValueType>::WindowUnfoldingParity(
-                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                 std::string const &rewardModelName, uint_fast64_t const &l_max,
                 storm::storage::BitVector const &initialStates,
-                storm::storage::BitVector enabledActions)
+                storm::storage::BitVector const& enabledActions)
                 : WindowUnfolding<ValueType>(mdp, rewardModelName, l_max, enabledActions) {
             assert(initialStates.size() == mdp.getNumberOfStates());
             WindowUnfolding<ValueType>::generateMatrix(initialStates);
@@ -68,7 +70,7 @@ namespace sw {
 
         template<typename ValueType>
         WindowUnfoldingParity<ValueType>::WindowUnfoldingParity(
-                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                 std::string const &rewardModelName, uint_fast64_t const &l_max,
                 storm::storage::BitVector const &initialStates)
                 : WindowUnfoldingParity<ValueType>(mdp, rewardModelName, l_max, initialStates,

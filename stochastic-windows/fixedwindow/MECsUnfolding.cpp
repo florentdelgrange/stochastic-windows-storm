@@ -6,13 +6,13 @@
 
 template<typename ValueType>
 sw::FixedWindow::MECsUnfolding<ValueType>::MECsUnfolding(
-        storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>>& mdp)
+        storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp)
         : mecIndices(mdp.getNumberOfStates()),
           mecDecomposition(mdp) {}
 
 template<typename ValueType>
 sw::FixedWindow::MECsUnfoldingMeanPayoff<ValueType>::MECsUnfoldingMeanPayoff(
-        storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>>& mdp,
+        storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
         std::string const& rewardModelName,
         uint_fast64_t const& l_max)
         : MECsUnfolding<ValueType>(mdp) {
@@ -21,7 +21,7 @@ sw::FixedWindow::MECsUnfoldingMeanPayoff<ValueType>::MECsUnfoldingMeanPayoff(
 
 template<typename ValueType>
 sw::FixedWindow::MECsUnfoldingParity<ValueType>::MECsUnfoldingParity(
-        storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>>& mdp,
+        storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
         std::string const& rewardModelName,
         uint_fast64_t const& l_max)
         : MECsUnfolding<ValueType>(mdp){
@@ -30,7 +30,7 @@ sw::FixedWindow::MECsUnfoldingParity<ValueType>::MECsUnfoldingParity(
 
 template <typename ValueType>
 void sw::FixedWindow::MECsUnfolding<ValueType>::performMECDecomposition(
-        storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+        storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
         std::string const &rewardModelName, uint_fast64_t const &l_max) {
 
     uint_fast64_t k = 0;
@@ -52,13 +52,13 @@ void sw::FixedWindow::MECsUnfolding<ValueType>::performMECDecomposition(
 
 template <typename ValueType>
 void sw::FixedWindow::MECsUnfolding<ValueType>::unfoldEC(
-        storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+        storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
         std::string const &rewardModelName, uint_fast64_t const &l_max, storm::storage::BitVector const &initialStates,
         storm::storage::BitVector const& enabledActions) {} // to overload
 
 template <typename ValueType>
 void sw::FixedWindow::MECsUnfoldingMeanPayoff<ValueType>::unfoldEC(
-        storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+        storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
         std::string const &rewardModelName, uint_fast64_t const &l_max, storm::storage::BitVector const &initialStates,
         storm::storage::BitVector const& enabledActions) {
     this->unfoldedECs.push_back(
@@ -69,7 +69,7 @@ void sw::FixedWindow::MECsUnfoldingMeanPayoff<ValueType>::unfoldEC(
 
 template <typename ValueType>
 void sw::FixedWindow::MECsUnfoldingParity<ValueType>::unfoldEC(
-        storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+        storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
         std::string const &rewardModelName, uint_fast64_t const &l_max, storm::storage::BitVector const &initialStates,
         storm::storage::BitVector const& enabledActions) {
     this->unfoldedECs.push_back(

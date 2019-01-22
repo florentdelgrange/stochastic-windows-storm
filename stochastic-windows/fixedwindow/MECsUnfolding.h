@@ -22,7 +22,7 @@ namespace sw {
         class MECsUnfolding {
         public:
 
-            MECsUnfolding(storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>>& mdp);
+            MECsUnfolding(storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>> const& mdp);
 
             /*!
              * Get the index of the MEC containing the input state. Note that 0 is a special value indicating that the
@@ -97,12 +97,12 @@ namespace sw {
             storm::storage::MaximalEndComponentDecomposition<ValueType> mecDecomposition;
 
             void performMECDecomposition(
-                    storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                    storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                     std::string const& rewardModelName,
                     uint_fast64_t const& l_max);
 
             virtual void unfoldEC(
-                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max,
                     storm::storage::BitVector const &initialStates,
@@ -115,14 +115,14 @@ namespace sw {
         public:
 
             MECsUnfoldingMeanPayoff(
-                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max);
 
         protected:
 
             void unfoldEC(
-                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max,
                     storm::storage::BitVector const &initialStates,
@@ -134,14 +134,14 @@ namespace sw {
         public:
 
             MECsUnfoldingParity(
-                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max);
 
         protected:
 
             void unfoldEC(
-                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max,
                     storm::storage::BitVector const &initialStates,
