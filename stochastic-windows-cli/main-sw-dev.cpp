@@ -14,6 +14,7 @@
 #include <iostream>
 #include <stochastic-windows/fixedwindow/MECsUnfolding.h>
 #include <stochastic-windows/fixedwindow/MeanPayoff.h>
+#include <stochastic-windows/directfixedwindow/DirectFixedWindowObjective.h>
 
 #include "storm/utility/initialize.h"
 
@@ -39,6 +40,9 @@
 #include "storm/settings/modules/BuildSettings.h"
 #include "storm/settings/modules/JitBuilderSettings.h"
 #include "storm/settings/modules/MultiObjectiveSettings.h"
+#include "storm/settings/modules/TopologicalEquationSolverSettings.h"
+
+#include <storm/environment/solver/MinMaxSolverEnvironment.h>
 
 #include "storm/analysis/GraphConditions.h"
 #include <storm/utility/builder.h>
@@ -52,6 +56,22 @@
 
 #include "stochastic-windows/util/Graphviz.h"
 
+
+std::string minMaxMethodAsString() {
+    storm::settings::modules::MinMaxEquationSolverSettings const& minMaxSettings = storm::settings::getModule<storm::settings::modules::MinMaxEquationSolverSettings>();
+    auto minMaxEquationSolvingTechnique = minMaxSettings.getMinMaxEquationSolvingMethod();
+    switch(minMaxEquationSolvingTechnique){
+        case storm::solver::MinMaxMethod::ValueIteration: return "Value Iteration";
+        case storm::solver::MinMaxMethod::PolicyIteration:  return "Policy Iteration";
+        case storm::solver::MinMaxMethod::LinearProgramming: return "Linear Programming";
+        case storm::solver::MinMaxMethod::RationalSearch: return "Rational Serarch";
+        case storm::solver::MinMaxMethod::IntervalIteration: return "Interval Iteration";
+        case storm::solver::MinMaxMethod::SoundValueIteration: return "Sound Value Iteration";
+        case storm::solver::MinMaxMethod::Topological: return "Topological";
+        default: return "";
+    }
+}
+
 /*!
  * Initialize the settings manager.
  */
@@ -63,17 +83,21 @@ void initializeSettings() {
     storm::settings::addModule<storm::settings::modules::CoreSettings>();
     storm::settings::addModule<storm::settings::modules::DebugSettings>();
     storm::settings::addModule<storm::settings::modules::BuildSettings>();
-    storm::settings::addModule<storm::settings::modules::GmmxxEquationSolverSettings>();
-    storm::settings::addModule<storm::settings::modules::EigenEquationSolverSettings>();
     storm::settings::addModule<storm::settings::modules::NativeEquationSolverSettings>();
     storm::settings::addModule<storm::settings::modules::EliminationSettings>();
     storm::settings::addModule<storm::settings::modules::MinMaxEquationSolverSettings>();
-    storm::settings::addModule<storm::settings::modules::GameSolverSettings>();
-    storm::settings::addModule<storm::settings::modules::BisimulationSettings>();
     storm::settings::addModule<storm::settings::modules::GlpkSettings>();
     storm::settings::addModule<storm::settings::modules::ExplorationSettings>();
+    storm::settings::addModule<storm::settings::modules::TopologicalEquationSolverSettings>();
     storm::settings::addModule<storm::settings::modules::ResourceSettings>();
-    storm::settings::addModule<storm::settings::modules::JitBuilderSettings>();
+    storm::settings::addModule<storm::settings::modules::GmmxxEquationSolverSettings>();
+
+    // DEBUG MODE
+    storm::utility::setLogLevel(l3pp::LogLevel::DEBUG);
+
+    // storm::settings::mutableManager().printHelpForModule("minmax");
+    storm::settings::mutableManager().setFromString("--minmax:method pi");
+    std::cout << "Equation solving method: " << minMaxMethodAsString() << std::endl;
 }
 
 
@@ -212,6 +236,30 @@ void windowExamples(){
         new_mdp->printModelInformationToStream(std::cout);
     }
 
+    // DirectFixed MP
+    sw::DirectFixedWindow::DirectFixedWindowObjectiveMeanPayoff<double> dfwMpObjective(*mdp, "weights", 3);
+    storm::storage::BitVector phiStates(mdp->getNumberOfStates(), false);
+    phiStates.set(0, true); phiStates.set(5, true);
+    sw::DirectFixedWindow::WindowUnfolding<double> unfoldingDirectFixedMP = dfwMpObjective.performUnfolding(phiStates);
+    std::vector<double> result = sw::DirectFixedWindow::performMaxProb<double>(phiStates, dfwMpObjective);
+    std::cout << "Pr of DFWMP for = [";
+    for (auto state: phiStates) {
+        std::cout << "s" << state << "=" << result[state] << ", ";
+    }
+    std::cout << "]" << std::endl;
+    std::cout << "result from s0 = " << sw::DirectFixedWindow::performMaxProb<double>(0, dfwMpObjective) << std::endl;
+    // DirectFixed Par
+    sw::DirectFixedWindow::DirectFixedWindowObjectiveParity<double> dfwParObjective(*mdp, "priorities", 3);
+    phiStates = storm::storage::BitVector(mdp->getNumberOfStates(), true);
+    sw::DirectFixedWindow::WindowUnfolding<double> unfoldingDirectFixedPar = dfwParObjective.performUnfolding(phiStates);
+    result = sw::DirectFixedWindow::performMaxProb<double>(phiStates, dfwParObjective);
+    std::cout << "Pr of DFWPar for = [";
+    for (auto state: phiStates) {
+        std::cout << "s" << state << "=" << result[state] << ", ";
+    }
+    std::cout << "]" << std::endl;
+    std::cout << "result from s5 = " << sw::DirectFixedWindow::performMaxProb<double>(5, dfwParObjective) << std::endl;
+
     // Graphviz
     storm::storage::SparseMatrix<double> matrix = mdp->getTransitionMatrix();
     storm::models::sparse::StandardRewardModel<double> weights = model->getRewardModel("weights");
@@ -222,6 +270,8 @@ void windowExamples(){
     sw::util::graphviz::GraphVizBuilder::mdpGraphExport(matrix, weightVector, priorityVector);
     sw::util::graphviz::GraphVizBuilder::unfoldedECsExport(matrix, unfoldingMp, "mp");
     sw::util::graphviz::GraphVizBuilder::unfoldedECsExport(matrix, unfoldingPar, "par");
+    sw::util::graphviz::GraphVizBuilder::mdpUnfoldingExport(matrix, unfoldingDirectFixedMP, "direct_fixed_mp");
+    sw::util::graphviz::GraphVizBuilder::mdpUnfoldingExport(matrix, unfoldingDirectFixedPar, "direct_fixed_par");
 
     // sw::FixedWindow::MeanPayoff<double> fixedWindow(*mdp, "weights", 3);
 }

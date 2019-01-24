@@ -12,6 +12,7 @@
 #include <boost/variant.hpp>
 #include <fstream>
 #include <stochastic-windows/fixedwindow/MECsUnfolding.h>
+#include <stochastic-windows/directfixedwindow/WindowUnfolding.h>
 #include <storm/utility/constants.h>
 
 #ifndef STORM_GRAPHVIZ_H
@@ -214,7 +215,7 @@ namespace sw {
 
                     for (uint_fast64_t k = 1; k <= unfoldedECs.getNumberOfUnfoldedECs(); ++ k) {
                         storm::storage::MaximalEndComponent mec = mecDecomposition.getBlock(k - 1);
-                        std::vector<uint_fast64_t> groups = unfoldedECs.getUnfoldedMatrix(k).getRowGroupIndices();
+                        std::vector<uint_fast64_t> const& groups = unfoldedECs.getUnfoldedMatrix(k).getRowGroupIndices();
                         std::vector<sw::DirectFixedWindow::StateValueWindowSize<double>>
                             newStatesMeaning = unfoldedECs.getNewStatesMeaning(k);
                         std::vector<std::string> stateNames = std::vector<std::string>(newStatesMeaning.size());
@@ -242,6 +243,42 @@ namespace sw {
                         mdpGraphExport(unfoldedECs.getUnfoldedMatrix(k), std::vector<double>(), std::vector<double>(),
                                 stream.str(), outputDir, stateNames, actionNames);
                     }
+                }
+
+                static void mdpUnfoldingExport(
+                    storm::storage::SparseMatrix<double> &originalMatrix,
+                    sw::DirectFixedWindow::WindowUnfolding<double> &windowUnfolding,
+                    std::string graphName = "mdp",
+                    std::string outputDir = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples") {
+
+                    std::vector<uint_fast64_t> const& originalGroups = originalMatrix.getRowGroupIndices();
+                    std::vector<uint_fast64_t> const& groups = windowUnfolding.getMatrix().getRowGroupIndices();
+                    std::vector<sw::DirectFixedWindow::StateValueWindowSize<double>>
+                            newStatesMeaning = windowUnfolding.getNewStatesMeaning();
+                    std::vector<std::string> stateNames = std::vector<std::string>(newStatesMeaning.size());
+                    std::vector<std::string> actionNames = std::vector<std::string>(windowUnfolding.getMatrix().getRowCount());
+                    // the state with index 0 in the unfolding is the sink state
+                    stateNames[0] = "⊥";
+                    actionNames[0] = "⊥";
+                    for (uint_fast64_t i = 1; i < newStatesMeaning.size(); ++ i) {
+                        std::ostringstream stream;
+                        uint_fast64_t state = newStatesMeaning[i].state;
+                        stream << "(s" << state << ", " <<
+                               newStatesMeaning[i].currentValue << ", " <<
+                               newStatesMeaning[i].currentWindowSize << ")";
+                        stateNames[i] = stream.str();
+                        uint_fast64_t action = groups[i];
+                        for (uint_fast64_t enabledAction = originalGroups[state]; enabledAction < originalGroups[state+1]; ++ enabledAction) {
+                            // std::ostringstream stream;
+                            // stream << action << " (a" << enabledAction << ")";
+                            actionNames[action] = boost::lexical_cast<std::string>(enabledAction);
+                            ++ action;
+                        }
+                    }
+                    std::ostringstream stream;
+                    stream << graphName << "_windowUnfolding";
+                    mdpGraphExport(windowUnfolding.getMatrix(), std::vector<double>(), std::vector<double>(),
+                                   stream.str(), outputDir, stateNames, actionNames);
                 }
             };
         }
