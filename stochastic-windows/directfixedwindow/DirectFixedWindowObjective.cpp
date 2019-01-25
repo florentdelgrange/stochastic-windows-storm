@@ -72,13 +72,8 @@ namespace sw {
                             unfolding->getMatrix().transpose(true),
                             psiStates,
                             useMecBasedTechnique);
-            std::vector<StateValueWindowSize<ValueType>> meanings = unfolding->getNewStatesMeaning();
             for (uint_fast64_t state: phiStates) {
                 result[state] = resultInUnfolding[unfolding->getInitialState(state)];
-                std::cout << "initial state for " << state << " = ("
-                    << meanings[unfolding->getInitialState(state)].state << ", "
-                    << meanings[unfolding->getInitialState(state)].currentValue << ", "
-                    << meanings[unfolding->getInitialState(state)].currentWindowSize << ")" << std::endl;
             }
             return result;
         }

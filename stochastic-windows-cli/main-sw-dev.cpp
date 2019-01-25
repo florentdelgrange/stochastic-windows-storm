@@ -41,6 +41,7 @@
 #include "storm/settings/modules/JitBuilderSettings.h"
 #include "storm/settings/modules/MultiObjectiveSettings.h"
 #include "storm/settings/modules/TopologicalEquationSolverSettings.h"
+#include "storm/settings/modules/MultiplierSettings.h"
 
 #include <storm/environment/solver/MinMaxSolverEnvironment.h>
 
@@ -58,7 +59,7 @@
 
 
 std::string minMaxMethodAsString() {
-    storm::settings::modules::MinMaxEquationSolverSettings const& minMaxSettings = storm::settings::getModule<storm::settings::modules::MinMaxEquationSolverSettings>();
+    auto const& minMaxSettings = storm::settings::getModule<storm::settings::modules::MinMaxEquationSolverSettings>();
     auto minMaxEquationSolvingTechnique = minMaxSettings.getMinMaxEquationSolvingMethod();
     switch(minMaxEquationSolvingTechnique){
         case storm::solver::MinMaxMethod::ValueIteration: return "Value Iteration";
@@ -91,6 +92,7 @@ void initializeSettings() {
     storm::settings::addModule<storm::settings::modules::TopologicalEquationSolverSettings>();
     storm::settings::addModule<storm::settings::modules::ResourceSettings>();
     storm::settings::addModule<storm::settings::modules::GmmxxEquationSolverSettings>();
+    storm::settings::addModule<storm::settings::modules::MultiplierSettings>();
 
     // DEBUG MODE
     storm::utility::setLogLevel(l3pp::LogLevel::DEBUG);
