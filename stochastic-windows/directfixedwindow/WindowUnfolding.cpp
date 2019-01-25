@@ -109,11 +109,6 @@ namespace sw {
         }
 
         template<typename ValueType>
-        ValueType WindowUnfolding<ValueType>::initialStateValue(uint_fast64_t initialState) {
-            return storm::utility::zero<ValueType>();
-        }
-
-        template<typename ValueType>
         ValueType WindowUnfoldingMeanPayoff<ValueType>::initialStateValue(uint_fast64_t initialState) {
             return storm::utility::zero<ValueType>();
         }
@@ -131,11 +126,22 @@ namespace sw {
 
             auto keyValue = this->windowVector[state][currentWindowSize].find(value);
             if (keyValue == this->windowVector[state][currentWindowSize].end()) {
-                // note that 0 is a special value (it represents the sink state in the unfolding)
+                // 0 is a special value (it represents the sink state in the unfolding);
+                // it means that the input (state, value, currentWindowSize) does not yet exist in the unfolding.
                 return 0;
             } else {
                 return keyValue->second;
             }
+        }
+
+        template<typename ValueType>
+        uint_fast64_t WindowUnfoldingMeanPayoff<ValueType>::getInitialState(uint_fast64_t originalInitialState) {
+            return this->getNewIndex(originalInitialState, this->initialStateValue(originalInitialState), 0);
+        }
+
+        template<typename ValueType>
+        uint_fast64_t WindowUnfoldingParity<ValueType>::getInitialState(uint_fast64_t originalInitialState) {
+            return this->getNewIndex(originalInitialState, this->initialStateValue(originalInitialState), 0);
         }
 
         template<typename ValueType>
@@ -160,15 +166,6 @@ namespace sw {
                 }
             }
             return unfoldingStates;
-        }
-
-        template<typename ValueType>
-        uint_fast64_t WindowUnfolding<ValueType>::unfoldFrom(
-                uint_fast64_t const &state,
-                ValueType const &value,
-                uint_fast64_t const &l) {
-            // To override
-            return 0;
         }
 
         template<typename ValueType>

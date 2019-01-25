@@ -240,7 +240,7 @@ void windowExamples(){
     sw::DirectFixedWindow::DirectFixedWindowObjectiveMeanPayoff<double> dfwMpObjective(*mdp, "weights", 3);
     storm::storage::BitVector phiStates(mdp->getNumberOfStates(), false);
     phiStates.set(0, true); phiStates.set(5, true);
-    sw::DirectFixedWindow::WindowUnfolding<double> unfoldingDirectFixedMP = dfwMpObjective.performUnfolding(phiStates);
+    std::unique_ptr<sw::DirectFixedWindow::WindowUnfolding<double>> unfoldingDirectFixedMP = dfwMpObjective.performUnfolding(phiStates);
     std::vector<double> result = sw::DirectFixedWindow::performMaxProb<double>(phiStates, dfwMpObjective);
     std::cout << "Pr of DFWMP for = [";
     for (auto state: phiStates) {
@@ -251,7 +251,7 @@ void windowExamples(){
     // DirectFixed Par
     sw::DirectFixedWindow::DirectFixedWindowObjectiveParity<double> dfwParObjective(*mdp, "priorities", 3);
     phiStates = storm::storage::BitVector(mdp->getNumberOfStates(), true);
-    sw::DirectFixedWindow::WindowUnfolding<double> unfoldingDirectFixedPar = dfwParObjective.performUnfolding(phiStates);
+    std::unique_ptr<sw::DirectFixedWindow::WindowUnfolding<double>> unfoldingDirectFixedPar = dfwParObjective.performUnfolding(phiStates);
     result = sw::DirectFixedWindow::performMaxProb<double>(phiStates, dfwParObjective);
     std::cout << "Pr of DFWPar for = [";
     for (auto state: phiStates) {
@@ -270,8 +270,8 @@ void windowExamples(){
     sw::util::graphviz::GraphVizBuilder::mdpGraphExport(matrix, weightVector, priorityVector);
     sw::util::graphviz::GraphVizBuilder::unfoldedECsExport(matrix, unfoldingMp, "mp");
     sw::util::graphviz::GraphVizBuilder::unfoldedECsExport(matrix, unfoldingPar, "par");
-    sw::util::graphviz::GraphVizBuilder::mdpUnfoldingExport(matrix, unfoldingDirectFixedMP, "direct_fixed_mp");
-    sw::util::graphviz::GraphVizBuilder::mdpUnfoldingExport(matrix, unfoldingDirectFixedPar, "direct_fixed_par");
+    sw::util::graphviz::GraphVizBuilder::mdpUnfoldingExport(matrix, *unfoldingDirectFixedMP, "direct_fixed_mp");
+    sw::util::graphviz::GraphVizBuilder::mdpUnfoldingExport(matrix, *unfoldingDirectFixedPar, "direct_fixed_par");
 
     // sw::FixedWindow::MeanPayoff<double> fixedWindow(*mdp, "weights", 3);
 }

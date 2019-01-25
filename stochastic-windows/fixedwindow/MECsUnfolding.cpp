@@ -51,20 +51,14 @@ void sw::FixedWindow::MECsUnfolding<ValueType>::performMECDecomposition(
 }
 
 template <typename ValueType>
-void sw::FixedWindow::MECsUnfolding<ValueType>::unfoldEC(
-        storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
-        std::string const &rewardModelName, uint_fast64_t const &l_max, storm::storage::BitVector const &initialStates,
-        storm::storage::BitVector const& enabledActions) {} // to overload
-
-template <typename ValueType>
 void sw::FixedWindow::MECsUnfoldingMeanPayoff<ValueType>::unfoldEC(
         storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
         std::string const &rewardModelName, uint_fast64_t const &l_max, storm::storage::BitVector const &initialStates,
         storm::storage::BitVector const& enabledActions) {
-    this->unfoldedECs.push_back(
-            sw::DirectFixedWindow::WindowUnfoldingMeanPayoff<ValueType>(
-                    mdp, rewardModelName, l_max, initialStates, enabledActions)
-                    );
+    std::unique_ptr<sw::DirectFixedWindow::WindowUnfolding<ValueType>> window_ptr(
+            new sw::DirectFixedWindow::WindowUnfoldingMeanPayoff<ValueType>(
+                    mdp, rewardModelName, l_max, initialStates, enabledActions));
+    this->unfoldedECs.push_back(std::move(window_ptr));
 }
 
 template <typename ValueType>
@@ -72,10 +66,10 @@ void sw::FixedWindow::MECsUnfoldingParity<ValueType>::unfoldEC(
         storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
         std::string const &rewardModelName, uint_fast64_t const &l_max, storm::storage::BitVector const &initialStates,
         storm::storage::BitVector const& enabledActions) {
-    this->unfoldedECs.push_back(
-            sw::DirectFixedWindow::WindowUnfoldingParity<ValueType>(
-                    mdp, rewardModelName, l_max, initialStates, enabledActions)
-    );
+    std::unique_ptr<sw::DirectFixedWindow::WindowUnfolding<ValueType>> window_ptr(
+            new sw::DirectFixedWindow::WindowUnfoldingParity<ValueType>(
+                    mdp, rewardModelName, l_max, initialStates, enabledActions));
+    this->unfoldedECs.push_back(std::move(window_ptr));
 }
 
 template <typename ValueType>
@@ -95,12 +89,12 @@ std::pair<uint_fast64_t, uint_fast64_t> sw::FixedWindow::MECsUnfolding<ValueType
                                                                                            uint_fast64_t currentWindowSize) {
     uint_fast64_t k = getMecIndex(state);
     if ( !k ) return std::make_pair(0, 0);
-    else return std::make_pair(k, this->unfoldedECs[k - 1].getNewIndex(state, currentSumOfWeights, currentWindowSize));
+    else return std::make_pair(k, this->unfoldedECs[k - 1]->getNewIndex(state, currentSumOfWeights, currentWindowSize));
 }
 
 template <typename ValueType>
 storm::storage::SparseMatrix<ValueType>& sw::FixedWindow::MECsUnfolding<ValueType>::getUnfoldedMatrix(uint_fast64_t mec) {
-    return this->unfoldedECs[mec - 1].getMatrix();
+    return this->unfoldedECs[mec - 1]->getMatrix();
 }
 
 template<typename ValueType>
@@ -111,7 +105,7 @@ uint_fast64_t sw::FixedWindow::MECsUnfolding<ValueType>::getNumberOfUnfoldedECs(
 template<typename ValueType>
 std::vector<sw::DirectFixedWindow::StateValueWindowSize<ValueType>>
 sw::FixedWindow::MECsUnfolding<ValueType>::getNewStatesMeaning(uint_fast64_t k) {
-    return this->unfoldedECs[k - 1].getNewStatesMeaning();
+    return this->unfoldedECs[k - 1]->getNewStatesMeaning();
 }
 
 template<typename ValueType>

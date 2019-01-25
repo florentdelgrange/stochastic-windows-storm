@@ -86,7 +86,7 @@ namespace sw {
 
        protected:
 
-            std::vector<sw::DirectFixedWindow::WindowUnfolding<ValueType>> unfoldedECs;
+            std::vector<std::unique_ptr<sw::DirectFixedWindow::WindowUnfolding<ValueType>>> unfoldedECs;
 
             /*!
              * Vector containing the index of the MEC of each state.
@@ -106,7 +106,7 @@ namespace sw {
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max,
                     storm::storage::BitVector const &initialStates,
-                    storm::storage::BitVector const &enabledActions);
+                    storm::storage::BitVector const &enabledActions) = 0;
 
        };
 
@@ -126,7 +126,7 @@ namespace sw {
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max,
                     storm::storage::BitVector const &initialStates,
-                    storm::storage::BitVector const &enabledActions);
+                    storm::storage::BitVector const &enabledActions) override;
         };
 
         template<typename ValueType>
@@ -145,7 +145,7 @@ namespace sw {
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max,
                     storm::storage::BitVector const &initialStates,
-                    storm::storage::BitVector const &enabledActions);
+                    storm::storage::BitVector const &enabledActions) override;
         };
 
     }

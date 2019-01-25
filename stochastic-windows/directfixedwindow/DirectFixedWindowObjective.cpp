@@ -29,15 +29,15 @@ namespace sw {
                 : DirectFixedWindowObjective<ValueType>(mdp, rewardModelName, l_max) {}
 
         template<typename ValueType>
-        WindowUnfolding<ValueType> DirectFixedWindowObjectiveMeanPayoff<ValueType>::performUnfolding(
+        std::unique_ptr<WindowUnfolding<ValueType>> DirectFixedWindowObjectiveMeanPayoff<ValueType>::performUnfolding(
                 storm::storage::BitVector const &initialStates) const {
-            return WindowUnfoldingMeanPayoff<ValueType>(this->mdp, this->rewardModelName, this->l_max, initialStates);
+            return std::unique_ptr<WindowUnfolding<ValueType>>(new WindowUnfoldingMeanPayoff<ValueType>(this->mdp, this->rewardModelName, this->l_max, initialStates));
         }
 
         template<typename ValueType>
-        WindowUnfolding<ValueType> DirectFixedWindowObjectiveParity<ValueType>::performUnfolding(
+        std::unique_ptr<WindowUnfolding<ValueType>> DirectFixedWindowObjectiveParity<ValueType>::performUnfolding(
                 storm::storage::BitVector const &initialStates) const {
-            return WindowUnfoldingParity<ValueType>(this->mdp, this->rewardModelName, this->l_max, initialStates);
+            return std::unique_ptr<WindowUnfolding<ValueType>>(new WindowUnfoldingParity<ValueType>(this->mdp, this->rewardModelName, this->l_max, initialStates));
         }
 
         template<typename ValueType>
@@ -61,24 +61,24 @@ namespace sw {
                 DirectFixedWindowObjective<ValueType> const& dfwObjective,
                 bool useMecBasedTechnique) {
             std::vector<ValueType> result(dfwObjective.getMdp().getNumberOfStates(), 0);
-            WindowUnfolding<ValueType> unfolding = dfwObjective.performUnfolding(phiStates);
-            storm::storage::BitVector psiStates(unfolding.getMatrix().getRowGroupCount(), true);
+            std::unique_ptr<WindowUnfolding<ValueType>> unfolding = dfwObjective.performUnfolding(phiStates);
+            storm::storage::BitVector psiStates(unfolding->getMatrix().getRowGroupCount(), true);
             psiStates.set(0, false); // 0 is the index of ⊥ in the unfolding, the state we want to avoid
             std::vector<ValueType> resultInUnfolding =
                     storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType>().computeGloballyProbabilities(
                             storm::Environment(),
                             storm::solver::SolveGoal<ValueType>(false), // we want to maximize the probability of staying in ¬⊥
-                            unfolding.getMatrix(),
-                            unfolding.getMatrix().transpose(true),
+                            unfolding->getMatrix(),
+                            unfolding->getMatrix().transpose(true),
                             psiStates,
                             useMecBasedTechnique);
-            std::vector<StateValueWindowSize<ValueType>> meanings = unfolding.getNewStatesMeaning();
+            std::vector<StateValueWindowSize<ValueType>> meanings = unfolding->getNewStatesMeaning();
             for (uint_fast64_t state: phiStates) {
-                result[state] = resultInUnfolding[unfolding.getInitialState(state)];
+                result[state] = resultInUnfolding[unfolding->getInitialState(state)];
                 std::cout << "initial state for " << state << " = ("
-                    << meanings[unfolding.getInitialState(state)].state << ", "
-                    << meanings[unfolding.getInitialState(state)].currentValue << ", "
-                    << meanings[unfolding.getInitialState(state)].currentWindowSize << ")" << std::endl;
+                    << meanings[unfolding->getInitialState(state)].state << ", "
+                    << meanings[unfolding->getInitialState(state)].currentValue << ", "
+                    << meanings[unfolding->getInitialState(state)].currentWindowSize << ")" << std::endl;
             }
             return result;
         }

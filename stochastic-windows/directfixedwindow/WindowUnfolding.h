@@ -35,7 +35,7 @@ namespace sw {
                     std::string const& rewardModelName,
                     uint_fast64_t const& l_max);
             /*
-             * Make destructor virtual to allow deleting objects through pointer to base classe(s).
+             * Make destructor virtual to allow deleting objects through pointer to base class(es).
              */
             virtual ~WindowUnfolding() {}
 
@@ -46,11 +46,19 @@ namespace sw {
                                       uint_fast64_t currentWindowSize);
             /*!
              * Get a vector containing the meaning of each state in the new matrix corresponding to the
-             * unfolding of the mdp, expressed as a tuple (s, w, l) where s (state) is the state in the original matrix,
-             * w (currentSumOfWeights) is the current sum of weights in the unfolding and l (currentWindowLength) is
-             * the current window size in the unfolding.
+             * unfolding of the mdp, expressed as a tuple (s, v, l) where s (state) is the state in the original matrix,
+             * v (value) is the current value (e.g., current sum of weights or current minimal priority seen) in the
+             * unfolding and l (currentWindowSize) is the current window size in the unfolding.
              */
             std::vector<StateValueWindowSize<ValueType>> getNewStatesMeaning();
+
+            /*!
+             * Get the index in the unfolding of the input initial state.
+             *
+             * @param originalInitialState index of an initial state in the original matrix
+             * @return the index of this initial state in the unfolding if it exists, 0 otherwise
+             */
+            virtual uint_fast64_t getInitialState(uint_fast64_t originalInitialState) = 0;
 
         protected:
 
@@ -62,8 +70,7 @@ namespace sw {
             storm::storage::SparseMatrix<ValueType> matrix;
 
             /*!
-             * This matrix represents the unfolding of the MDP for the window mean payoff
-             * objective.
+             * Matrix of the MDP to unfold
              */
             storm::storage::SparseMatrix<ValueType> const& originalMatrix;
 
@@ -91,7 +98,7 @@ namespace sw {
              *
              * @return the index of the input state in the new matrix
              */
-            virtual uint_fast64_t unfoldFrom(uint_fast64_t const& state, ValueType const& value, uint_fast64_t const& l);
+            virtual uint_fast64_t unfoldFrom(uint_fast64_t const& state, ValueType const& value, uint_fast64_t const& l) = 0;
 
             /*!
              * Constructs the matrix representing the unfolding of the original matrix for the window objective from the
@@ -104,7 +111,7 @@ namespace sw {
             /*!
              * Gives the initial value of the input initial state in the unfolding
              */
-            virtual ValueType initialStateValue(uint_fast64_t initialState);
+            virtual ValueType initialStateValue(uint_fast64_t initialState) = 0;
         };
 
         template<typename ValueType>
@@ -124,9 +131,11 @@ namespace sw {
                     uint_fast64_t const &l_max,
                     storm::storage::BitVector const &initialStates);
 
+            uint_fast64_t getInitialState(uint_fast64_t originalInitialState) override;
+
         protected:
-            uint_fast64_t unfoldFrom(uint_fast64_t const &state, ValueType const &value, uint_fast64_t const &l);
-            ValueType initialStateValue(uint_fast64_t state);
+            uint_fast64_t unfoldFrom(uint_fast64_t const &state, ValueType const &value, uint_fast64_t const &l) override;
+            ValueType initialStateValue(uint_fast64_t state) override;
         };
 
         template<typename ValueType>
@@ -146,9 +155,11 @@ namespace sw {
                     uint_fast64_t const &l_max,
                     storm::storage::BitVector const &initialStates);
 
+            uint_fast64_t getInitialState(uint_fast64_t originalInitialState) override;
+
         protected:
-            uint_fast64_t unfoldFrom(uint_fast64_t const &state, ValueType const &value, uint_fast64_t const &l);
-            ValueType initialStateValue(uint_fast64_t state);
+            uint_fast64_t unfoldFrom(uint_fast64_t const &state, ValueType const &value, uint_fast64_t const &l) override;
+            ValueType initialStateValue(uint_fast64_t state) override;
         private:
             bool isEven(ValueType const& priority);
         };

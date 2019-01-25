@@ -27,7 +27,7 @@ namespace sw {
                     std::string const& rewardModelName,
                     uint_fast64_t const& l_max);
 
-            virtual WindowUnfolding<ValueType> performUnfolding(storm::storage::BitVector const& initialStates) const = 0;
+            virtual std::unique_ptr<WindowUnfolding<ValueType>> performUnfolding(storm::storage::BitVector const& initialStates) const = 0;
 
             const storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &getMdp() const;
 
@@ -52,7 +52,7 @@ namespace sw {
                     std::string const& rewardModelName,
                     uint_fast64_t const& l_max);
 
-            WindowUnfolding<ValueType> performUnfolding(storm::storage::BitVector const& initialStates) const override;
+            std::unique_ptr<WindowUnfolding<ValueType>> performUnfolding(storm::storage::BitVector const& initialStates) const override;
 
         };
 
@@ -65,7 +65,7 @@ namespace sw {
                     std::string const& rewardModelName,
                     uint_fast64_t const& l_max);
 
-            WindowUnfolding<ValueType> performUnfolding(storm::storage::BitVector const& initialStates) const override;
+            std::unique_ptr<WindowUnfolding<ValueType>> performUnfolding(storm::storage::BitVector const& initialStates) const override;
 
         };
 
