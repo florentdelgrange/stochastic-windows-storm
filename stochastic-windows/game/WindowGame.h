@@ -23,7 +23,8 @@ namespace sw {
              * @param rewardModelName the name of the reward model to consider
              * @param l_max the maximum window size
              * @param restrictedStateSpace the set of states to consider in the MDP-game
-             * @param enabledActions the set of actions to consider in the MDP-game
+             * @param enabledActions the set of actions to consider in the MDP-game -- NB (strong assumption): choosing
+             *                       an enabled action leads to a state of the restricted state space.
              */
             WindowGame(
                     storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
@@ -39,11 +40,27 @@ namespace sw {
 
             /**
              * Compute the winning set of states from which there exists a strategy allowing to surely close a window in
-             * l_max steps or less
+             * l_max steps or less.
              *
              * @return the winning set for the GoodWindow objective
              */
             virtual storm::storage::BitVector goodWin() = 0;
+
+            /**
+             * Compute the winning set of states from which there exists a strategy allowing to continually surely close
+             * all windows in l_max steps or less.
+             *
+             * @return the winning set for the DirectFixedWindow objective
+             */
+            virtual storm::storage::BitVector directFWMP() = 0;
+
+            /*!
+             * Restrict this WindowGame to the input state space. In this sub-MDP-game, all choices ensure to always
+             * visit input safe states.
+             * @param safeStates set of states in which the new restricted WindowGame will be ensured to stay in it.
+             * @return a pointer to a new WindowGame representing the safe part of this WindowGame.
+             */
+            virtual std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates) = 0;
 
         protected:
             /**
@@ -55,7 +72,11 @@ namespace sw {
              */
             storm::storage::SparseMatrix<ValueType> const &matrix;
             /**
-             * Reward Model of the MDP
+             * Name of the reward model to consider
+             */
+            std::string const& rewardModelName;
+            /**
+             * Reward Model to consider
              */
             storm::models::sparse::StandardRewardModel <ValueType> const &rewardModel;
             /**
@@ -63,7 +84,7 @@ namespace sw {
              */
             uint_fast64_t const &l_max;
             /**
-             * set of actions to consider in the MDP-game
+             * set of states to consider in the MDP-game
              */
             storm::storage::BitVector const &restrictedStateSpace;
             /**
@@ -74,6 +95,9 @@ namespace sw {
             /**
              * Compute the set of successor states of each (state, action) pair w.r.t. the restricted state space and
              * enabled actions considered.
+             *
+             * Remark: deprecated since we consider that all choice from the enabled actions leads to a state of the
+             * restricted state space.
              */
             std::vector<storm::storage::BitVector> getSuccessorStates();
 
@@ -100,6 +124,8 @@ namespace sw {
                     storm::storage::BitVector const &enabledActions);
 
             storm::storage::BitVector goodWin() override;
+            storm::storage::BitVector directFWMP() override;
+            std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates) override;
 
         };
 
@@ -124,6 +150,8 @@ namespace sw {
                     storm::storage::BitVector const &enabledActions);
 
             storm::storage::BitVector goodWin() override;
+            storm::storage::BitVector directFWMP() override;
+            std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates) override;
 
         };
     }
