@@ -23,8 +23,8 @@ namespace sw {
              * @param rewardModelName the name of the reward model to consider
              * @param l_max the maximum window size
              * @param restrictedStateSpace the set of states to consider in the MDP-game
-             * @param enabledActions the set of actions to consider in the MDP-game -- NB (strong assumption): choosing
-             *                       an enabled action leads to a state of the restricted state space.
+             * @param enabledActions the set of actions to consider in the MDP-game
+             * @note strong assumption: choosing an enabled action must always lead to a state of the restricted state space.
              */
             WindowGame(
                     storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
@@ -52,15 +52,15 @@ namespace sw {
              *
              * @return the winning set for the DirectFixedWindow objective
              */
-            virtual storm::storage::BitVector directFWMP() = 0;
+            storm::storage::BitVector directFWMP();
 
             /*!
-             * Restrict this WindowGame to the input state space. In this sub-MDP-game, all choices ensure to always
-             * visit input safe states.
+             * Restrict this WindowGame to the safe part of the input state space.
+             * In the resulting sub-MDP-game, all choices ensure to always visit input safe states.
              * @param safeStates set of states in which the new restricted WindowGame will be ensured to stay in it.
              * @return a pointer to a new WindowGame representing the safe part of this WindowGame.
              */
-            virtual std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates) = 0;
+            std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates);
 
         protected:
             /**
@@ -86,11 +86,11 @@ namespace sw {
             /**
              * set of states to consider in the MDP-game
              */
-            storm::storage::BitVector const &restrictedStateSpace;
+            storm::storage::BitVector const restrictedStateSpace;
             /**
              * set of actions to consider in the MDP-game
              */
-            storm::storage::BitVector const &enabledActions;
+            storm::storage::BitVector const enabledActions;
 
             /**
              * Compute the set of successor states of each (state, action) pair w.r.t. the restricted state space and
@@ -124,9 +124,6 @@ namespace sw {
                     storm::storage::BitVector const &enabledActions);
 
             storm::storage::BitVector goodWin() override;
-            storm::storage::BitVector directFWMP() override;
-            std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates) override;
-
         };
 
         template<typename ValueType>
@@ -150,9 +147,6 @@ namespace sw {
                     storm::storage::BitVector const &enabledActions);
 
             storm::storage::BitVector goodWin() override;
-            storm::storage::BitVector directFWMP() override;
-            std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates) override;
-
         };
     }
 }

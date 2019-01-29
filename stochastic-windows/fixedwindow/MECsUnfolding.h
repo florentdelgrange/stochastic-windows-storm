@@ -83,6 +83,14 @@ namespace sw {
              */
             void printToStream(std::ostream& out, uint_fast64_t k);
 
+            /**
+             * Get the index in the kth unfolding of the input initial state.
+             * @param k index of the MEC containing the state representing the input initial state
+             * @param initialState
+             * @return the index of the input initial state in the unfolding if it exists, 0 else
+             */
+            uint_fast64_t getInitialState(uint_fast64_t k, uint_fast64_t initialState);
+
 
        protected:
 

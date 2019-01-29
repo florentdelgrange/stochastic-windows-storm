@@ -109,6 +109,16 @@ sw::FixedWindow::MECsUnfolding<ValueType>::getNewStatesMeaning(uint_fast64_t k) 
 }
 
 template<typename ValueType>
+uint_fast64_t sw::FixedWindow::MECsUnfolding<ValueType>::getInitialState(uint_fast64_t k, uint_fast64_t initialState) {
+    if (this->mecIndices[initialState] == k) {
+        return this->unfoldedECs[k - 1]->getInitialState(initialState);
+    }
+    else {
+        return 0;
+    }
+}
+
+template<typename ValueType>
 void sw::FixedWindow::MECsUnfolding<ValueType>::printToStream(std::ostream &out, uint_fast64_t k) {
     out << this->getUnfoldedMatrix(k) << "\n";
     out << "where" << "\n";

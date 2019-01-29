@@ -16,6 +16,7 @@ namespace sw {
                                               safeStates(mdp.getNumberOfStates(), false),
                                               unfoldingWinningSet(unfoldedECs.getNumberOfUnfoldedECs() + 1) {
             this->l_max = l_max;
+            std::vector<uint_fast64_t> initialStates(mdp.getNumberOfStates());
             // std::vector<storm::storage::Scheduler<ValueType>> schedulersForUnfoldedECs;
 
             // For each unfolded EC, we start by computing the safe states w.r.t. the sink state
@@ -33,7 +34,15 @@ namespace sw {
                                                                                     unfoldedECMatrix->transpose(true),
                                                                                     allStates,
                                                                                     sinkState);
-                std::cout << "safe states of the unfolding=" << unfoldingWinningSet[k] << std::endl;
+                storm::storage::BitVector winningSet(mdp.getNumberOfStates(), false);
+                for (uint_fast64_t state : unfoldedECs.getMaximalEndComponentDecomposition()[k - 1].getStateSet()) {
+                    initialStates[state] = unfoldedECs.getInitialState(k, state);
+                    if (this->unfoldingWinningSet[k][initialStates[state]]) {
+                        winningSet.set(state, true);
+                    }
+                }
+                std::cout << "safe states of the unfolding=" << this->unfoldingWinningSet[k] << std::endl;
+                std::cout << "related winning set in the original MDP =" << winningSet << std::endl;
                 // if there exists at least one good state, then as we are in an EC we know that there exists a strategy
                 // allowing to reach it with probability one. Once this state is reached, we can always avoid the sink
                 // state by applying this strategy.

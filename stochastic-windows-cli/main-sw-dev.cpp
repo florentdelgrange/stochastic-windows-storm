@@ -15,6 +15,7 @@
 #include <stochastic-windows/fixedwindow/MECsUnfolding.h>
 #include <stochastic-windows/fixedwindow/MeanPayoff.h>
 #include <stochastic-windows/directfixedwindow/DirectFixedWindowObjective.h>
+#include <stochastic-windows/game/WindowGame.h>
 
 #include "storm/utility/initialize.h"
 
@@ -217,6 +218,9 @@ void windowExamples(){
     storm::storage::MaximalEndComponentDecomposition<double> mecDecomposition(*mdp);
 
     mdp->printModelInformationToStream(std::cout);
+    std::cout << mdp->getTransitionMatrix() << std::endl;
+    // std::cout << mdp->getTransitionMatrix().transpose() << std::endl;
+    // std::cout << mdp->getTransitionMatrix().transpose(true) << std::endl;
 
     std::cout << mecDecomposition << std::endl;
 
@@ -275,7 +279,12 @@ void windowExamples(){
     sw::util::graphviz::GraphVizBuilder::mdpUnfoldingExport(matrix, *unfoldingDirectFixedMP, "direct_fixed_mp");
     sw::util::graphviz::GraphVizBuilder::mdpUnfoldingExport(matrix, *unfoldingDirectFixedPar, "direct_fixed_par");
 
-    // sw::FixedWindow::MeanPayoff<double> fixedWindow(*mdp, "weights", 3);
+    sw::FixedWindow::MeanPayoff<double> fixedWindow(*mdp, "weights", 3);
+    storm::storage::BitVector restrictedStateSpace(mdp->getNumberOfStates(), true);
+    storm::storage::BitVector enabledActions(mdp->getNumberOfChoices(), true);
+    std::unique_ptr<sw::Game::WindowGame<double>>
+    wmpGame = std::unique_ptr<sw::Game::WindowGame<double>>(new sw::Game::WindowMeanPayoffGame<double>(*mdp, "weights", 3, restrictedStateSpace, enabledActions));
+    std::cout << wmpGame->directFWMP() << std::endl;
 }
 
 
