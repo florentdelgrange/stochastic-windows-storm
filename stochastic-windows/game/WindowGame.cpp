@@ -20,13 +20,53 @@ namespace sw {
                   rewardModel(mdp.getRewardModel(rewardModelName)),
                   l_max(l_max),
                   restrictedStateSpace(restrictedStateSpace),
-                  enabledActions(enabledActions) {
+                  enabledActions(enabledActions),
+                  predList(std::shared_ptr<storage::PredecessorsSquaredLinkedList<ValueType>>(new storage::PredecessorsSquaredLinkedList<ValueType>(mdp.getTransitionMatrix(), restrictedStateSpace, enabledActions))) {
                       assert(restrictedStateSpace.size() == mdp.getNumberOfStates());
                       assert(enabledActions.size() == this->matrix.getRowCount());
                   }
 
         template<typename ValueType>
+        WindowGame<ValueType>::WindowGame(
+                storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
+                std::string const &rewardModelName,
+                uint_fast64_t const &l_max,
+                storm::storage::BitVector const &restrictedStateSpace,
+                storm::storage::BitVector const &enabledActions,
+                std::shared_ptr<storage::PredecessorsSquaredLinkedList<ValueType>> predList)
+                : mdp(mdp),
+                matrix(mdp.getTransitionMatrix()),
+                rewardModelName(rewardModelName),
+                rewardModel(mdp.getRewardModel(rewardModelName)),
+                l_max(l_max),
+                restrictedStateSpace(restrictedStateSpace),
+                enabledActions(enabledActions),
+                predList(predList) {
+                    assert(restrictedStateSpace.size() == mdp.getNumberOfStates());
+                    assert(enabledActions.size() == this->matrix.getRowCount());
+                }
+
+        template<typename ValueType>
         WindowMeanPayoffGame<ValueType>::WindowMeanPayoffGame(
+                storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
+                std::string const &rewardModelName,
+                uint_fast64_t const &l_max,
+                storm::storage::BitVector const &restrictedStateSpace,
+                storm::storage::BitVector const &enabledActions)
+                : WindowGame<ValueType>(mdp, rewardModelName, l_max, restrictedStateSpace, enabledActions) {}
+
+        template<typename ValueType>
+        WindowMeanPayoffGame<ValueType>::WindowMeanPayoffGame(
+                storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
+                std::string const &rewardModelName,
+                uint_fast64_t const &l_max,
+                storm::storage::BitVector const &restrictedStateSpace,
+                storm::storage::BitVector const &enabledActions,
+                std::shared_ptr<storage::PredecessorsSquaredLinkedList<ValueType>> predList)
+                : WindowGame<ValueType>(mdp, rewardModelName, l_max, restrictedStateSpace, enabledActions, predList) {}
+
+        template<typename ValueType>
+        WindowParityGame<ValueType>::WindowParityGame(
                 storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
                 std::string const &rewardModelName,
                 uint_fast64_t const &l_max,
@@ -40,8 +80,9 @@ namespace sw {
                 std::string const &rewardModelName,
                 uint_fast64_t const &l_max,
                 storm::storage::BitVector const &restrictedStateSpace,
-                storm::storage::BitVector const &enabledActions)
-                : WindowGame<ValueType>(mdp, rewardModelName, l_max, restrictedStateSpace, enabledActions) {}
+                storm::storage::BitVector const &enabledActions,
+                std::shared_ptr<storage::PredecessorsSquaredLinkedList<ValueType>> predList)
+                : WindowGame<ValueType>(mdp, rewardModelName, l_max, restrictedStateSpace, enabledActions, predList) {}
 
         template<typename ValueType>
         std::vector<storm::storage::BitVector> WindowGame<ValueType>::getSuccessorStates() {
@@ -60,11 +101,7 @@ namespace sw {
 
         template<typename ValueType>
         storm::storage::BitVector WindowGame<ValueType>::directFWMP() {
-            std::cout << "Restricted state space : " << this->restrictedStateSpace << std::endl;
-            std::cout << "Enabled Actions : " << this->enabledActions << std::endl;
             storm::storage::BitVector winGW = this->goodWin();
-            std::cout << "winGW : " << winGW << std::endl;
-            std::cout << std::endl;
             if (winGW == this->restrictedStateSpace or winGW.empty()) {
                 return winGW;
             }
@@ -72,60 +109,6 @@ namespace sw {
                 std::unique_ptr<WindowGame<ValueType>> safeGame = this->restrictToSafePart(winGW);
                 return safeGame->directFWMP();
             }
-        }
-
-        template<typename ValueType>
-        std::unique_ptr<WindowGame<ValueType>>
-        WindowGame<ValueType>::restrictToSafePart(storm::storage::BitVector const& safeStates) {
-
-            storm::storage::BitVector badStates = (~safeStates) & this->restrictedStateSpace;
-            storm::storage::BitVector restrictedStateSpace = this->restrictedStateSpace & safeStates;
-            storm::storage::BitVector enabledActions = this->enabledActions;
-            // To replace (dégueulasse)
-            storm::storage::SparseMatrix<ValueType> transposedMatrix = this->matrix.transpose();
-            // disable all enabled actions of bad states
-            for (uint_fast64_t state: badStates) {
-                for (uint_fast64_t action = this->enabledActions.getNextSetIndex(this->matrix.getRowGroupIndices()[state]);
-                     action < this->matrix.getRowGroupIndices()[state + 1];
-                     action = this->enabledActions.getNextSetIndex(action + 1)) {
-                    enabledActions.set(action, false);
-                }
-            }
-            // compute the predecessor of each enabled action (i.e., the state for which the action is enabled) and the
-            // number of enabled actions for each state of the (new) restricted state space
-            std::vector<uint_fast64_t> predecessorsAction(this->mdp.getNumberOfChoices());
-            std::vector<uint_fast64_t> numberOfEnabledActions(this->mdp.getNumberOfStates(), 0);
-            for (uint_fast64_t state: restrictedStateSpace) {
-                for (uint_fast64_t action = enabledActions.getNextSetIndex(this->matrix.getRowGroupIndices()[state]);
-                     action < this->matrix.getRowGroupIndices()[state + 1];
-                     action = enabledActions.getNextSetIndex(action + 1)) {
-                    predecessorsAction[action] = state;
-                    numberOfEnabledActions[state] += 1;
-                }
-            }
-
-            // Initialize a stack to iterate on bad states and its (P2) attractors
-            std::vector<uint_fast64_t> stack(badStates.begin(), badStates.end());
-            uint_fast64_t currentBadState, state;
-            while (!stack.empty()) {
-                currentBadState = stack.back();
-                stack.pop_back();
-                for (const auto &entry : transposedMatrix.getRow(currentBadState)) {
-                    if (enabledActions[entry.getColumn()]){
-                        enabledActions.set(entry.getColumn(), false);
-                        state = predecessorsAction[entry.getColumn()];
-                        numberOfEnabledActions[state] -= 1;
-                        if (!numberOfEnabledActions[state]) {
-                            restrictedStateSpace.set(state, false);
-                            stack.push_back(state);
-                        }
-                    }
-                }
-            }
-
-            return std::unique_ptr<WindowGame<ValueType>>(
-                    new WindowMeanPayoffGame<ValueType>(this->mdp, this->rewardModelName, this->l_max, restrictedStateSpace, enabledActions)
-                            );
         }
 
         template<typename ValueType>
@@ -200,6 +183,55 @@ namespace sw {
         template<typename ValueType>
         storm::storage::BitVector WindowParityGame<ValueType>::goodWin() {
 
+        }
+
+        template<typename ValueType>
+        std::unique_ptr<WindowGame<ValueType>>
+        WindowMeanPayoffGame<ValueType>::restrictToSafePart(storm::storage::BitVector const& safeStates) {
+
+            storm::storage::BitVector badStates = (~safeStates) & this->restrictedStateSpace;
+            storm::storage::BitVector restrictedStateSpace = this->restrictedStateSpace & safeStates;
+            storm::storage::BitVector enabledActions = this->enabledActions;
+            // disable all enabled actions of bad states
+            for (uint_fast64_t state: badStates) {
+                for (uint_fast64_t action = this->enabledActions.getNextSetIndex(this->matrix.getRowGroupIndices()[state]);
+                     action < this->matrix.getRowGroupIndices()[state + 1];
+                     action = this->enabledActions.getNextSetIndex(action + 1)) {
+                    enabledActions.set(action, false);
+                    this->predList->disableAction(action);
+                }
+            }
+
+            // Initialize a stack to iterate on bad states and its (P2) attractors
+            std::vector<uint_fast64_t> stack(badStates.begin(), badStates.end());
+            uint_fast64_t currentBadState, state;
+            while (!stack.empty()) {
+                currentBadState = stack.back();
+                stack.pop_back();
+                for (const auto &action : this->predList->getStatePredecessors(currentBadState)) {
+                    enabledActions.set(action, false);
+                    this->predList->disableAction(action);
+                    state = this->predList->getActionPredecessor(action);
+                    if (!this->predList->hasEnabledActions(state)) {
+                        restrictedStateSpace.set(state, false);
+                        stack.push_back(state);
+                    }
+                }
+            }
+
+            return std::unique_ptr<WindowGame<ValueType>>(
+                    new WindowMeanPayoffGame<ValueType>(this->mdp,
+                                                        this->rewardModelName,
+                                                        this->l_max,
+                                                        restrictedStateSpace,
+                                                        enabledActions,
+                                                        this->predList));
+        }
+
+        template<typename ValueType>
+        std::unique_ptr<WindowGame<ValueType>>
+        WindowParityGame<ValueType>::restrictToSafePart(storm::storage::BitVector const &safeStates) {
+            return std::unique_ptr<WindowGame<ValueType>>();
         }
 
         template class WindowGame<double>;

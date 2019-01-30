@@ -15,7 +15,8 @@ namespace sw {
                     storm::storage::BitVector const &enabledActions)
                     : states(transitionMatrix.getRowGroupCount()),
                       actions(transitionMatrix.getRowCount()),
-                      actionPredecessors(transitionMatrix.getRowCount()) {
+                      actionPredecessors(transitionMatrix.getRowCount()),
+                      numberOfEnabledActions(transitionMatrix.getRowGroupCount(), 0) {
 
                 for (uint_fast64_t const& state: restrictedStateSpace) {
                     this->states[state] = std::shared_ptr<MainNode>(new MainNode());
@@ -26,6 +27,7 @@ namespace sw {
                          action = enabledActions.getNextSetIndex(action + 1)) {
                         this->actionPredecessors[action] = state;
                         this->actions[action] = std::shared_ptr<MainNode>(new MainNode());
+                        this->numberOfEnabledActions[state] += 1;
                         for (const auto &entry: transitionMatrix.getRow(action)) {
                             uint_fast64_t successorState = entry.getColumn();
                             std::shared_ptr<Node> node(new Node());
@@ -56,7 +58,7 @@ namespace sw {
 
             template<typename ValueType>
             void PredecessorsSquaredLinkedList<ValueType>::disableAction(uint_fast64_t action) {
-
+                assert(this->actions.size() > action);
                 while (this->actions[action]->nextState != nullptr) {
                     std::shared_ptr<Node> currentNode = this->actions[action]->nextState;
                     std::shared_ptr<Node> leftNode = currentNode->prevAction;
@@ -65,13 +67,14 @@ namespace sw {
                         leftNode->nextAction->prevAction = leftNode;
                     }
                     this->actions[action]->nextState = currentNode->nextState;
-                    //currentNode->remove();
                 }
                 this->actions[action]->lastNode = nullptr;
+                this->numberOfEnabledActions[this->getActionPredecessor(action)] -= 1;
             }
 
             template<typename ValueType>
             uint_fast64_t PredecessorsSquaredLinkedList<ValueType>::getActionPredecessor(uint_fast64_t action) {
+                assert(this->actions.size() > action);
                 return this->actionPredecessors[action];
             }
 
@@ -129,19 +132,35 @@ namespace sw {
             template<typename ValueType>
             typename PredecessorsSquaredLinkedList<ValueType>::actions_list PredecessorsSquaredLinkedList<ValueType>::getStatePredecessors(
                     uint_fast64_t state) {
-                return actions_list(this->states[state]->nextAction);
+                assert(this->states.size() > state);
+                if (this->states[state] != nullptr) {
+                    return actions_list(this->states[state]->nextAction);
+                }
+                else {
+                    return actions_list(this->states[state]);
+                }
             }
 
             template<typename ValueType>
             typename PredecessorsSquaredLinkedList<ValueType>::actions_list PredecessorsSquaredLinkedList<ValueType>::getStatePredecessors(
                     uint_fast64_t state) const {
-                return actions_list(this->states[state]->nextAction);
+                assert(this->states.size() > state);
+                if (this->states[state] != nullptr) {
+                    return actions_list(this->states[state]->nextAction);
+                }
+                else {
+                    return actions_list(this->states[state]);
+                }
+            }
+
+            template<typename ValueType>
+            bool PredecessorsSquaredLinkedList<ValueType>::hasEnabledActions(uint_fast64_t state) {
+                assert(this->states.size() > state);
+                return this->numberOfEnabledActions[state] > 0;
             }
 
             template class PredecessorsSquaredLinkedList<double>;
             template class PredecessorsSquaredLinkedList<storm::RationalNumber>;
-            // template std::ostream& operator<<(std::ostream &out, PredecessorsSquaredLinkedList<double> const& predList);
-            // template std::ostream& operator<<(std::ostream &out, PredecessorsSquaredLinkedList<storm::RationalNumber> const& predList);
 
         }
     }

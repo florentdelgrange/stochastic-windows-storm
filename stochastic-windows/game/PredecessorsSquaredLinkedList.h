@@ -22,10 +22,8 @@ namespace sw {
 
                 class Node {
                 public:
-                    ~Node() {};
                     std::shared_ptr<Node> prevAction, nextAction, nextState;
                     uint_fast64_t actionIndex;
-                    void remove() { delete this; }
                 };
 
                 class MainNode: public Node {
@@ -65,6 +63,8 @@ namespace sw {
 
                 void disableAction(uint_fast64_t action);
 
+                bool hasEnabledActions(uint_fast64_t state);
+
                 actions_list getStatePredecessors(uint_fast64_t state) const;
                 actions_list getStatePredecessors(uint_fast64_t state);
 
@@ -85,6 +85,7 @@ namespace sw {
                 std::vector<std::shared_ptr<MainNode>> states;
                 std::vector<std::shared_ptr<MainNode>> actions;
                 std::vector<uint_fast64_t> actionPredecessors;
+                std::vector<uint_fast64_t> numberOfEnabledActions;
             };
         }
     }

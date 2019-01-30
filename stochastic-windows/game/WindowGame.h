@@ -5,6 +5,7 @@
 #include <storm/storage/BitVector.h>
 #include <storm/models/sparse/Mdp.h>
 #include <storm/storage/SparseMatrix.h>
+#include "PredecessorsSquaredLinkedList.h"
 
 #ifndef STORM_WINDOWGAME_H
 #define STORM_WINDOWGAME_H
@@ -36,7 +37,7 @@ namespace sw {
             /*
              * Make destructor virtual to allow deleting objects through pointer to base class(es).
              */
-            virtual ~WindowGame() {}
+            virtual ~WindowGame() = default;
 
             /**
              * Compute the winning set of states from which there exists a strategy allowing to surely close a window in
@@ -60,9 +61,18 @@ namespace sw {
              * @param safeStates set of states in which the new restricted WindowGame will be ensured to stay in it.
              * @return a pointer to a new WindowGame representing the safe part of this WindowGame.
              */
-            std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates);
+            virtual std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates) = 0;
 
         protected:
+
+            WindowGame(
+                    storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
+                    std::string const &rewardModelName,
+                    uint_fast64_t const &l_max,
+                    storm::storage::BitVector const &restrictedStateSpace,
+                    storm::storage::BitVector const &enabledActions,
+                    std::shared_ptr<storage::PredecessorsSquaredLinkedList<ValueType>> predList);
+
             /**
              * MDP to consider as a game
              */
@@ -78,7 +88,7 @@ namespace sw {
             /**
              * Reward Model to consider
              */
-            storm::models::sparse::StandardRewardModel <ValueType> const &rewardModel;
+            storm::models::sparse::StandardRewardModel<ValueType> const &rewardModel;
             /**
              * maximum window size
              */
@@ -91,12 +101,16 @@ namespace sw {
              * set of actions to consider in the MDP-game
              */
             storm::storage::BitVector const enabledActions;
+            /*!
+             * Pointer to a predecessors squared linked list.
+             */
+            std::shared_ptr<storage::PredecessorsSquaredLinkedList<ValueType>> predList;
 
             /**
              * Compute the set of successor states of each (state, action) pair w.r.t. the restricted state space and
              * enabled actions considered.
              *
-             * Remark: deprecated since we consider that all choice from the enabled actions leads to a state of the
+             * @note deprecated since we consider that all choice from the enabled actions leads to a state of the
              * restricted state space.
              */
             std::vector<storm::storage::BitVector> getSuccessorStates();
@@ -123,7 +137,19 @@ namespace sw {
                     storm::storage::BitVector const &restrictedStateSpace,
                     storm::storage::BitVector const &enabledActions);
 
+
             storm::storage::BitVector goodWin() override;
+            std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates) override;
+
+        protected:
+
+            WindowMeanPayoffGame(
+                    storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
+                    std::string const &rewardModelName,
+                    uint_fast64_t const &l_max,
+                    storm::storage::BitVector const &restrictedStateSpace,
+                    storm::storage::BitVector const &enabledActions,
+                    std::shared_ptr<storage::PredecessorsSquaredLinkedList<ValueType>> predList);
         };
 
         template<typename ValueType>
@@ -147,6 +173,18 @@ namespace sw {
                     storm::storage::BitVector const &enabledActions);
 
             storm::storage::BitVector goodWin() override;
+            std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates) override;
+
+        protected:
+
+            WindowParityGame(
+                    storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
+                    std::string const &rewardModelName,
+                    uint_fast64_t const &l_max,
+                    storm::storage::BitVector const &restrictedStateSpace,
+                    storm::storage::BitVector const &enabledActions,
+                    std::shared_ptr<storage::PredecessorsSquaredLinkedList<ValueType>> predList);
+
         };
     }
 }
