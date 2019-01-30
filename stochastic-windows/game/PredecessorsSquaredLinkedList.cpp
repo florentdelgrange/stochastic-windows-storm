@@ -9,32 +9,44 @@ namespace sw {
         namespace storage {
 
             template<typename ValueType>
-            PredecessorsSquaredLinkedList::PredecessorsSquaredLinkedList(
+            PredecessorsSquaredLinkedList<ValueType>::PredecessorsSquaredLinkedList(
                     storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                     storm::storage::BitVector const &restrictedStateSpace,
                     storm::storage::BitVector const &enabledActions)
                     : states(transitionMatrix.getRowGroupCount()),
                       actions(transitionMatrix.getRowCount()),
-                      stateOfAction(transitionMatrix.getRowCount()) {
+                      actionPredecessors(transitionMatrix.getRowCount()) {
 
+                for (uint_fast64_t const& state: restrictedStateSpace) {
+                    this->states[state] = std::shared_ptr<MainNode>(new MainNode());
+                }
                 for (uint_fast64_t state: restrictedStateSpace) {
                     for (uint_fast64_t action = enabledActions.getNextSetIndex(transitionMatrix.getRowGroupIndices()[state]);
                          action < transitionMatrix.getRowGroupIndices()[state + 1];
                          action = enabledActions.getNextSetIndex(action + 1)) {
-                        this->stateOfAction[action] = state;
-                        for (auto entry: transitionMatrix.getRow(action)) {
+                        this->actionPredecessors[action] = state;
+                        this->actions[action] = std::shared_ptr<MainNode>(new MainNode());
+                        for (const auto &entry: transitionMatrix.getRow(action)) {
                             uint_fast64_t successorState = entry.getColumn();
                             std::shared_ptr<Node> node(new Node());
                             node->actionIndex = action;
-                            if (this->states[successorState]->nextAction == nullptr) {
-                                this->states[successorState]->nextAction = node;
+                            std::shared_ptr<Node> lastStateNode;
+                            std::shared_ptr<Node> lastActionNode;
+                            if (this->states[successorState]->lastNode == nullptr) {
+                                lastStateNode = this->states[successorState];
                             }
-                            if (this->actions[action]->nextAction == nullptr) {
-                                this->actions[action]->nextAction = node;
+                            else {
+                                lastStateNode = this->states[successorState]->lastNode;
                             }
-                            node->prevAction = this->states[successorState]->lastNode;
-                            this->states[successorState]->lastNode->nextAction = node;
-                            this->actions[action]->lastNode->nextState = node;
+                            if (this->actions[action]->lastNode == nullptr) {
+                                lastActionNode = this->actions[action];
+                            }
+                            else {
+                                lastActionNode = this->actions[action]->lastNode;
+                            }
+                            node->prevAction = lastStateNode;
+                            lastStateNode->nextAction = node;
+                            lastActionNode->nextState = node;
                             this->states[successorState]->lastNode = node;
                             this->actions[action]->lastNode = node;
                         }
@@ -42,25 +54,94 @@ namespace sw {
                 }
             }
 
-
-            void PredecessorsSquaredLinkedList::disableAction(uint_fast64_t action) {
+            template<typename ValueType>
+            void PredecessorsSquaredLinkedList<ValueType>::disableAction(uint_fast64_t action) {
 
                 while (this->actions[action]->nextState != nullptr) {
-                    std::shared_ptr<Node> currentAction = this->actions[action]->nextState;
-                    std::shared_ptr<Node> previousAction = currentAction->prevAction;
-                    previousAction->nextAction = currentAction->nextAction;
-                    if (previousAction->nextAction != nullptr) {
-                        previousAction->nextAction->prevAction = previousAction;
+                    std::shared_ptr<Node> currentNode = this->actions[action]->nextState;
+                    std::shared_ptr<Node> leftNode = currentNode->prevAction;
+                    leftNode->nextAction = currentNode->nextAction;
+                    if (leftNode->nextAction != nullptr) {
+                        leftNode->nextAction->prevAction = leftNode;
                     }
-                    this->actions[action]->nextState = currentAction->nextState;
-                    currentAction->remove();
+                    this->actions[action]->nextState = currentNode->nextState;
+                    //currentNode->remove();
                 }
                 this->actions[action]->lastNode = nullptr;
             }
 
-            uint_fast64_t PredecessorsSquaredLinkedList::getStateOfAction(uint_fast64_t action) {
-                return this->stateOfAction[action];
+            template<typename ValueType>
+            uint_fast64_t PredecessorsSquaredLinkedList<ValueType>::getActionPredecessor(uint_fast64_t action) {
+                return this->actionPredecessors[action];
             }
+
+            template<typename ValueType>
+            PredecessorsSquaredLinkedList<ValueType>::iterator::iterator(std::shared_ptr<Node> node)
+            : currentNode(node) {}
+
+            template<typename ValueType>
+            typename PredecessorsSquaredLinkedList<ValueType>::iterator& PredecessorsSquaredLinkedList<ValueType>::iterator::operator++() {
+               if (this->currentNode != nullptr) {
+                   this->currentNode = this->currentNode->nextAction;
+               }
+               return *this;
+            }
+
+            template<typename ValueType>
+            typename PredecessorsSquaredLinkedList<ValueType>::iterator PredecessorsSquaredLinkedList<ValueType>::iterator::operator++(int) {
+                iterator it = *this;
+                ++*this;
+                return it;
+            }
+
+            template<typename ValueType>
+            bool PredecessorsSquaredLinkedList<ValueType>::iterator::operator!=(
+                    const PredecessorsSquaredLinkedList<ValueType>::iterator &otherIterator) {
+                return this->currentNode != otherIterator.currentNode;
+            }
+
+            template<typename ValueType>
+            uint_fast64_t PredecessorsSquaredLinkedList<ValueType>::iterator::operator*() {
+                return this->currentNode->actionIndex;
+            }
+
+            template<typename ValueType>
+            typename PredecessorsSquaredLinkedList<ValueType>::iterator&
+            PredecessorsSquaredLinkedList<ValueType>::iterator::operator=(std::shared_ptr<Node> node) {
+                this->currentNode = node;
+                return *this;
+            }
+
+            template<typename ValueType>
+            PredecessorsSquaredLinkedList<ValueType>::actions_list::actions_list(std::shared_ptr<Node> firstNode)
+            : firstNode(firstNode) {}
+
+            template<typename ValueType>
+            typename PredecessorsSquaredLinkedList<ValueType>::iterator PredecessorsSquaredLinkedList<ValueType>::actions_list::begin() {
+                return PredecessorsSquaredLinkedList<ValueType>::iterator(firstNode);
+            }
+
+            template<typename ValueType>
+            typename PredecessorsSquaredLinkedList<ValueType>::iterator PredecessorsSquaredLinkedList<ValueType>::actions_list::end() {
+                return PredecessorsSquaredLinkedList<ValueType>::iterator(nullptr);
+            }
+
+            template<typename ValueType>
+            typename PredecessorsSquaredLinkedList<ValueType>::actions_list PredecessorsSquaredLinkedList<ValueType>::getStatePredecessors(
+                    uint_fast64_t state) {
+                return actions_list(this->states[state]->nextAction);
+            }
+
+            template<typename ValueType>
+            typename PredecessorsSquaredLinkedList<ValueType>::actions_list PredecessorsSquaredLinkedList<ValueType>::getStatePredecessors(
+                    uint_fast64_t state) const {
+                return actions_list(this->states[state]->nextAction);
+            }
+
+            template class PredecessorsSquaredLinkedList<double>;
+            template class PredecessorsSquaredLinkedList<storm::RationalNumber>;
+            // template std::ostream& operator<<(std::ostream &out, PredecessorsSquaredLinkedList<double> const& predList);
+            // template std::ostream& operator<<(std::ostream &out, PredecessorsSquaredLinkedList<storm::RationalNumber> const& predList);
 
         }
     }

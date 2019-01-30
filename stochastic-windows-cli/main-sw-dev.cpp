@@ -16,6 +16,7 @@
 #include <stochastic-windows/fixedwindow/MeanPayoff.h>
 #include <stochastic-windows/directfixedwindow/DirectFixedWindowObjective.h>
 #include <stochastic-windows/game/WindowGame.h>
+#include <stochastic-windows/game/PredecessorsSquaredLinkedList.h>
 
 #include "storm/utility/initialize.h"
 
@@ -304,6 +305,27 @@ void graphVizExample(){
     sw::util::graphviz::GraphVizBuilder::mdpGraphExport(matrix, rewardVector);
 }
 
+void predecessorListExample() {
+    std::string prismModelPath = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples/window_mp_par.prism";
+    //std::string prismModelPath = STORM_TEST_RESOURCES_DIR "/mdp/sw_simple_example.prism";
+    storm::storage::SymbolicModelDescription modelDescription = storm::parser::PrismParser::parse(prismModelPath);
+    storm::prism::Program program = modelDescription.preprocess().asPrismProgram();
+    storm::builder::BuilderOptions options = storm::builder::BuilderOptions(true, true);
+    std::shared_ptr<storm::models::sparse::Model<double>> model = storm::builder::ExplicitModelBuilder<double>(program, options).build();
+
+    std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = model->as<storm::models::sparse::Mdp<double>>();
+    storm::storage::MaximalEndComponentDecomposition<double> mecDecomposition(*mdp);
+
+    mdp->printModelInformationToStream(std::cout);
+    std::cout << mdp->getTransitionMatrix() << std::endl;
+    storm::storage::BitVector restrictedStateSpace(mdp->getNumberOfStates(), true);
+    storm::storage::BitVector enabledActions(mdp->getNumberOfChoices(), true);
+    sw::Game::storage::PredecessorsSquaredLinkedList<double> predList(mdp->getTransitionMatrix(), restrictedStateSpace, enabledActions);
+    std::cout << predList << std::endl;
+    predList.disableAction(7);
+    predList.disableAction(2);
+    std::cout << predList << std::endl;
+}
 
 int main(const int argc, const char** argv){
 
@@ -312,8 +334,9 @@ int main(const int argc, const char** argv){
     initializeSettings();
 
     // mecDecompositionPrintExamples();
-    graphVizExample();
+    // graphVizExample();
     windowExamples();
+    predecessorListExample();
 
     return 0;
 }
