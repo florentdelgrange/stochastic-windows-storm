@@ -61,7 +61,7 @@ namespace sw {
              * @param safeStates set of states in which the new restricted WindowGame will be ensured to stay in it.
              * @return a pointer to a new WindowGame representing the safe part of this WindowGame.
              */
-            virtual std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates) = 0;
+            std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates);
 
         protected:
 
@@ -101,10 +101,6 @@ namespace sw {
              * set of actions to consider in the MDP-game
              */
             storm::storage::BitVector const enabledActions;
-            /*!
-             * Pointer to a predecessors squared linked list.
-             */
-            std::shared_ptr<storage::PredecessorsSquaredLinkedList<ValueType>> predList;
 
             /**
              * Compute the set of successor states of each (state, action) pair w.r.t. the restricted state space and
@@ -114,6 +110,11 @@ namespace sw {
              * restricted state space.
              */
             std::vector<storm::storage::BitVector> getSuccessorStates();
+
+            virtual std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates,
+                    storage::PredecessorsSquaredLinkedList<ValueType>& predList) = 0;
+
+            storm::storage::BitVector directFWMP(storage::PredecessorsSquaredLinkedList<ValueType>& predList);
 
         };
 
@@ -131,7 +132,7 @@ namespace sw {
              * @param enabledActions the set of actions to consider in the MDP-game
              */
             WindowMeanPayoffGame(
-                    storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max,
                     storm::storage::BitVector const &restrictedStateSpace,
@@ -139,17 +140,12 @@ namespace sw {
 
 
             storm::storage::BitVector goodWin() override;
-            std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates) override;
 
         protected:
 
-            WindowMeanPayoffGame(
-                    storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
-                    std::string const &rewardModelName,
-                    uint_fast64_t const &l_max,
-                    storm::storage::BitVector const &restrictedStateSpace,
-                    storm::storage::BitVector const &enabledActions,
-                    std::shared_ptr<storage::PredecessorsSquaredLinkedList<ValueType>> predList);
+            std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const &safeStates,
+                    storage::PredecessorsSquaredLinkedList<ValueType>& predList) override;
+
         };
 
         template<typename ValueType>
@@ -173,19 +169,14 @@ namespace sw {
                     storm::storage::BitVector const &enabledActions);
 
             storm::storage::BitVector goodWin() override;
-            std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates) override;
 
         protected:
 
-            WindowParityGame(
-                    storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
-                    std::string const &rewardModelName,
-                    uint_fast64_t const &l_max,
-                    storm::storage::BitVector const &restrictedStateSpace,
-                    storm::storage::BitVector const &enabledActions,
-                    std::shared_ptr<storage::PredecessorsSquaredLinkedList<ValueType>> predList);
+            std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates,
+                    storage::PredecessorsSquaredLinkedList<ValueType>& predList) override;
 
         };
+
     }
 }
 
