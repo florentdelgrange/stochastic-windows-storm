@@ -5,7 +5,6 @@
 #include <storm/storage/BitVector.h>
 #include <storm/models/sparse/Mdp.h>
 #include <storm/storage/SparseMatrix.h>
-#include "PredecessorsSquaredLinkedList.h"
 
 #ifndef STORM_WINDOWGAME_H
 #define STORM_WINDOWGAME_H
@@ -13,12 +12,18 @@
 namespace sw {
     namespace Game {
 
+        struct BackwardTransitions {
+            std::vector<std::forward_list<uint_fast64_t>> statesPredecessors;
+            std::vector<uint_fast64_t> actionsPredecessor;
+            std::vector<uint_fast64_t> numberOfEnabledActions;
+        };
+
         template<typename ValueType>
         class WindowGame {
         public:
 
             /**
-             * Consider the MDP as a game to synthesize strategies for window objectives.
+             * Consider the MDP as a game for window objectives.
              *
              * @param mdp the model to consider as a game
              * @param rewardModelName the name of the reward model to consider
@@ -65,14 +70,6 @@ namespace sw {
 
         protected:
 
-            WindowGame(
-                    storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
-                    std::string const &rewardModelName,
-                    uint_fast64_t const &l_max,
-                    storm::storage::BitVector const &restrictedStateSpace,
-                    storm::storage::BitVector const &enabledActions,
-                    std::shared_ptr<storage::PredecessorsSquaredLinkedList<ValueType>> predList);
-
             /**
              * MDP to consider as a game
              */
@@ -112,9 +109,15 @@ namespace sw {
             std::vector<storm::storage::BitVector> getSuccessorStates();
 
             virtual std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates,
-                    storage::PredecessorsSquaredLinkedList<ValueType>& predList) = 0;
+                    BackwardTransitions& backwardTransitions) = 0;
 
-            storm::storage::BitVector directFWMP(storage::PredecessorsSquaredLinkedList<ValueType>& predList);
+            /*!
+             * initialize the input BackwardTransitions structure for this window game
+             * @param backwardTransitions an empty BackwardTransitions structure to initialize
+             */
+            void initBackwardTransitions(BackwardTransitions& backwardTransitions);
+
+            storm::storage::BitVector directFWMP(BackwardTransitions& backwardTransitions);
 
         };
 
@@ -123,7 +126,7 @@ namespace sw {
         public:
 
             /**
-             * Consider the MDP as a game to synthesize strategies for window mean-payoff objectives.
+             * Consider the MDP as a game for window mean-payoff objectives.
              *
              * @param mdp the model to consider as a game
              * @param rewardModelName the name of the reward model to consider
@@ -144,36 +147,7 @@ namespace sw {
         protected:
 
             std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const &safeStates,
-                    storage::PredecessorsSquaredLinkedList<ValueType>& predList) override;
-
-        };
-
-        template<typename ValueType>
-        class WindowParityGame : public WindowGame<ValueType> {
-        public:
-
-            /**
-             * Consider the MDP as a game to synthesize strategies for window parity objectives.
-             *
-             * @param mdp the model to consider as a game
-             * @param rewardModelName the name of the reward model to consider
-             * @param l_max the maximum window size
-             * @param restrictedStateSpace the set of states to consider in the MDP-game
-             * @param enabledActions the set of actions to consider in the MDP-game
-             */
-            WindowParityGame(
-                    storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
-                    std::string const &rewardModelName,
-                    uint_fast64_t const &l_max,
-                    storm::storage::BitVector const &restrictedStateSpace,
-                    storm::storage::BitVector const &enabledActions);
-
-            storm::storage::BitVector goodWin() override;
-
-        protected:
-
-            std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates,
-                    storage::PredecessorsSquaredLinkedList<ValueType>& predList) override;
+                    BackwardTransitions& backwardTransitions) override;
 
         };
 
