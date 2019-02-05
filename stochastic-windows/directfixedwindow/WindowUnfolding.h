@@ -37,7 +37,7 @@ namespace sw {
             /*
              * Make destructor virtual to allow deleting objects through pointer to base class(es).
              */
-            virtual ~WindowUnfolding() {}
+            virtual ~WindowUnfolding() = default;
 
             storm::storage::SparseMatrix<ValueType>& getMatrix();
 
@@ -65,7 +65,7 @@ namespace sw {
             /*!
              * Maximum window size
              */
-            uint_fast64_t l_max;
+            uint_fast64_t l_max{};
 
             storm::storage::SparseMatrix<ValueType> matrix;
 

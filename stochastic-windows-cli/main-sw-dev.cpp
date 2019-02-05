@@ -12,11 +12,13 @@
 #include "storm/storage/SymbolicModelDescription.h"
 #include "storm-parsers/parser/PrismParser.h"
 #include <iostream>
-#include <stochastic-windows/fixedwindow/MECsUnfolding.h>
+#include <stochastic-windows/fixedwindow/MaximalEndComponentDecompositionUnfolding.h>
 #include <stochastic-windows/fixedwindow/MeanPayoff.h>
 #include <stochastic-windows/directfixedwindow/DirectFixedWindowObjective.h>
 #include <stochastic-windows/game/WindowGame.h>
 #include <stochastic-windows/game/PredecessorsSquaredLinkedList.h>
+#include <stochastic-windows/fixedwindow/MaximalEndComponentDecompositionWindowGame.h>
+#include <stochastic-windows/fixedwindow/MaximalEndComponentClassifier.h>
 
 #include "storm/utility/initialize.h"
 
@@ -227,17 +229,17 @@ void windowExamples(){
 
     // maximum window size is 3
     // Mean Payoff
-    sw::FixedWindow::MECsUnfoldingMeanPayoff<double> unfoldingMp(*mdp, "weights", 3);
+    sw::storage::MaximalEndComponentDecompositionUnfoldingMeanPayoff<double> unfoldingMp(*mdp, "weights", 3);
     std::cout << "unfolded matrices Mean Payoff: " << endl;
-    for (uint_fast64_t k = 1; k <= mecDecomposition.size(); ++ k) {
+    for (uint_fast64_t k = 0; k < mecDecomposition.size(); ++ k) {
         unfoldingMp.printToStream(std::cout, k);
         std::shared_ptr<storm::models::sparse::Mdp<double>> new_mdp = unfoldingMp.unfoldingAsMDP(k);
         new_mdp->printModelInformationToStream(std::cout);
     }
     // Parity
-    sw::FixedWindow::MECsUnfoldingParity<double> unfoldingPar(*mdp, "priorities", 3);
+    sw::storage::MaximalEndComponentDecompositionUnfoldingParity<double> unfoldingPar(*mdp, "priorities", 3);
     std::cout << "unfolded matrices Parity: " << endl;
-    for (uint_fast64_t k = 1; k <= mecDecomposition.size(); ++ k) {
+    for (uint_fast64_t k = 0; k < mecDecomposition.size(); ++ k) {
         unfoldingPar.printToStream(std::cout, k);
         std::shared_ptr<storm::models::sparse::Mdp<double>> new_mdp = unfoldingPar.unfoldingAsMDP(k);
         new_mdp->printModelInformationToStream(std::cout);
@@ -266,6 +268,33 @@ void windowExamples(){
     }
     std::cout << "]" << std::endl;
     std::cout << "result from s5 = " << sw::DirectFixedWindow::performMaxProb<double>(5, dfwParObjective) << std::endl;
+    std::cout << std::endl;
+
+    // Window Mean Payoff Game
+    std::cout << "window mean payoff game" << std::endl;
+    storm::storage::BitVector restrictedStateSpace(mdp->getNumberOfStates(), true);
+    storm::storage::BitVector enabledActions(mdp->getNumberOfChoices(), true);
+    std::unique_ptr<sw::Game::WindowGame<double>>
+    wmpGame = std::unique_ptr<sw::Game::WindowGame<double>>(new sw::Game::WindowMeanPayoffGame<double>(*mdp, "weights", 3, restrictedStateSpace, enabledActions));
+    std::cout << "Direct Fixed Window winning set in the whole MDP: " << wmpGame->directFWMP() << std::endl;
+    std::cout << std::endl;
+
+    // MEC classification
+    std::cout << "MEC classification" << std::endl;
+    std::cout << "Classification by unfolding MECs (MP)" << std::endl;
+    sw::FixedWindow::MaximalEndComponentClassifier<double> classifierUnfoldingMP(*mdp, unfoldingMp);
+    std::cout << "Safe states " << classifierUnfoldingMP.getSafeStateSpace() << std::endl;
+    std::cout << "Good states " << classifierUnfoldingMP.getGoodStateSpace() << std::endl;
+    std::cout << "Classification by unfolding MECs (Par)" << std::endl;
+    sw::FixedWindow::MaximalEndComponentClassifier<double> classifierUnfoldingPar(*mdp, unfoldingPar);
+    std::cout << "Safe states " << classifierUnfoldingPar.getSafeStateSpace() << std::endl;
+    std::cout << "Good states " << classifierUnfoldingPar.getGoodStateSpace() << std::endl;
+    std::cout << "Classification by considering MECs as games (MP)" << std::endl;
+    sw::FixedWindow::MaximalEndComponentClassifier<double> gameClassifier(*mdp, unfoldingMp);
+    std::cout << "Safe states " << gameClassifier.getSafeStateSpace() << std::endl;
+    std::cout << "Good states " << gameClassifier.getGoodStateSpace() << std::endl;
+    sw::storage::MaximalEndComponentDecompositionWindowMeanPayoffGame<double> games(*mdp, "weights", 3);
+    std::cout << std::endl;
 
     // Graphviz
     storm::storage::SparseMatrix<double> matrix = mdp->getTransitionMatrix();
@@ -279,13 +308,6 @@ void windowExamples(){
     sw::util::graphviz::GraphVizBuilder::unfoldedECsExport(matrix, unfoldingPar, "par");
     sw::util::graphviz::GraphVizBuilder::mdpUnfoldingExport(matrix, *unfoldingDirectFixedMP, "direct_fixed_mp");
     sw::util::graphviz::GraphVizBuilder::mdpUnfoldingExport(matrix, *unfoldingDirectFixedPar, "direct_fixed_par");
-
-    sw::FixedWindow::MeanPayoff<double> fixedWindow(*mdp, "weights", 3);
-    storm::storage::BitVector restrictedStateSpace(mdp->getNumberOfStates(), true);
-    storm::storage::BitVector enabledActions(mdp->getNumberOfChoices(), true);
-    std::unique_ptr<sw::Game::WindowGame<double>>
-    wmpGame = std::unique_ptr<sw::Game::WindowGame<double>>(new sw::Game::WindowMeanPayoffGame<double>(*mdp, "weights", 3, restrictedStateSpace, enabledActions));
-    std::cout << wmpGame->directFWMP() << std::endl;
 }
 
 
@@ -320,7 +342,7 @@ void predecessorListExample() {
     std::cout << mdp->getTransitionMatrix() << std::endl;
     storm::storage::BitVector restrictedStateSpace(mdp->getNumberOfStates(), true);
     storm::storage::BitVector enabledActions(mdp->getNumberOfChoices(), true);
-    sw::Game::storage::PredecessorsSquaredLinkedList<double> predList(mdp->getTransitionMatrix(), restrictedStateSpace, enabledActions);
+    sw::storage::PredecessorsSquaredLinkedList<double> predList(mdp->getTransitionMatrix(), restrictedStateSpace, enabledActions);
     std::cout << predList << std::endl;
     predList.disableAction(7);
     predList.disableAction(2);
@@ -336,7 +358,7 @@ int main(const int argc, const char** argv){
     // mecDecompositionPrintExamples();
     // graphVizExample();
     windowExamples();
-    predecessorListExample();
+    // predecessorListExample();
 
     return 0;
 }

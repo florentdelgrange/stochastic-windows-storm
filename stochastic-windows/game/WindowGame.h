@@ -50,7 +50,7 @@ namespace sw {
              *
              * @return the winning set for the GoodWindow objective
              */
-            virtual storm::storage::BitVector goodWin() = 0;
+            virtual storm::storage::BitVector goodWin() const = 0;
 
             /**
              * Compute the winning set of states from which there exists a strategy allowing to continually surely close
@@ -58,7 +58,12 @@ namespace sw {
              *
              * @return the winning set for the DirectFixedWindow objective
              */
-            storm::storage::BitVector directFWMP();
+            storm::storage::BitVector directFWMP() const;
+
+            /*!
+             * Retrieves the considered state space of this window game.
+             */
+            storm::storage::BitVector const& getStateSpace() const;
 
             /*!
              * Restrict this WindowGame to the safe part of the input state space.
@@ -66,7 +71,7 @@ namespace sw {
              * @param safeStates set of states in which the new restricted WindowGame will be ensured to stay in it.
              * @return a pointer to a new WindowGame representing the safe part of this WindowGame.
              */
-            std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates);
+            std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates) const;
 
         protected:
 
@@ -99,25 +104,16 @@ namespace sw {
              */
             storm::storage::BitVector const enabledActions;
 
-            /**
-             * Compute the set of successor states of each (state, action) pair w.r.t. the restricted state space and
-             * enabled actions considered.
-             *
-             * @note deprecated since we consider that all choice from the enabled actions leads to a state of the
-             * restricted state space.
-             */
-            std::vector<storm::storage::BitVector> getSuccessorStates();
-
             virtual std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates,
-                    BackwardTransitions& backwardTransitions) = 0;
+                    BackwardTransitions& backwardTransitions) const = 0;
 
             /*!
              * initialize the input BackwardTransitions structure for this window game
              * @param backwardTransitions an empty BackwardTransitions structure to initialize
              */
-            void initBackwardTransitions(BackwardTransitions& backwardTransitions);
+            void initBackwardTransitions(BackwardTransitions& backwardTransitions) const;
 
-            storm::storage::BitVector directFWMP(BackwardTransitions& backwardTransitions);
+            storm::storage::BitVector directFWMP(BackwardTransitions& backwardTransitions) const;
 
         };
 
@@ -142,12 +138,12 @@ namespace sw {
                     storm::storage::BitVector const &enabledActions);
 
 
-            storm::storage::BitVector goodWin() override;
+            storm::storage::BitVector goodWin() const override;
 
         protected:
 
             std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const &safeStates,
-                    BackwardTransitions& backwardTransitions) override;
+                    BackwardTransitions& backwardTransitions) const override;
 
         };
 

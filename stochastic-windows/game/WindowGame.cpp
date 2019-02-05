@@ -36,22 +36,7 @@ namespace sw {
                 : WindowGame<ValueType>(mdp, rewardModelName, l_max, restrictedStateSpace, enabledActions) {}
 
         template<typename ValueType>
-        std::vector<storm::storage::BitVector> WindowGame<ValueType>::getSuccessorStates() {
-
-            std::vector<storm::storage::BitVector> successors(this->mdp.getNumberOfChoices(),
-                    storm::storage::BitVector(this->mdp.getNumberOfStates(), false));
-            for (uint_fast64_t action: this->enabledActions) {
-                for (auto const& successorEntry : this->matrix.getRow(action)) {
-                    if (this->restrictedStateSpace[successorEntry.getColumn()]) {
-                        successors[action].set(successorEntry.getColumn(), true);
-                    }
-                }
-            }
-            return successors;
-        }
-
-        template<typename ValueType>
-        void WindowGame<ValueType>::initBackwardTransitions(BackwardTransitions &backwardTransitions) {
+        void WindowGame<ValueType>::initBackwardTransitions(BackwardTransitions &backwardTransitions) const {
             backwardTransitions.statesPredecessors = std::vector<std::forward_list<uint_fast64_t>>(this->matrix.getRowGroupCount());
             backwardTransitions.actionsPredecessor = std::vector<uint_fast64_t>(this->matrix.getRowCount());
             backwardTransitions.numberOfEnabledActions = std::vector<uint_fast64_t>(this->matrix.getRowGroupCount(), 0);
@@ -70,7 +55,12 @@ namespace sw {
         }
 
         template<typename ValueType>
-        storm::storage::BitVector WindowGame<ValueType>::directFWMP() {
+        storm::storage::BitVector const& WindowGame<ValueType>::getStateSpace() const {
+            return this->restrictedStateSpace;
+        }
+
+        template<typename ValueType>
+        storm::storage::BitVector WindowGame<ValueType>::directFWMP() const {
             BackwardTransitions backwardTransitions;
             this->initBackwardTransitions(backwardTransitions);
             return directFWMP(backwardTransitions);
@@ -78,7 +68,7 @@ namespace sw {
 
         template<typename ValueType>
         std::unique_ptr<WindowGame<ValueType>>
-        WindowGame<ValueType>::restrictToSafePart(storm::storage::BitVector const &safeStates) {
+        WindowGame<ValueType>::restrictToSafePart(storm::storage::BitVector const &safeStates) const {
             BackwardTransitions backwardTransitions;
             this->initBackwardTransitions(backwardTransitions);
             return restrictToSafePart(safeStates, backwardTransitions);
@@ -86,7 +76,7 @@ namespace sw {
 
 
         template<typename ValueType>
-        storm::storage::BitVector WindowGame<ValueType>::directFWMP(BackwardTransitions& backwardTransitions) {
+        storm::storage::BitVector WindowGame<ValueType>::directFWMP(BackwardTransitions& backwardTransitions) const {
             storm::storage::BitVector winGW = this->goodWin();
             if (winGW == this->restrictedStateSpace or winGW.empty()) {
                 return winGW;
@@ -98,7 +88,7 @@ namespace sw {
         }
 
         template<typename ValueType>
-        storm::storage::BitVector WindowMeanPayoffGame<ValueType>::goodWin() {
+        storm::storage::BitVector WindowMeanPayoffGame<ValueType>::goodWin() const {
             // C[l][s] is the best sum that can be ensured from state s in at most l steps
             std::vector<std::vector<ValueType>> C(this->l_max, std::vector<ValueType>(this->restrictedStateSpace.getNumberOfSetBits()));
             // To avoid C to have a size of l_max X number of states (but rather l_max X number of restricted states)
@@ -170,7 +160,7 @@ namespace sw {
         std::unique_ptr<WindowGame<ValueType>>
         WindowMeanPayoffGame<ValueType>::restrictToSafePart(
                 storm::storage::BitVector const& safeStates,
-                BackwardTransitions& backwardTransitions) {
+                BackwardTransitions& backwardTransitions) const {
 
             storm::storage::BitVector badStates = (~safeStates) & this->restrictedStateSpace;
             storm::storage::BitVector restrictedStateSpace = this->restrictedStateSpace & safeStates;

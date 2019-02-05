@@ -3,7 +3,7 @@
 //
 
 #include <storm/models/sparse/Mdp.h>
-#include <stochastic-windows/fixedwindow/MECsUnfolding.h>
+#include <stochastic-windows/fixedwindow/MaximalEndComponentDecompositionUnfolding.h>
 #include <storm/utility/graph.h>
 #include <storm/storage/BitVector.h>
 #include <storm/storage/Scheduler.h>
@@ -30,7 +30,7 @@ namespace sw {
             /*!
              * unfolding of the end components
              */
-            MECsUnfoldingMeanPayoff<ValueType> unfoldedECs;
+            sw::storage::MaximalEndComponentDecompositionUnfoldingMeanPayoff<ValueType> unfoldedECs;
             /*!
              * A good EC is an EC where there exists a strategy almost surely closing windows in at most l_max steps.
              */

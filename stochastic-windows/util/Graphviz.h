@@ -11,7 +11,7 @@
 #include <boost/graph/graph_utility.hpp>
 #include <boost/variant.hpp>
 #include <fstream>
-#include <stochastic-windows/fixedwindow/MECsUnfolding.h>
+#include <stochastic-windows/fixedwindow/MaximalEndComponentDecompositionUnfolding.h>
 #include <stochastic-windows/directfixedwindow/WindowUnfolding.h>
 #include <storm/utility/constants.h>
 
@@ -206,15 +206,12 @@ namespace sw {
 
                 static void unfoldedECsExport(
                         storm::storage::SparseMatrix<double> &originalMatrix,
-                        sw::FixedWindow::MECsUnfolding<double> &unfoldedECs,
+                        sw::storage::MaximalEndComponentDecompositionUnfolding<double> &unfoldedECs,
                         std::string graphName = "mdp",
                         std::string outputDir = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples") {
 
-                    storm::storage::MaximalEndComponentDecomposition<double> mecDecomposition =
-                            unfoldedECs.getMaximalEndComponentDecomposition();
-
-                    for (uint_fast64_t k = 1; k <= unfoldedECs.getNumberOfUnfoldedECs(); ++ k) {
-                        storm::storage::MaximalEndComponent mec = mecDecomposition.getBlock(k - 1);
+                    for (uint_fast64_t k = 0; k < unfoldedECs.size(); ++ k) {
+                        storm::storage::MaximalEndComponent mec = unfoldedECs.getBlock(k);
                         std::vector<uint_fast64_t> const& groups = unfoldedECs.getUnfoldedMatrix(k).getRowGroupIndices();
                         std::vector<sw::DirectFixedWindow::StateValueWindowSize<double>>
                             newStatesMeaning = unfoldedECs.getNewStatesMeaning(k);

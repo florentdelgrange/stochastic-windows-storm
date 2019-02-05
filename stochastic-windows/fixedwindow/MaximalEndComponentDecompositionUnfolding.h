@@ -16,13 +16,24 @@
 #define STORM_ECSUNFOLDING_H
 
 namespace sw {
-    namespace FixedWindow {
+    namespace storage {
 
         template<typename ValueType>
-        class MECsUnfolding {
+        class MaximalEndComponentDecompositionUnfolding: public storm::storage::MaximalEndComponentDecomposition<ValueType> {
         public:
 
-            MECsUnfolding(storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>> const& mdp);
+            /*!
+             * This class is the maximal end component decomposition of the input MDP where the unfolding of each
+             * of these maximal end components for the maximal window size l_max and the input reward model is performed.
+             *
+             * @param mdp input model
+             * @param rewardModelName name of the reward model for which the MDP will be unfold
+             * @param l_max maximal window size
+             */
+            MaximalEndComponentDecompositionUnfolding(
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
+                    std::string const &rewardModelName,
+                    uint_fast64_t const &l_max);
 
             /*!
              * Get the index of the MEC containing the input state. Note that 0 is a special value indicating that the
@@ -30,14 +41,10 @@ namespace sw {
              */
             uint_fast64_t getMecIndex(uint_fast64_t state);
 
-            storm::storage::MaximalEndComponentDecomposition<ValueType>& getMaximalEndComponentDecomposition();
-
             /*!
              * Get the index k of the MEC containing the input state as well as the index of the state
              * (state, currentSumOfWeights, currentWindowLength) in the kth matrix, being the matrix representing the
              * unfolding of the kth MEC.
-             * Returns the special value 0 (the index of the sink state) if (state, currentSumOfWeights, currentWindowLength)
-             * does not exist in the new matrix k.
              *
              * @param state state in the original matrix
              * @param currentSumOfWeights value of the current sum of weights in the window
@@ -48,18 +55,13 @@ namespace sw {
                                                                 uint_fast64_t currentWindowSize);
 
             /*!
-             * Returns the matrix representing the unfolding of the kth MEC of the original MDP.
-             * Note that 0 is a special value and does not represent any MEC.
+             * Retrieves the matrix representing the unfolding of the kth MEC of the original MDP.
              */
-            storm::storage::SparseMatrix<ValueType>& getUnfoldedMatrix(uint_fast64_t mec);
+            storm::storage::SparseMatrix<ValueType> const& getUnfoldedMatrix(uint_fast64_t mec);
+            storm::storage::SparseMatrix<ValueType> const& getUnfoldedMatrix(uint_fast64_t mec) const;
 
             /*!
-             * Get the number of unfolded ECs.
-             */
-            uint_fast64_t getNumberOfUnfoldedECs();
-
-            /*!
-             * Get a vector containing, for each MEC k, the meaning of each state in the new matrix corresponding to the
+             * Retrieves a vector containing, for each MEC k, the meaning of each state in the new matrix corresponding to the
              * unfolding of the MEC k, expressed as a tuple (s, w, l) where s (state) is the state in the original matrix,
              * w (currentSumOfWeights) is the current sum of weights in the unfolding and l (currentWindowLength) is
              * the current window length in the unfolding.
@@ -69,7 +71,7 @@ namespace sw {
             std::vector<sw::DirectFixedWindow::StateValueWindowSize<ValueType>> getNewStatesMeaning(uint_fast64_t k);
 
             /*!
-             * Build the refined sub-MDP of the kth MEC corresponding to the unfolding of the kth MEC for the bound l_max.
+             * Builds the refined sub-MDP of the kth MEC corresponding to the unfolding of the kth MEC for the bound l_max.
              * Note that the MDP built has no label.
              * @param k the index of the MEC for which the unfolding has been built
              * @return the MDP of the unfolding of the kth MEC
@@ -84,12 +86,13 @@ namespace sw {
             void printToStream(std::ostream& out, uint_fast64_t k);
 
             /**
-             * Get the index in the kth unfolding of the input initial state.
+             * Retrieves the index in the kth unfolding of the input initial state.
              * @param k index of the MEC containing the state representing the input initial state
              * @param initialState
              * @return the index of the input initial state in the unfolding if it exists, 0 else
              */
             uint_fast64_t getInitialState(uint_fast64_t k, uint_fast64_t initialState);
+            uint_fast64_t getInitialState(uint_fast64_t k, uint_fast64_t initialState) const;
 
 
        protected:
@@ -102,12 +105,10 @@ namespace sw {
              */
             std::vector<uint_fast64_t> mecIndices;
 
-            storm::storage::MaximalEndComponentDecomposition<ValueType> mecDecomposition;
-
-            void performMECDecomposition(
-                    storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
-                    std::string const& rewardModelName,
-                    uint_fast64_t const& l_max);
+            void performMECsUnfolding(
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
+                    std::string const &rewardModelName,
+                    uint_fast64_t const &l_max);
 
             virtual void unfoldEC(
                     storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
@@ -119,10 +120,10 @@ namespace sw {
        };
 
         template<typename ValueType>
-        class MECsUnfoldingMeanPayoff: public MECsUnfolding<ValueType> {
+        class MaximalEndComponentDecompositionUnfoldingMeanPayoff: public MaximalEndComponentDecompositionUnfolding<ValueType> {
         public:
 
-            MECsUnfoldingMeanPayoff(
+            MaximalEndComponentDecompositionUnfoldingMeanPayoff(
                     storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max);
@@ -138,10 +139,10 @@ namespace sw {
         };
 
         template<typename ValueType>
-        class MECsUnfoldingParity: public MECsUnfolding<ValueType> {
+        class MaximalEndComponentDecompositionUnfoldingParity: public MaximalEndComponentDecompositionUnfolding<ValueType> {
         public:
 
-            MECsUnfoldingParity(
+            MaximalEndComponentDecompositionUnfoldingParity(
                     storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max);
