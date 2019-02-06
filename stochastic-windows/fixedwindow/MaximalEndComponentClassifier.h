@@ -21,6 +21,9 @@ namespace sw {
             /*!
              * This class allows to classify maximal end components as being good or not.
              *
+             * @note A good EC (end component) w.r.t. a fixed window objective is an EC for which there exists a
+             *       sub-EC where there exists a strategy surely winning this fixed window objective from every of its
+             *       state.
              * @param mdp input model
              * @param mecDecompositionUnfolding unfolding of each maximal end component of the input model
              */
@@ -31,6 +34,9 @@ namespace sw {
             /*!
              * This class allows to classify maximal end components as being good or not.
              *
+             * @note A good EC (end component) w.r.t. a fixed window objective is an EC for which there exists a
+             *       sub-EC where there exists a strategy surely winning this fixed window objective from every of its
+             *       state.
              * @param mdp input model
              * @param mecDecompositionUnfolding window-game version of each maximal end component of the input model
              */
@@ -40,14 +46,21 @@ namespace sw {
 
             /*!
              * Retrieves a vector containing each good maximal end components.
+             *
+             * @note A good EC (end component) w.r.t. a fixed window objective is an EC for which there exists a
+             *       sub-EC where there exists a strategy surely winning this fixed window objective from every of its
+             *       state.
              */
             std::vector<std::reference_wrapper<const storm::storage::MaximalEndComponent>> getGoodMaximalEndComponents();
             /*!
              * Retrieves the set of safe states of the input model.
+             *
+             * @note A state is said to be safe w.r.t. a fixed window objective if and only if there exists a strategy
+             *       surely winning this fixed window objective from this state.
              */
             storm::storage::BitVector const& getSafeStateSpace();
             /*!
-             * Retrieves the set of good states of the input model (i.e., the union of the state space of eacg good MEC).
+             * Retrieves the set of good states of the input model (i.e., the union of the state space of each good MEC).
              */
             storm::storage::BitVector const& getGoodStateSpace();
 

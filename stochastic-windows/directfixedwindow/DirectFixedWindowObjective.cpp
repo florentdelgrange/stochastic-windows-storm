@@ -12,47 +12,36 @@ namespace sw {
                 storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                 std::string const &rewardModelName,
                 uint_fast64_t const &l_max)
-                : mdp(mdp), rewardModelName(rewardModelName), l_max(l_max) {}
+                : WindowObjective<ValueType>(mdp, rewardModelName), l_max(l_max) {}
 
         template<typename ValueType>
-        DirectFixedWindowObjectiveMeanPayoff<ValueType>::DirectFixedWindowObjectiveMeanPayoff(
+        DirectFixedWindowMeanPayoffObjective<ValueType>::DirectFixedWindowMeanPayoffObjective(
                 storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                 std::string const& rewardModelName,
                 uint_fast64_t const& l_max)
                 : DirectFixedWindowObjective<ValueType>(mdp, rewardModelName, l_max) {}
 
         template<typename ValueType>
-        DirectFixedWindowObjectiveParity<ValueType>::DirectFixedWindowObjectiveParity(
+        DirectFixedWindowParityObjective<ValueType>::DirectFixedWindowParityObjective(
                 storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                 std::string const& rewardModelName,
                 uint_fast64_t const& l_max)
                 : DirectFixedWindowObjective<ValueType>(mdp, rewardModelName, l_max) {}
 
         template<typename ValueType>
-        std::unique_ptr<WindowUnfolding<ValueType>> DirectFixedWindowObjectiveMeanPayoff<ValueType>::performUnfolding(
+        std::unique_ptr<WindowUnfolding<ValueType>> DirectFixedWindowMeanPayoffObjective<ValueType>::performUnfolding(
                 storm::storage::BitVector const &initialStates) const {
             return std::unique_ptr<WindowUnfolding<ValueType>>(new WindowUnfoldingMeanPayoff<ValueType>(this->mdp, this->rewardModelName, this->l_max, initialStates));
         }
 
         template<typename ValueType>
-        std::unique_ptr<WindowUnfolding<ValueType>> DirectFixedWindowObjectiveParity<ValueType>::performUnfolding(
+        std::unique_ptr<WindowUnfolding<ValueType>> DirectFixedWindowParityObjective<ValueType>::performUnfolding(
                 storm::storage::BitVector const &initialStates) const {
             return std::unique_ptr<WindowUnfolding<ValueType>>(new WindowUnfoldingParity<ValueType>(this->mdp, this->rewardModelName, this->l_max, initialStates));
         }
 
         template<typename ValueType>
-        const storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &
-        DirectFixedWindowObjective<ValueType>::getMdp() const {
-            return mdp;
-        }
-
-        template<typename ValueType>
-        const std::string &DirectFixedWindowObjective<ValueType>::getRewardModelName() const {
-            return rewardModelName;
-        }
-
-        template<typename ValueType>
-        uint_fast64_t DirectFixedWindowObjective<ValueType>::getMaximumWindowSize() {
+        uint_fast64_t DirectFixedWindowObjective<ValueType>::getMaximumWindowSize() const {
             return l_max;
         }
 
@@ -89,9 +78,9 @@ namespace sw {
 
         template class DirectFixedWindowObjective<double>;
         template class DirectFixedWindowObjective<storm::RationalNumber>;
-        template class DirectFixedWindowObjectiveMeanPayoff<double>;
-        template class DirectFixedWindowObjectiveMeanPayoff<storm::RationalNumber>;
-        template class DirectFixedWindowObjectiveParity<double>;
+        template class DirectFixedWindowMeanPayoffObjective<double>;
+        template class DirectFixedWindowMeanPayoffObjective<storm::RationalNumber>;
+        template class DirectFixedWindowParityObjective<double>;
 
         template std::vector<double> performMaxProb<double>(storm::storage::BitVector const& phiStates, DirectFixedWindowObjective<double> const& dfwObjective, bool useMecBasedTechnique);
         template std::vector<storm::RationalNumber> performMaxProb<storm::RationalNumber>(storm::storage::BitVector const& phiStates, DirectFixedWindowObjective<storm::RationalNumber> const& dfwObjective, bool useMecBasedTechnique);

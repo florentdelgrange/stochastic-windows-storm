@@ -122,7 +122,9 @@ namespace sw {
                     s = oldToNewStateMapping[state];
                     std::vector<ValueType> actionValues;
                     uint_fast64_t numberOfEnabledActions;
-                    if (state == this->mdp.getNumberOfStates() - 1) {
+                    // if the considered state is the last of the enumeration of states or if there is no more enabled
+                    // action for states with greater indices than the current one.
+                    if (state == this->mdp.getNumberOfStates() - 1 or stateActionIndices[state + 1] >= numberOfEnabledActionsBeforeIndices.size()) {
                         numberOfEnabledActions = this->enabledActions.getNumberOfSetBits() -
                                                  numberOfEnabledActionsBeforeIndices[stateActionIndices[state]];
                     }

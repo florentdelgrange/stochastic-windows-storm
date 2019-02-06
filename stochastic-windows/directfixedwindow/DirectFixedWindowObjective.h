@@ -11,6 +11,7 @@
 #include <storm/solver/SolveGoal.h>
 #include <storm/storage/BitVector.h>
 #include <storm/environment/solver/MinMaxSolverEnvironment.h>
+#include <stochastic-windows/WindowObjective.h>
 
 #ifndef STORM_DIRECTFIXEDWINDOWOBJECTIVE_H
 #define STORM_DIRECTFIXEDWINDOWOBJECTIVE_H
@@ -19,7 +20,7 @@ namespace sw {
     namespace DirectFixedWindow {
 
         template<typename ValueType>
-        class DirectFixedWindowObjective {
+        class DirectFixedWindowObjective: public WindowObjective<ValueType> {
         public:
 
             DirectFixedWindowObjective(
@@ -29,25 +30,19 @@ namespace sw {
 
             virtual std::unique_ptr<WindowUnfolding<ValueType>> performUnfolding(storm::storage::BitVector const& initialStates) const = 0;
 
-            const storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &getMdp() const;
-
-            const std::string &getRewardModelName() const;
-
-            uint_fast64_t getMaximumWindowSize();
+            uint_fast64_t getMaximumWindowSize() const;
 
         protected:
 
-            storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>> const& mdp;
-            std::string const& rewardModelName;
             uint_fast64_t const l_max;
 
         };
 
         template<typename ValueType>
-        class DirectFixedWindowObjectiveMeanPayoff: public DirectFixedWindowObjective<ValueType> {
+        class DirectFixedWindowMeanPayoffObjective: public DirectFixedWindowObjective<ValueType> {
         public:
 
-            DirectFixedWindowObjectiveMeanPayoff(
+            DirectFixedWindowMeanPayoffObjective(
                     storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                     std::string const& rewardModelName,
                     uint_fast64_t const& l_max);
@@ -57,10 +52,10 @@ namespace sw {
         };
 
         template<typename ValueType>
-        class DirectFixedWindowObjectiveParity: public DirectFixedWindowObjective<ValueType> {
+        class DirectFixedWindowParityObjective: public DirectFixedWindowObjective<ValueType> {
         public:
 
-            DirectFixedWindowObjectiveParity(
+            DirectFixedWindowParityObjective(
                     storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                     std::string const& rewardModelName,
                     uint_fast64_t const& l_max);

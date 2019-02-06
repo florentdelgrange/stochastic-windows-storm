@@ -19,6 +19,7 @@
 #include <stochastic-windows/game/PredecessorsSquaredLinkedList.h>
 #include <stochastic-windows/fixedwindow/MaximalEndComponentDecompositionWindowGame.h>
 #include <stochastic-windows/fixedwindow/MaximalEndComponentClassifier.h>
+#include <stochastic-windows/fixedwindow/FixedWindowObjective.h>
 
 #include "storm/utility/initialize.h"
 
@@ -102,7 +103,7 @@ void initializeSettings() {
     storm::utility::setLogLevel(l3pp::LogLevel::DEBUG);
 
     // storm::settings::mutableManager().printHelpForModule("minmax");
-    storm::settings::mutableManager().setFromString("--minmax:method pi");
+    storm::settings::mutableManager().setFromString("--minmax:method svi");
     std::cout << "Equation solving method: " << minMaxMethodAsString() << std::endl;
 }
 
@@ -246,28 +247,28 @@ void windowExamples(){
     }
 
     // DirectFixed MP
-    sw::DirectFixedWindow::DirectFixedWindowObjectiveMeanPayoff<double> dfwMpObjective(*mdp, "weights", 3);
+    sw::DirectFixedWindow::DirectFixedWindowMeanPayoffObjective<double> dfwMpObjective(*mdp, "weights", 3);
     storm::storage::BitVector phiStates(mdp->getNumberOfStates(), false);
     phiStates.set(0, true); phiStates.set(5, true);
     std::unique_ptr<sw::DirectFixedWindow::WindowUnfolding<double>> unfoldingDirectFixedMP = dfwMpObjective.performUnfolding(phiStates);
     std::vector<double> result = sw::DirectFixedWindow::performMaxProb<double>(phiStates, dfwMpObjective);
-    std::cout << "Pr of DFWMP for = [";
+    std::cout << "Pr(DFWmp) = [";
     for (auto state: phiStates) {
         std::cout << "s" << state << "=" << result[state] << ", ";
     }
     std::cout << "]" << std::endl;
     std::cout << "result from s0 = " << sw::DirectFixedWindow::performMaxProb<double>(0, dfwMpObjective) << std::endl;
     // DirectFixed Par
-    sw::DirectFixedWindow::DirectFixedWindowObjectiveParity<double> dfwParObjective(*mdp, "priorities", 3);
+    sw::DirectFixedWindow::DirectFixedWindowParityObjective<double> dfwParObjective(*mdp, "priorities", 3);
     phiStates = storm::storage::BitVector(mdp->getNumberOfStates(), true);
     std::unique_ptr<sw::DirectFixedWindow::WindowUnfolding<double>> unfoldingDirectFixedPar = dfwParObjective.performUnfolding(phiStates);
     result = sw::DirectFixedWindow::performMaxProb<double>(phiStates, dfwParObjective);
-    std::cout << "Pr of DFWPar for = [";
+    std::cout << "Pr(DFWpar) = [";
     for (auto state: phiStates) {
         std::cout << "s" << state << "=" << result[state] << ", ";
     }
     std::cout << "]" << std::endl;
-    std::cout << "result from s5 = " << sw::DirectFixedWindow::performMaxProb<double>(5, dfwParObjective) << std::endl;
+    std::cout << "Pr_s5(DFWpar) = " << sw::DirectFixedWindow::performMaxProb<double>(5, dfwParObjective) << std::endl;
     std::cout << std::endl;
 
     // Window Mean Payoff Game
@@ -277,23 +278,6 @@ void windowExamples(){
     std::unique_ptr<sw::Game::WindowGame<double>>
     wmpGame = std::unique_ptr<sw::Game::WindowGame<double>>(new sw::Game::WindowMeanPayoffGame<double>(*mdp, "weights", 3, restrictedStateSpace, enabledActions));
     std::cout << "Direct Fixed Window winning set in the whole MDP: " << wmpGame->directFWMP() << std::endl;
-    std::cout << std::endl;
-
-    // MEC classification
-    std::cout << "MEC classification" << std::endl;
-    std::cout << "Classification by unfolding MECs (MP)" << std::endl;
-    sw::FixedWindow::MaximalEndComponentClassifier<double> classifierUnfoldingMP(*mdp, unfoldingMp);
-    std::cout << "Safe states " << classifierUnfoldingMP.getSafeStateSpace() << std::endl;
-    std::cout << "Good states " << classifierUnfoldingMP.getGoodStateSpace() << std::endl;
-    std::cout << "Classification by unfolding MECs (Par)" << std::endl;
-    sw::FixedWindow::MaximalEndComponentClassifier<double> classifierUnfoldingPar(*mdp, unfoldingPar);
-    std::cout << "Safe states " << classifierUnfoldingPar.getSafeStateSpace() << std::endl;
-    std::cout << "Good states " << classifierUnfoldingPar.getGoodStateSpace() << std::endl;
-    std::cout << "Classification by considering MECs as games (MP)" << std::endl;
-    sw::FixedWindow::MaximalEndComponentClassifier<double> gameClassifier(*mdp, unfoldingMp);
-    std::cout << "Safe states " << gameClassifier.getSafeStateSpace() << std::endl;
-    std::cout << "Good states " << gameClassifier.getGoodStateSpace() << std::endl;
-    sw::storage::MaximalEndComponentDecompositionWindowMeanPayoffGame<double> games(*mdp, "weights", 3);
     std::cout << std::endl;
 
     // Graphviz
@@ -308,6 +292,50 @@ void windowExamples(){
     sw::util::graphviz::GraphVizBuilder::unfoldedECsExport(matrix, unfoldingPar, "par");
     sw::util::graphviz::GraphVizBuilder::mdpUnfoldingExport(matrix, *unfoldingDirectFixedMP, "direct_fixed_mp");
     sw::util::graphviz::GraphVizBuilder::mdpUnfoldingExport(matrix, *unfoldingDirectFixedPar, "direct_fixed_par");
+
+    // MEC classification
+    std::cout << "MEC classification" << std::endl;
+    std::cout << "Classification by unfolding MECs (MP)" << std::endl;
+    sw::FixedWindow::MaximalEndComponentClassifier<double> classifierUnfoldingMP(*mdp, unfoldingMp);
+    std::cout << "Safe states " << classifierUnfoldingMP.getSafeStateSpace() << std::endl;
+    std::cout << "Good states " << classifierUnfoldingMP.getGoodStateSpace() << std::endl;
+    std::cout << "Classification by unfolding MECs (Par)" << std::endl;
+    sw::FixedWindow::MaximalEndComponentClassifier<double> classifierUnfoldingPar(*mdp, unfoldingPar);
+    std::cout << "Safe states " << classifierUnfoldingPar.getSafeStateSpace() << std::endl;
+    std::cout << "Good states " << classifierUnfoldingPar.getGoodStateSpace() << std::endl;
+    std::cout << "Classification by considering MECs as games (MP)" << std::endl;
+    sw::storage::MaximalEndComponentDecompositionWindowMeanPayoffGame<double> games(*mdp, "weights", 3);
+    sw::FixedWindow::MaximalEndComponentClassifier<double> gameClassifier(*mdp, games);
+    std::cout << "Safe states " << gameClassifier.getSafeStateSpace() << std::endl;
+    std::cout << "Good states " << gameClassifier.getGoodStateSpace() << std::endl;
+    std::cout << std::endl;
+
+    // Fixed Window Objective
+    std::cout << "Fixed Window Objectives: mean payoff (with game classification)" << std::endl;
+    sw::FixedWindow::FixedWindowMeanPayoffObjective<double> fixedWindowMPObjectiveGame(*mdp, "weights", 3);
+    result = sw::FixedWindow::performMaxProb(fixedWindowMPObjectiveGame);
+    std::cout << "Pr(FWmp) = [";
+    for (uint_fast64_t state = 0; state < mdp->getNumberOfStates(); ++ state) {
+        std::cout << "s" << state << "=" << result[state] << ", ";
+    }
+    std::cout << "]" << std::endl;
+    std::cout << "Fixed Window Objectives: mean payoff (with unfolding based classification)" << std::endl;
+    sw::FixedWindow::FixedWindowMeanPayoffObjective<double> fixedWindowMPObjectiveUnfolding(*mdp, "weights", 3, false);
+    result = sw::FixedWindow::performMaxProb(fixedWindowMPObjectiveUnfolding);
+    std::cout << "Pr(FWmp) = [";
+    for (uint_fast64_t state = 0; state < mdp->getNumberOfStates(); ++ state) {
+        std::cout << "s" << state << "=" << result[state] << ", ";
+    }
+    std::cout << "]" << std::endl;
+    std::cout << "Fixed Window Objectives: parity" << std::endl;
+    sw::FixedWindow::FixedWindowParityObjective<double> fixedWindowParityObjective(*mdp, "priorities", 3);
+    result = sw::FixedWindow::performMaxProb(fixedWindowParityObjective);
+    std::cout << "Pr(FWpar) = [";
+    for (uint_fast64_t state = 0; state < mdp->getNumberOfStates(); ++ state) {
+        std::cout << "s" << state << "=" << result[state] << ", ";
+    }
+    std::cout << "]" << std::endl;
+    std::cout << std::endl;
 }
 
 

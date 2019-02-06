@@ -42,7 +42,7 @@ namespace sw {
 
                 this->windowGames.push_back(
                         std::unique_ptr<sw::Game::WindowGame<ValueType>>(
-                                new sw::Game::WindowMeanPayoffGame<ValueType>(mdp, rewardModelName, l_max, restrictedStateSpace, enabledActions)
+                                new sw::Game::WindowMeanPayoffGame<ValueType>(mdp, rewardModelName, l_max, std::move(restrictedStateSpace), std::move(enabledActions))
                                 )
                         );
             }
