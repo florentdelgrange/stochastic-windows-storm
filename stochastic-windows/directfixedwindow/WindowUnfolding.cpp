@@ -20,8 +20,9 @@ namespace sw {
                   enabledActions(enabledActions),
                   rewardModel(mdp.getRewardModel(rewardModelName)) {
 
-            assert(this->l_max > 0);
-            assert(this->enabledActions.size() == mdp.getNumberOfChoices());
+            STORM_LOG_ASSERT(this->l_max > 0, "The maximum window size must be greater than 0");
+            STORM_LOG_ASSERT(this->enabledActions.size() == mdp.getNumberOfChoices(),
+                    "The size of the BitVector representing the set of enabled actions must be the number of actions in the system");
 
             // vector containing data about states of the unfolding
             this->windowVector = std::vector<std::vector<std::unordered_map<ValueType, uint_fast64_t>>>(mdp.getNumberOfStates());

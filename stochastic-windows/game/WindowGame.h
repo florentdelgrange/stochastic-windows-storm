@@ -5,6 +5,7 @@
 #include <storm/storage/BitVector.h>
 #include <storm/models/sparse/Mdp.h>
 #include <storm/storage/SparseMatrix.h>
+#include <stochastic-windows/game/MdpGame.h>
 
 #ifndef STORM_WINDOWGAME_H
 #define STORM_WINDOWGAME_H
@@ -19,7 +20,7 @@ namespace sw {
         };
 
         template<typename ValueType>
-        class WindowGame {
+        class WindowGame: public MdpGame<ValueType> {
         public:
 
             /**
@@ -28,8 +29,10 @@ namespace sw {
              * @param mdp the model to consider as a game
              * @param rewardModelName the name of the reward model to consider
              * @param l_max the maximum window size
-             * @param restrictedStateSpace the set of states to consider in the MDP-game
-             * @param enabledActions the set of actions to consider in the MDP-game
+             * @param restrictedStateSpace the set of states to consider in the MDP-game forming the state space of the
+             *        Player 1 in the MDP-game.
+             * @param enabledActions the set of actions to consider in the MDP-game forming the state space of the
+             *        Player 2 in the MDP-game.
              * @note strong assumption: choosing an enabled action must always lead to a state of the restricted state space.
              */
             WindowGame(
@@ -61,7 +64,7 @@ namespace sw {
             storm::storage::BitVector directFW() const;
 
             /*!
-             * Retrieves the considered state space of this window game.
+             * Retrieves the considered Player 1 state space of this window game.
              */
             storm::storage::BitVector const& getStateSpace() const;
 
@@ -76,14 +79,6 @@ namespace sw {
         protected:
 
             /**
-             * MDP to consider as a game
-             */
-            storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp;
-            /**
-             * matrix of the MDP to consider as a game
-             */
-            storm::storage::SparseMatrix<ValueType> const &matrix;
-            /**
              * Name of the reward model to consider
              */
             std::string const& rewardModelName;
@@ -95,14 +90,6 @@ namespace sw {
              * maximum window size
              */
             uint_fast64_t const &l_max;
-            /**
-             * set of states to consider in the MDP-game
-             */
-            storm::storage::BitVector const restrictedStateSpace;
-            /**
-             * set of actions to consider in the MDP-game
-             */
-            storm::storage::BitVector const enabledActions;
 
             virtual std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates,
                     BackwardTransitions& backwardTransitions) const = 0;
@@ -127,8 +114,10 @@ namespace sw {
              * @param mdp the model to consider as a game
              * @param rewardModelName the name of the reward model to consider
              * @param l_max the maximum window size
-             * @param restrictedStateSpace the set of states to consider in the MDP-game
-             * @param enabledActions the set of actions to consider in the MDP-game
+             * @param restrictedStateSpace the set of states to consider in the MDP-game forming the state space of the
+             *        Player 1 in the MDP-game.
+             * @param enabledActions the set of actions to consider in the MDP-game forming the state space of the
+             *        Player 2 in the MDP-game.
              */
             WindowMeanPayoffGame(
                     storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,

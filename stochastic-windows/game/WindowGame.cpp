@@ -3,7 +3,6 @@
 //
 
 #include "WindowGame.h"
-#include "PredecessorsSquaredLinkedList.h"
 
 namespace sw {
     namespace game {
@@ -15,16 +14,10 @@ namespace sw {
                 uint_fast64_t const &l_max,
                 storm::storage::BitVector const &restrictedStateSpace,
                 storm::storage::BitVector const &enabledActions)
-                : mdp(mdp),
-                  matrix(mdp.getTransitionMatrix()),
+                : MdpGame<ValueType>(mdp, restrictedStateSpace, enabledActions),
                   rewardModelName(rewardModelName),
                   rewardModel(mdp.getRewardModel(rewardModelName)),
-                  l_max(l_max),
-                  restrictedStateSpace(restrictedStateSpace),
-                  enabledActions(enabledActions) {
-                      assert(restrictedStateSpace.size() == mdp.getNumberOfStates());
-                      assert(enabledActions.size() == this->matrix.getRowCount());
-                  }
+                  l_max(l_max) {}
 
         template<typename ValueType>
         WindowMeanPayoffGame<ValueType>::WindowMeanPayoffGame(
