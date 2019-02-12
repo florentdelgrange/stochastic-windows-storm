@@ -6,7 +6,7 @@
 #include "PredecessorsSquaredLinkedList.h"
 
 namespace sw {
-    namespace Game {
+    namespace game {
 
         template<typename ValueType>
         WindowGame<ValueType>::WindowGame(
@@ -60,10 +60,10 @@ namespace sw {
         }
 
         template<typename ValueType>
-        storm::storage::BitVector WindowGame<ValueType>::directFWMP() const {
+        storm::storage::BitVector WindowGame<ValueType>::directFW() const {
             BackwardTransitions backwardTransitions;
             this->initBackwardTransitions(backwardTransitions);
-            return directFWMP(backwardTransitions);
+            return directFW(backwardTransitions);
         }
 
         template<typename ValueType>
@@ -76,14 +76,14 @@ namespace sw {
 
 
         template<typename ValueType>
-        storm::storage::BitVector WindowGame<ValueType>::directFWMP(BackwardTransitions& backwardTransitions) const {
+        storm::storage::BitVector WindowGame<ValueType>::directFW(BackwardTransitions &backwardTransitions) const {
             storm::storage::BitVector winGW = this->goodWin();
             if (winGW == this->restrictedStateSpace or winGW.empty()) {
                 return winGW;
             }
             else {
                 std::unique_ptr<WindowGame<ValueType>> safeGame = this->restrictToSafePart(winGW, backwardTransitions);
-                return safeGame->directFWMP(backwardTransitions);
+                return safeGame->directFW(backwardTransitions);
             }
         }
 

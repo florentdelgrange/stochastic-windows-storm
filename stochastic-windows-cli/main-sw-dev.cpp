@@ -271,13 +271,13 @@ void windowExamples(){
     std::cout << "Pr_s5(DFWpar) = " << sw::DirectFixedWindow::performMaxProb<double>(5, dfwParObjective) << std::endl;
     std::cout << std::endl;
 
-    // Window Mean Payoff Game
+    // Window Mean Payoff game
     std::cout << "window mean payoff game" << std::endl;
     storm::storage::BitVector restrictedStateSpace(mdp->getNumberOfStates(), true);
     storm::storage::BitVector enabledActions(mdp->getNumberOfChoices(), true);
-    std::unique_ptr<sw::Game::WindowGame<double>>
-    wmpGame = std::unique_ptr<sw::Game::WindowGame<double>>(new sw::Game::WindowMeanPayoffGame<double>(*mdp, "weights", 3, restrictedStateSpace, enabledActions));
-    std::cout << "Direct Fixed Window winning set in the whole MDP: " << wmpGame->directFWMP() << std::endl;
+    std::unique_ptr<sw::game::WindowGame<double>>
+    wmpGame = std::unique_ptr<sw::game::WindowGame<double>>(new sw::game::WindowMeanPayoffGame<double>(*mdp, "weights", 3, restrictedStateSpace, enabledActions));
+    std::cout << "Direct Fixed Window winning set in the whole MDP: " << wmpGame->directFW() << std::endl;
     std::cout << std::endl;
 
     // Graphviz

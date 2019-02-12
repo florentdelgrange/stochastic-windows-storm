@@ -36,7 +36,7 @@ namespace sw {
              * @param mec index of the MEC to consider as a game
              * @return the window game of the input MEC.
              */
-            sw::Game::WindowGame<ValueType> const& getGame(uint_fast64_t mec) const;
+            sw::game::WindowGame<ValueType> const& getGame(uint_fast64_t mec) const;
 
         protected:
 
@@ -48,7 +48,7 @@ namespace sw {
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max) = 0;
 
-            std::vector<std::unique_ptr<sw::Game::WindowGame<ValueType>>> windowGames;
+            std::vector<std::unique_ptr<sw::game::WindowGame<ValueType>>> windowGames;
 
         };
 

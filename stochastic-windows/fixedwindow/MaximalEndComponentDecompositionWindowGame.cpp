@@ -41,15 +41,15 @@ namespace sw {
                 }
 
                 this->windowGames.push_back(
-                        std::unique_ptr<sw::Game::WindowGame<ValueType>>(
-                                new sw::Game::WindowMeanPayoffGame<ValueType>(mdp, rewardModelName, l_max, std::move(restrictedStateSpace), std::move(enabledActions))
+                        std::unique_ptr<sw::game::WindowGame<ValueType>>(
+                                new sw::game::WindowMeanPayoffGame<ValueType>(mdp, rewardModelName, l_max, std::move(restrictedStateSpace), std::move(enabledActions))
                                 )
                         );
             }
         }
 
         template<typename ValueType>
-        sw::Game::WindowGame<ValueType> const& MaximalEndComponentDecompositionWindowGame<ValueType>::getGame(uint_fast64_t mec) const {
+        sw::game::WindowGame<ValueType> const& MaximalEndComponentDecompositionWindowGame<ValueType>::getGame(uint_fast64_t mec) const {
             return *(this->windowGames[mec]);
         }
 

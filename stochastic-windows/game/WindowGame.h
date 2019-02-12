@@ -10,7 +10,7 @@
 #define STORM_WINDOWGAME_H
 
 namespace sw {
-    namespace Game {
+    namespace game {
 
         struct BackwardTransitions {
             std::vector<std::forward_list<uint_fast64_t>> statesPredecessors;
@@ -58,7 +58,7 @@ namespace sw {
              *
              * @return the winning set for the DirectFixedWindow objective
              */
-            storm::storage::BitVector directFWMP() const;
+            storm::storage::BitVector directFW() const;
 
             /*!
              * Retrieves the considered state space of this window game.
@@ -66,8 +66,8 @@ namespace sw {
             storm::storage::BitVector const& getStateSpace() const;
 
             /*!
-             * Restrict this WindowGame to the safe part of the input state space.
-             * In the resulting sub-MDP-game, all choices ensure to always visit input safe states.
+             * Restrict this WindowGame to the safe part of the input set of states.
+             * In the resulting sub-MDP-game, all choices ensure to always visit input set of states.
              * @param safeStates set of states in which the new restricted WindowGame will be ensured to stay in it.
              * @return a pointer to a new WindowGame representing the safe part of this WindowGame.
              */
@@ -113,7 +113,7 @@ namespace sw {
              */
             void initBackwardTransitions(BackwardTransitions& backwardTransitions) const;
 
-            storm::storage::BitVector directFWMP(BackwardTransitions& backwardTransitions) const;
+            storm::storage::BitVector directFW(BackwardTransitions &backwardTransitions) const;
 
         };
 
