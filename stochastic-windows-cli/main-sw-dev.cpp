@@ -20,6 +20,7 @@
 #include <stochastic-windows/fixedwindow/MaximalEndComponentDecompositionWindowGame.h>
 #include <stochastic-windows/fixedwindow/MaximalEndComponentClassifier.h>
 #include <stochastic-windows/fixedwindow/FixedWindowObjective.h>
+#include <stochastic-windows/game/TotalPayoffGame.h>
 
 #include "storm/utility/initialize.h"
 
@@ -103,7 +104,7 @@ void initializeSettings() {
     storm::utility::setLogLevel(l3pp::LogLevel::DEBUG);
 
     // storm::settings::mutableManager().printHelpForModule("minmax");
-    storm::settings::mutableManager().setFromString("--minmax:method svi");
+    storm::settings::mutableManager().setFromString("--minmax:method vi");
     std::cout << "Equation solving method: " << minMaxMethodAsString() << std::endl;
 }
 
@@ -335,6 +336,32 @@ void windowExamples(){
         std::cout << "s" << state << "=" << result[state] << ", ";
     }
     std::cout << "]" << std::endl;
+    std::cout << std::endl;
+
+    sw::game::TotalPayoffGame<double> game(*mdp, "weights", restrictedStateSpace, enabledActions);
+    std::cout << "actions of s_7 = ";
+    for (auto s_prime: sw::game::TotalPayoffGame<double>::successorsP1(7, mdp->getTransitionMatrix(), enabledActions)) {
+        std::cout << s_prime << ",";
+    }
+    std::cout << std::endl;
+    storm::storage::BitVector newEnabledActions(mdp->getNumberOfChoices(), true);
+    newEnabledActions.set(10, false);
+    std::cout << "actions \\ (a10)  of s_7 = ";
+    for (auto s_prime: sw::game::TotalPayoffGame<double>::successorsP1(7, mdp->getTransitionMatrix(), newEnabledActions)) {
+        std::cout << s_prime << ",";
+    }
+    std::cout << std::endl;
+    newEnabledActions.set(10, true);
+    newEnabledActions.set(11, false);
+    std::cout << "actions \\ (a11)  of s_7 = ";
+    for (auto s_prime: sw::game::TotalPayoffGame<double>::successorsP1(7, mdp->getTransitionMatrix(), newEnabledActions)) {
+        std::cout << s_prime << ",";
+    }
+    std::cout << std::endl;
+    std::cout << "successors of action 6 = ";
+    for (auto s_prime: sw::game::TotalPayoffGame<double>::successorsP2(6, mdp->getTransitionMatrix(), newEnabledActions)) {
+        std::cout << s_prime << ",";
+    }
     std::cout << std::endl;
 }
 

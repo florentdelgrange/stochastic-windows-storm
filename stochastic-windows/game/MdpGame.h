@@ -13,6 +13,12 @@
 namespace sw {
     namespace game {
 
+        struct BackwardTransitions {
+            std::vector<std::forward_list<uint_fast64_t>> statesPredecessors;
+            std::vector<uint_fast64_t> actionsPredecessor;
+            std::vector<uint_fast64_t> numberOfEnabledActions;
+        };
+
         template<typename ValueType>
         class MdpGame {
         public:
