@@ -20,34 +20,163 @@ namespace sw {
         template<typename ValueType>
         std::vector<ValueType> TotalPayoffGame<ValueType>::maxTotalPayoffInf() const {
             std::vector<ValueType> const& weights = rewardModel.getStateActionRewardVector();
+            std::vector<ValueType> absoluteWeights(weights.size());
+            std::transform(weights.begin(), weights.end(), absoluteWeights.begin(),
+                           [](ValueType w) -> ValueType { return storm::utility::abs(w); });
             return maxTotalPayoffInf(
+                    storm::Environment(),
+                    this->restrictedStateSpace,
+                    this->enabledActions,
                     [&](uint_fast64_t state) -> std::unique_ptr<successors> {
                         return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->enabledActions) ); },
                     [&](uint_fast64_t state) -> std::unique_ptr<successors> {
                         return std::unique_ptr<successors>( new successorsP2(state, this->matrix, this->enabledActions) ); },
                     [&](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return weights[s_prime]; },
-                    [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); });
+                    [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
+                    storm::utility::maximum(absoluteWeights))
+                    .max;
         }
 
         template<typename ValueType>
         std::vector<ValueType> TotalPayoffGame<ValueType>::minTotalPayoffSup() const {
-            std::vector<ValueType> weights = rewardModel.getStateActionRewardVector();
-            std::for_each(weights.begin(), weights.end(), [](ValueType w) -> ValueType { return w * -1; });
-            return maxTotalPayoffInf(
+            std::vector<ValueType> const& weights = rewardModel.getStateActionRewardVector();
+            std::vector<ValueType> oppositeWeights(weights.size());
+            std::transform(weights.begin(), weights.end(), oppositeWeights.begin(),
+                           [](ValueType w) -> ValueType { return w * -1; });
+            std::vector<ValueType> absoluteWeights(weights.size());
+            std::transform(weights.begin(), weights.end(), absoluteWeights.begin(),
+                           [](ValueType w) -> ValueType { return storm::utility::abs(w); });
+            std::vector<ValueType> result = maxTotalPayoffInf(
+                    storm::Environment(),
+                    this->enabledActions,
+                    this->restrictedStateSpace,
                     [&](uint_fast64_t state) -> std::unique_ptr<successors> {
                         return std::unique_ptr<successors>( new successorsP2(state, this->matrix, this->enabledActions) ); },
                     [&](uint_fast64_t state) -> std::unique_ptr<successors> {
                         return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->enabledActions) ); },
                     [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
-                    [&](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return weights[s_prime]; });
+                    [&](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return oppositeWeights[s_prime]; },
+                    storm::utility::maximum(absoluteWeights))
+                    .min;
+            std::transform(result.begin(), result.end(), result.begin(), [](ValueType v) -> ValueType { return v * -1; });
+            return result;
         }
 
-        template<typename ValueType>
-        std::vector<ValueType> TotalPayoffGame<ValueType>::maxTotalPayoffInf(
-                std::function<std::unique_ptr<successors>(uint_fast64_t)> maximizerSuccessors,
-                std::function<std::unique_ptr<successors>(uint_fast64_t)> minimizerSuccessors,
-                std::function<ValueType(uint_fast64_t, uint_fast64_t)> wMaxToMin,
-                std::function<ValueType(uint_fast64_t, uint_fast64_t)> wMinToMax) const {
+        template <typename ValueType>
+        bool TotalPayoffGame<ValueType>::valuesEqual(
+                typename TotalPayoffGame<ValueType>::Values const& x,
+                typename TotalPayoffGame<ValueType>::Values const& y,
+                ValueType precision,
+                bool relativeError) const {
+
+            if (not relativeError) {
+                precision *= storm::utility::convertNumber<ValueType>(2.0);
+            }
+            return storm::utility::vector::equalModuloPrecision<ValueType>(x.max, y.max, precision, relativeError) and
+                   storm::utility::vector::equalModuloPrecision<ValueType>(x.min, y.min, precision, relativeError);
+        }
+
+        template <typename ValueType>
+        typename TotalPayoffGame<ValueType>::Values TotalPayoffGame<ValueType>::maxTotalPayoffInf(
+                storm::Environment const& env,
+                storm::storage::BitVector const& maximizerStateSpace,
+                storm::storage::BitVector const& minimizerStateSpace,
+                std::function<std::unique_ptr<successors>(uint_fast64_t)> const& maximizerSuccessors,
+                std::function<std::unique_ptr<successors>(uint_fast64_t)> const& minimizerSuccessors,
+                std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMaxToMin,
+                std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMinToMax,
+                ValueType W) const {
+
+            using Values = TotalPayoffGame<ValueType>::Values;
+            std::shared_ptr<Values> Y = std::shared_ptr<Values>(new Values()), Y_pre, X, X_pre;
+            Y->max = std::vector<ValueType>(maximizerStateSpace.size(), -1 * storm::utility::infinity<ValueType>());
+            Y->min = std::vector<ValueType>(minimizerStateSpace.size(), -1 * storm::utility::infinity<ValueType>());
+            ValueType valuesUpperBound = (maximizerStateSpace.size() + minimizerStateSpace.size() - 1) * W;
+            ValueType valuesLowerBound = - 1 * valuesUpperBound;
+            // for the vector equality check
+            auto precision = storm::utility::convertNumber<ValueType>(env.solver().minMax().getPrecision());
+            bool relative = env.solver().minMax().getRelativeTerminationCriterion();
+
+            uint_fast64_t external_counter = 0;
+            uint_fast64_t internal_counter = 0;
+            uint_fast64_t max_iter = maximizerStateSpace.size() + minimizerStateSpace.size() *
+                    (2 * (maximizerStateSpace.size() + minimizerStateSpace.size() - 1) * storm::utility::convertNumber<uint_fast64_t>(W) + 1);
+
+            do {
+                ++external_counter;
+                // incorporate weights of the previous copy of the game into the current copy of the game
+                Y_pre = Y;
+                Y = std::shared_ptr<Values>(new Values());
+
+                Y->max = std::vector<ValueType>(maximizerStateSpace.size());
+                for (uint_fast64_t s: maximizerStateSpace) {
+                    Y->max[s] = storm::utility::max<ValueType>(storm::utility::zero<ValueType>(), Y_pre->max[s]);
+                }
+
+                Y->min = std::vector<ValueType>(minimizerStateSpace.size());
+                for (uint_fast64_t s: minimizerStateSpace) {
+                    Y->min[s] = storm::utility::max<ValueType>(storm::utility::zero<ValueType>(), Y_pre->min[s]);
+                }
+
+                X = std::shared_ptr<Values>(new Values());
+                X->max = std::vector<ValueType>(maximizerStateSpace.size(), storm::utility::infinity<ValueType>());
+                X->min = std::vector<ValueType>(minimizerStateSpace.size(), storm::utility::infinity<ValueType>());
+
+                // min-cost reachability
+                do {
+                    ++ internal_counter;
+                    X_pre = X;
+                    X = std::shared_ptr<Values>(new Values());
+
+                    // maximizer phase
+                    X->max = std::vector<ValueType>(maximizerStateSpace.size());
+                    for (uint_fast64_t s: maximizerStateSpace) {
+                        X->max[s] = -1 * storm::utility::infinity<ValueType>();
+                        for (uint_fast64_t s_prime: *maximizerSuccessors(s)) {
+                            ValueType x = wMaxToMin(s, s_prime) + storm::utility::min(X_pre->min[s_prime], Y->min[s_prime]);
+                            if (x > X->max[s]) {
+                                X->max[s] = x;
+                            }
+                        }
+                    }
+                    // minimizer phase
+                    X->min = std::vector<ValueType>(minimizerStateSpace.size());
+                    for (uint_fast64_t s: minimizerStateSpace) {
+                        X->min[s] = storm::utility::infinity<ValueType>();
+                        for (uint_fast64_t s_prime: *minimizerSuccessors(s)) {
+                            ValueType x = wMinToMax(s, s_prime) + storm::utility::min(X_pre->max[s_prime], Y->max[s_prime]);
+                            if (x < X->min[s]) {
+                                X->min[s] = x;
+                            }
+                        }
+                    }
+                    // lower bound checking phase
+                    for (uint_fast64_t s: maximizerStateSpace) {
+                        if (X->max[s] < valuesLowerBound) {
+                            X->max[s] = -1 * storm::utility::infinity<ValueType>();
+                        }
+                    }
+                    for (uint_fast64_t s: minimizerStateSpace) {
+                        if (X->min[s] < valuesLowerBound) {
+                            X->min[s] = -1 * storm::utility::infinity<ValueType>();
+                        }
+                    }
+                } while (not valuesEqual(*X, *X_pre, precision, relative));
+
+                Y = X;
+                // upper bound checking phase
+                for (uint_fast64_t s: maximizerStateSpace) {
+                    if (Y->max[s] > valuesUpperBound) {
+                        Y->max[s] = storm::utility::infinity<ValueType>();
+                    }
+                }
+                for (uint_fast64_t s: minimizerStateSpace) {
+                    if (Y->min[s] > valuesUpperBound) {
+                        Y->min[s] = storm::utility::infinity<ValueType>();
+                    }
+                }
+            } while (not valuesEqual(*Y, *Y_pre, precision, relative) or external_counter >= max_iter);
+            return *Y;
         }
 
 
@@ -102,8 +231,8 @@ namespace sw {
         template<typename ValueType>
         TotalPayoffGame<ValueType>::iterator::iterator(uint_fast64_t rowBegin, uint_fast64_t rowEnd,
                 storm::storage::BitVector const& enabledActions)
-        : rowEnd(rowEnd), iterate_on_columns(false), enabledActions(enabledActions) {
-            this->currentRow = this->enabledActions.getNextSetIndex(rowBegin);
+                : rowEnd(rowEnd), iterate_on_columns(false), enabledActions(enabledActions) {
+                    this->currentRow = this->enabledActions.getNextSetIndex(rowBegin);
         }
 
         template<typename ValueType>
@@ -122,13 +251,13 @@ namespace sw {
 
         template<typename ValueType>
         typename TotalPayoffGame<ValueType>::iterator& TotalPayoffGame<ValueType>::iterator::operator++() {
-            if (this->matrixEntryIterator == ptr_end) {
-                iterate_on_columns = false;
+            if (this->matrixEntryIterator == this->ptr_end) {
+                this->iterate_on_columns = false;
             }
             if (this->currentRow < this->rowEnd) {
                 this->currentRow = this->enabledActions.getNextSetIndex(currentRow + 1);
             }
-            else if (iterate_on_columns) {
+            else if (this->iterate_on_columns) {
                 this->currentColumn = this->matrixEntryIterator->getColumn();
                 this->matrixEntryIterator++;
             }
@@ -144,13 +273,13 @@ namespace sw {
 
         template <typename ValueType>
         bool TotalPayoffGame<ValueType>::iterator::operator!=(const TotalPayoffGame<ValueType>::iterator &otherIterator) {
-            bool stop = this->currentRow == this->rowEnd and otherIterator.currentRow == otherIterator.rowEnd
+            bool stopped = this->currentRow >= this->rowEnd and otherIterator.currentRow >= otherIterator.rowEnd
                          and (not this->iterate_on_columns) and (not otherIterator.iterate_on_columns);
             bool sameCurrentRow = not this->iterate_on_columns and not otherIterator.iterate_on_columns
-                            and this->currentRow == otherIterator.currentRow;
+                            and this->currentRow == otherIterator.currentRow and this->rowEnd == otherIterator.rowEnd;
             bool sameCurrentColumn = this->iterate_on_columns and otherIterator.iterate_on_columns
-                            and this->currentColumn == otherIterator.currentColumn;
-            bool isEqual = stop or sameCurrentRow or sameCurrentColumn;
+                            and this->currentColumn == otherIterator.currentColumn and this->ptr_end == otherIterator.ptr_end;
+            bool isEqual = stopped or sameCurrentRow or sameCurrentColumn;
             return not isEqual;
         }
 

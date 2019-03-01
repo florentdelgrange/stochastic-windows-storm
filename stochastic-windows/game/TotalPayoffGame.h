@@ -11,6 +11,9 @@
 #include <storm/storage/BitVector.h>
 #include <stochastic-windows/game/WindowGame.h>
 #include <functional>
+#include <storm/utility/vector.h>
+#include <storm/environment/Environment.h>
+#include "storm/environment/solver/MinMaxSolverEnvironment.h"
 
 namespace sw {
     namespace game {
@@ -94,10 +97,31 @@ namespace sw {
              */
             storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel;
 
-            std::vector<ValueType> maxTotalPayoffInf(std::function<std::unique_ptr<successors>(uint_fast64_t)> maximizerSuccessors,
-                                                     std::function<std::unique_ptr<successors>(uint_fast64_t)> minimizerSuccessors,
-                                                     std::function<ValueType(uint_fast64_t, uint_fast64_t)> wMaxToMin,
-                                                     std::function<ValueType(uint_fast64_t, uint_fast64_t)> wMinToMax) const;
+            struct Values {
+                std::vector<ValueType> max;
+                std::vector<ValueType> min;
+            };
+
+            /*!
+             * Checks if values of vectors from x are equal to values of vectors from y
+             */
+            bool valuesEqual(Values const& x, Values const& y, ValueType precision, bool relativeError) const;
+
+            /*!
+             * Compute the max total payoff inf values for all maximizer and minimizer states.
+             * The algorithm is an implementation of the one from
+             * Pseudopolynomial iterative algorithm to solve total-payoff games and min-cost reachability games
+             * Brihaye, T., Geeraerts, G., Haddad, A. et al. Acta Informatica (2017) 54: 85. https://doi.org/10.1007/s00236-016-0276-z
+             */
+            Values maxTotalPayoffInf(
+                    storm::Environment const& env,
+                    storm::storage::BitVector const& maximizerStateSpace,
+                    storm::storage::BitVector const& minimizerStateSpace,
+                    std::function<std::unique_ptr<successors>(uint_fast64_t)> const& maximizerSuccessors,
+                    std::function<std::unique_ptr<successors>(uint_fast64_t)> const& minimizerSuccessors,
+                    std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMaxToMin,
+                    std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMinToMax,
+                    ValueType W) const;
 
         };
 
