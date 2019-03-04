@@ -3,6 +3,7 @@
 //
 
 #include "TotalPayoffGame.h"
+#include <time.h>
 
 namespace sw {
     namespace game {
@@ -62,18 +63,100 @@ namespace sw {
             return result;
         }
 
+        template<typename ValueType>
+        bool TotalPayoffGame<ValueType>::equalModuloPrecision(const ValueType &val1, const ValueType &val2,
+                                                              const ValueType &precision, bool relativeError) const {
+
+            // infinity handling
+            if (val1 == storm::utility::infinity<ValueType>() or val2 == storm::utility::infinity<ValueType>()) {
+                return val1 == val2;
+            }
+
+            if (val1 == -1 * storm::utility::infinity<ValueType>() or val2 == -1 * storm::utility::infinity<ValueType>()) {
+                return val1 == val2;
+            }
+
+            if (relativeError) {
+                if (storm::utility::isZero<ValueType>(val1)) {
+                    return storm::utility::isZero(val2);
+                }
+                ValueType relDiff = (val1 - val2)/val1;
+                if (storm::utility::abs(relDiff) > precision) {
+                    return false;
+                }
+            } else {
+                ValueType diff = val1 - val2;
+                if (storm::utility::abs(diff) > precision) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Specialization for double as the relative check for doubles very close to zero is not meaningful.
+        template<>
+        inline bool TotalPayoffGame<double>::equalModuloPrecision(double const& val1, double const& val2,
+                                                                  double const& precision, bool relativeError) const {
+
+            // infinity handling
+            if (val1 == storm::utility::infinity<double>() or val2 == storm::utility::infinity<double>()) {
+                return val1 == val2;
+            }
+
+            if (val1 == -1 * storm::utility::infinity<double>() or val2 == -1 * storm::utility::infinity<double>()) {
+                return val1 == val2;
+            }
+
+            if (relativeError) {
+                if (storm::utility::isAlmostZero(val2)) {
+                    return storm::utility::isAlmostZero(val1);
+                }
+                double relDiff = (val1 - val2)/val1;
+                if (storm::utility::abs(relDiff) > precision) {
+                    return false;
+                }
+            } else {
+                double diff = val1 - val2;
+                if (storm::utility::abs(diff) > precision) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        template<typename ValueType>
+        bool TotalPayoffGame<ValueType>::vectorEquality(const std::vector<ValueType> &vectorLeft,
+                                                        const std::vector<ValueType> &vectorRight,
+                                                        const ValueType &precision, bool relativeError) const {
+
+            STORM_LOG_ASSERT(vectorLeft.size() == vectorRight.size(), "Lengths of vectors does not match.");
+
+            auto leftIt = vectorLeft.begin();
+            auto leftIte = vectorLeft.end();
+            auto rightIt = vectorRight.begin();
+            for (; leftIt != leftIte; ++leftIt, ++rightIt) {
+                if (!this->equalModuloPrecision(*leftIt, *rightIt, precision, relativeError)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+
         template <typename ValueType>
         bool TotalPayoffGame<ValueType>::valuesEqual(
-                typename TotalPayoffGame<ValueType>::Values const& x,
-                typename TotalPayoffGame<ValueType>::Values const& y,
+                typename TotalPayoffGame<ValueType>::Values const& X,
+                typename TotalPayoffGame<ValueType>::Values const& Y,
                 ValueType precision,
                 bool relativeError) const {
 
             if (not relativeError) {
                 precision *= storm::utility::convertNumber<ValueType>(2.0);
             }
-            return storm::utility::vector::equalModuloPrecision<ValueType>(x.max, y.max, precision, relativeError) and
-                   storm::utility::vector::equalModuloPrecision<ValueType>(x.min, y.min, precision, relativeError);
+
+            return this->vectorEquality(X.max, Y.max, precision, relativeError) and
+                   this->vectorEquality(X.min, Y.min, precision, relativeError);
         }
 
         template <typename ValueType>
@@ -91,16 +174,16 @@ namespace sw {
             std::shared_ptr<Values> Y = std::shared_ptr<Values>(new Values()), Y_pre, X, X_pre;
             Y->max = std::vector<ValueType>(maximizerStateSpace.size(), -1 * storm::utility::infinity<ValueType>());
             Y->min = std::vector<ValueType>(minimizerStateSpace.size(), -1 * storm::utility::infinity<ValueType>());
-            ValueType valuesUpperBound = (maximizerStateSpace.size() + minimizerStateSpace.size() - 1) * W;
-            ValueType valuesLowerBound = - 1 * valuesUpperBound;
+            //ValueType upperBound = (maximizerStateSpace.size() + minimizerStateSpace.size() - 1) * W;
+            ValueType upperBound = storm::utility::convertNumber<ValueType>(this->restrictedStateSpace.getNumberOfSetBits() - 1) * W;
+            ValueType lowerBound = -1 * upperBound;
             // for the vector equality check
             auto precision = storm::utility::convertNumber<ValueType>(env.solver().minMax().getPrecision());
             bool relative = env.solver().minMax().getRelativeTerminationCriterion();
 
             uint_fast64_t external_counter = 0;
             uint_fast64_t internal_counter = 0;
-            uint_fast64_t max_iter = maximizerStateSpace.size() + minimizerStateSpace.size() *
-                    (2 * (maximizerStateSpace.size() + minimizerStateSpace.size() - 1) * storm::utility::convertNumber<uint_fast64_t>(W) + 1);
+            clock_t start = clock();
 
             do {
                 ++external_counter;
@@ -152,12 +235,12 @@ namespace sw {
                     }
                     // lower bound checking phase
                     for (uint_fast64_t s: maximizerStateSpace) {
-                        if (X->max[s] < valuesLowerBound) {
+                        if (X->max[s] < lowerBound) {
                             X->max[s] = -1 * storm::utility::infinity<ValueType>();
                         }
                     }
                     for (uint_fast64_t s: minimizerStateSpace) {
-                        if (X->min[s] < valuesLowerBound) {
+                        if (X->min[s] < lowerBound) {
                             X->min[s] = -1 * storm::utility::infinity<ValueType>();
                         }
                     }
@@ -166,22 +249,27 @@ namespace sw {
                 Y = X;
                 // upper bound checking phase
                 for (uint_fast64_t s: maximizerStateSpace) {
-                    if (Y->max[s] > valuesUpperBound) {
+                    if (Y->max[s] > upperBound) {
                         Y->max[s] = storm::utility::infinity<ValueType>();
                     }
                 }
                 for (uint_fast64_t s: minimizerStateSpace) {
-                    if (Y->min[s] > valuesUpperBound) {
+                    if (Y->min[s] > upperBound) {
                         Y->min[s] = storm::utility::infinity<ValueType>();
                     }
                 }
-            } while (not valuesEqual(*Y, *Y_pre, precision, relative) or external_counter >= max_iter);
+            } while (not valuesEqual(*Y, *Y_pre, precision, relative));
+            clock_t stop = clock();
+            double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
+            printf("\nTime elapsed: %.5f | internal iterations: %llu | external iterations: %llu \n", elapsed, internal_counter, external_counter);
             return *Y;
         }
 
 
-        /*!
+        /**
+         * -------------------------------------------------------------------------------------------------------------
          * Iterators implementation
+         * -------------------------------------------------------------------------------------------------------------
          */
 
         template <typename ValueType>

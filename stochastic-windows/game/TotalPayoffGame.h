@@ -103,9 +103,32 @@ namespace sw {
             };
 
             /*!
-             * Checks if values of vectors from x are equal to values of vectors from y
+             * Compares the given elements and determines whether they are equal modulo the given precision. The provided flag
+             * additionally specifies whether the error is computed in relative or absolute terms.
+             *
+             * @param val1 The first value to compare.
+             * @param val2 The second value to compare.
+             * @param precision The precision up to which the elements are compared.
+             * @param relativeError the error is computed relative to the second value.
+             * @return True iff the elements are considered equal.
+             * @note same than the version of storm::utility::vector but with infinite values handling
              */
-            bool valuesEqual(Values const& x, Values const& y, ValueType precision, bool relativeError) const;
+            bool equalModuloPrecision(ValueType const& val1, ValueType const& val2,
+                                      ValueType const& precision, bool relativeError) const;
+
+            /*!
+             * Compares the two vectors and determines whether they are equal modulo the provided precision. Depending on whether the
+             * flag is set, the difference between the vectors is computed relative to the value or in absolute terms.
+             * @note same than storm::utility::vector::equalModuloPrecision but with infinite values handling
+             */
+            bool vectorEquality(std::vector<ValueType> const& vectorLeft,
+                                std::vector<ValueType> const& vectorRight,
+                                ValueType const& precision, bool relativeError) const;
+
+            /*!
+             * Checks if values of vectors from X are equal to values of vectors from Y
+             */
+            bool valuesEqual(Values const& X, Values const& Y, ValueType precision, bool relativeError) const;
 
             /*!
              * Compute the max total payoff inf values for all maximizer and minimizer states.
