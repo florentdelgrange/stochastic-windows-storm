@@ -19,6 +19,11 @@ namespace sw {
             std::vector<uint_fast64_t> numberOfEnabledActions;
         };
 
+        struct GameStates {
+            storm::storage::BitVector p1States;
+            storm::storage::BitVector p2States;
+        };
+
         template<typename ValueType>
         class MdpGame {
         public:
@@ -38,6 +43,18 @@ namespace sw {
                     storm::storage::BitVector const &enabledActions);
 
             virtual ~MdpGame() = 0;
+
+            /*!
+             * compute the P1 attractors of the target set in this MDP game
+             * @param targetSet set of states of the MDP
+             * @param backwardTransitions backward transitions of the MDP game
+             * @return the P1 attractors of the target set in this MDP game
+             */
+            storm::storage::BitVector attractorsP1(storm::storage::BitVector const& targetSet,
+                                                   BackwardTransitions const& backwardTransitions) const;
+
+            GameStates attractorsP2(storm::storage::BitVector const& targetSet,
+                                    BackwardTransitions const& backwardTransitions) const;
 
         protected:
             /**
