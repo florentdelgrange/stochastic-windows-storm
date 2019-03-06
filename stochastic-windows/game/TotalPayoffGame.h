@@ -21,7 +21,17 @@ namespace sw {
         template <typename ValueType>
         class TotalPayoffGame: public MdpGame<ValueType> {
         public:
-
+            /*!
+             * The implementations of algorithms of this class for the particular case of MDPs as games are the ones from
+             * Pseudopolynomial iterative algorithm to solve total-payoff games and min-cost reachability games
+             * Brihaye, T., Geeraerts, G., Haddad, A. et al. Acta Informatica (2017) 54: 85.
+             * https://doi.org/10.1007/s00236-016-0276-z
+             * arXiv:1407.5030v4
+             * @param mdp
+             * @param rewardModelName
+             * @param restrictedStateSpace
+             * @param enabledActions
+             */
             TotalPayoffGame(storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
                     std::string const &rewardModelName,
                     storm::storage::BitVector const &restrictedStateSpace,
@@ -86,6 +96,17 @@ namespace sw {
 
             std::vector<ValueType> maxTotalPayoffInf() const;
             std::vector<ValueType> minTotalPayoffSup() const;
+            /**
+             * Computes the set of states from which P2 can enforce a strictly negative supremum total-payoff
+             */
+            GameStates negSupTP() const;
+
+            /*!
+             * initialize the input BackwardTransitions structure for this MDP game
+             * @param backwardTransitions an empty BackwardTransitions structure to initialize
+             * @note in total-payoff games, actions may lead to states not belonging to the restricted state space
+             */
+            void initBackwardTransitions(BackwardTransitions &backwardTransitions) const override;
 
         private:
             /**
@@ -132,9 +153,6 @@ namespace sw {
 
             /*!
              * Compute the max total payoff inf values for all maximizer and minimizer states.
-             * The algorithm is an implementation of the one from
-             * Pseudopolynomial iterative algorithm to solve total-payoff games and min-cost reachability games
-             * Brihaye, T., Geeraerts, G., Haddad, A. et al. Acta Informatica (2017) 54: 85. https://doi.org/10.1007/s00236-016-0276-z
              */
             Values maxTotalPayoffInf(
                     storm::Environment const& env,

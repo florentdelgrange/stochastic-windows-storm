@@ -63,7 +63,43 @@ namespace sw {
             return result;
         }
 
-        template<typename ValueType>
+        template <typename ValueType>
+        GameStates TotalPayoffGame<ValueType>::negSupTP() const {
+            std::vector<ValueType> const& weights = rewardModel.getStateActionRewardVector();
+            std::vector<ValueType> oppositeWeights(weights.size());
+            std::transform(weights.begin(), weights.end(), oppositeWeights.begin(),
+                           [](ValueType w) -> ValueType { return w * -1; });
+            std::vector<ValueType> absoluteWeights(weights.size());
+            std::transform(weights.begin(), weights.end(), absoluteWeights.begin(),
+                           [](ValueType w) -> ValueType { return storm::utility::abs(w); });
+            Values result = maxTotalPayoffInf(
+                    storm::Environment(),
+                    this->enabledActions,
+                    this->restrictedStateSpace,
+                    [&](uint_fast64_t state) -> std::unique_ptr<successors> {
+                        return std::unique_ptr<successors>( new successorsP2(state, this->matrix, this->enabledActions) ); },
+                    [&](uint_fast64_t state) -> std::unique_ptr<successors> {
+                        return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->enabledActions) ); },
+                    [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
+                    [&](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return oppositeWeights[s_prime]; },
+                    storm::utility::maximum(absoluteWeights));
+            GameStates badStates;
+            badStates.p1States = storm::storage::BitVector(this->restrictedStateSpace.size(), false);
+            badStates.p2States = storm::storage::BitVector(this->enabledActions.size(), false);
+            for (uint_fast64_t s: this->restrictedStateSpace) {
+                if (result.min[s] > 0) {
+                    badStates.p1States.set(s, true);
+                }
+            }
+            for (uint_fast64_t s: this->enabledActions)  {
+                if (result.max[s] > 0) {
+                    badStates.p2States.set(s, true);
+                }
+            }
+            return badStates;
+        }
+
+        template <typename ValueType>
         bool TotalPayoffGame<ValueType>::equalModuloPrecision(const ValueType &val1, const ValueType &val2,
                                                               const ValueType &precision, bool relativeError) const {
 
@@ -181,12 +217,12 @@ namespace sw {
             auto precision = storm::utility::convertNumber<ValueType>(env.solver().minMax().getPrecision());
             bool relative = env.solver().minMax().getRelativeTerminationCriterion();
 
-            uint_fast64_t external_counter = 0;
-            uint_fast64_t internal_counter = 0;
-            clock_t start = clock();
+            // uint_fast64_t external_counter = 0;
+            // uint_fast64_t internal_counter = 0;
+            // clock_t start = clock();
 
             do {
-                ++external_counter;
+                // ++external_counter;
                 // incorporate weights of the previous copy of the game into the current copy of the game
                 Y_pre = Y;
                 Y = std::shared_ptr<Values>(new Values());
@@ -207,7 +243,7 @@ namespace sw {
 
                 // min-cost reachability
                 do {
-                    ++ internal_counter;
+                    // ++ internal_counter;
                     X_pre = X;
                     X = std::shared_ptr<Values>(new Values());
 
@@ -259,10 +295,32 @@ namespace sw {
                     }
                 }
             } while (not valuesEqual(*Y, *Y_pre, precision, relative));
-            clock_t stop = clock();
-            double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
-            printf("\nTime elapsed: %.5f | internal iterations: %llu | external iterations: %llu \n", elapsed, internal_counter, external_counter);
+            // clock_t stop = clock();
+            // double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
+            // printf("\nTime elapsed: %.5f | internal iterations: %llu | external iterations: %llu \n", elapsed, internal_counter, external_counter);
             return *Y;
+        }
+
+        template<typename ValueType>
+        void TotalPayoffGame<ValueType>::initBackwardTransitions(BackwardTransitions &backwardTransitions) const {
+            backwardTransitions.statePredecessors = std::vector<std::forward_list<uint_fast64_t>>(this->matrix.getRowGroupCount());
+            backwardTransitions.actionPredecessor = std::vector<uint_fast64_t>(this->matrix.getRowCount());
+            backwardTransitions.numberOfEnabledActions = std::vector<uint_fast64_t>(this->matrix.getRowGroupCount(), 0);
+            for (uint_fast64_t const& state: this->restrictedStateSpace) {
+                for (uint_fast64_t action = this->enabledActions.getNextSetIndex(this->matrix.getRowGroupIndices()[state]);
+                     action < this->matrix.getRowGroupIndices()[state + 1];
+                     action = this->enabledActions.getNextSetIndex(action + 1)) {
+                    backwardTransitions.actionPredecessor[action] = state;
+                    backwardTransitions.numberOfEnabledActions[state] += 1;
+                    for (const auto &entry: this->matrix.getRow(action)) {
+                        const uint_fast64_t& successorState = entry.getColumn();
+                        // in total-payoff games, actions may lead to states not belonging to the restricted state space
+                        if (this->restrictedStateSpace[successorState]) {
+                            backwardTransitions.statePredecessors[successorState].push_front(action);
+                        }
+                    }
+                }
+            }
         }
 
 
@@ -364,9 +422,10 @@ namespace sw {
             bool stopped = this->currentRow >= this->rowEnd and otherIterator.currentRow >= otherIterator.rowEnd
                          and (not this->iterate_on_columns) and (not otherIterator.iterate_on_columns);
             bool sameCurrentRow = not this->iterate_on_columns and not otherIterator.iterate_on_columns
-                            and this->currentRow == otherIterator.currentRow and this->rowEnd == otherIterator.rowEnd;
+                            and this->currentRow == otherIterator.currentRow
+                            and not (otherIterator.currentRow == 0 and otherIterator.rowEnd == 0); // empty iterator case
             bool sameCurrentColumn = this->iterate_on_columns and otherIterator.iterate_on_columns
-                            and this->currentColumn == otherIterator.currentColumn and this->ptr_end == otherIterator.ptr_end;
+                            and this->currentColumn == otherIterator.currentColumn;
             bool isEqual = stopped or sameCurrentRow or sameCurrentColumn;
             return not isEqual;
         }

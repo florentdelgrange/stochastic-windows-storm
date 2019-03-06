@@ -70,6 +70,9 @@ namespace sw {
              */
             std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates) const;
 
+            storm::storage::BitVector boundedProblem() const;
+            virtual GameStates unbOpenWindow() const;
+
         protected:
 
             /**
@@ -88,13 +91,11 @@ namespace sw {
             virtual std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates,
                     BackwardTransitions& backwardTransitions) const = 0;
 
-            /*!
-             * initialize the input BackwardTransitions structure for this window game
-             * @param backwardTransitions an empty BackwardTransitions structure to initialize
-             */
-            void initBackwardTransitions(BackwardTransitions& backwardTransitions) const;
-
             storm::storage::BitVector directFW(BackwardTransitions &backwardTransitions) const;
+
+            virtual std::unique_ptr<WindowGame<ValueType>> unsafeRestrict(
+                    storm::storage::BitVector const &restrictedStateSpace) const;
+
 
         };
 
@@ -104,7 +105,10 @@ namespace sw {
 
             /**
              * Consider the MDP as a game for window mean-payoff objectives.
-             *
+             * Linked window algorithms' implementations for the particular case of MDPs as games of the ones from
+             * Chatterjee K., Doyen L., Randour M., Raskin JF. (2013) Looking at Mean-Payoff and Total-Payoff through Windows.
+             * In: Van Hung D., Ogawa M. (eds) Automated Technology for Verification and Analysis. Lecture Notes in Computer Science, vol 8172. Springer, Cham
+             * arXiv:1302.4248v3
              * @param mdp the model to consider as a game
              * @param rewardModelName the name of the reward model to consider
              * @param l_max the maximum window size
@@ -122,12 +126,15 @@ namespace sw {
 
 
             storm::storage::BitVector goodWin() const override;
+            GameStates unbOpenWindow() const override;
 
         protected:
 
             std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const &safeStates,
                     BackwardTransitions& backwardTransitions) const override;
 
+            std::unique_ptr<WindowGame<ValueType>> unsafeRestrict(
+                    storm::storage::BitVector const &restrictedStateSpace) const override ;
         };
 
     }

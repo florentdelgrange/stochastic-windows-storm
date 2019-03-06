@@ -14,8 +14,8 @@ namespace sw {
     namespace game {
 
         struct BackwardTransitions {
-            std::vector<std::forward_list<uint_fast64_t>> statesPredecessors;
-            std::vector<uint_fast64_t> actionsPredecessor;
+            std::vector<std::forward_list<uint_fast64_t>> statePredecessors;
+            std::vector<uint_fast64_t> actionPredecessor;
             std::vector<uint_fast64_t> numberOfEnabledActions;
         };
 
@@ -36,7 +36,8 @@ namespace sw {
              *        Player 1 in the MDP-game.
              * @param enabledActions the set of actions to consider in the MDP-game forming the state space of the
              *        Player 2 in the MDP-game.
-             * @note strong assumption: choosing an enabled action must always lead to a state of the restricted state space.
+             * @note strong assumptions: 1) choosing an enabled action must always lead to a state of the restricted state space.
+             *                           2) an enabled action must belong to a state of the restricted state space
              */
             MdpGame(storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
                     storm::storage::BitVector const &restrictedStateSpace,
@@ -45,15 +46,17 @@ namespace sw {
             virtual ~MdpGame() = 0;
 
             /*!
-             * compute the P1 attractors of the target set in this MDP game
-             * @param targetSet set of states of the MDP
-             * @param backwardTransitions backward transitions of the MDP game
+             * Computes the P1 attractors of the target set in this MDP game
+             * @param targetSet set of states of the MDP (this set of target states must be contained in the restricted
+             *        state space)
+             * @param backwardTransitions backward transitions of this MDP game
              * @return the P1 attractors of the target set in this MDP game
+             * @note P1 attractors are here states of the restricted state space of the MDP
              */
             storm::storage::BitVector attractorsP1(storm::storage::BitVector const& targetSet,
                                                    BackwardTransitions const& backwardTransitions) const;
 
-            GameStates attractorsP2(storm::storage::BitVector const& targetSet,
+            GameStates attractorsP2(GameStates const& targetSet,
                                     BackwardTransitions const& backwardTransitions) const;
 
         protected:
@@ -73,6 +76,12 @@ namespace sw {
              * set of actions to consider in the MDP-game
              */
             storm::storage::BitVector const enabledActions;
+
+            /*!
+             * initialize the input BackwardTransitions structure for this MDP game
+             * @param backwardTransitions an empty BackwardTransitions structure to initialize
+             */
+            virtual void initBackwardTransitions(BackwardTransitions& backwardTransitions) const;
         };
 
     }
