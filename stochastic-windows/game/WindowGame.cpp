@@ -151,6 +151,7 @@ namespace sw {
 
         template<typename ValueType>
         GameStates WindowMeanPayoffGame<ValueType>::unbOpenWindow() const {
+
             std::shared_ptr<GameStates> L = std::shared_ptr<GameStates>(new GameStates()), L_pre;
             L->p1States = storm::storage::BitVector(this->restrictedStateSpace.size(), false);
             L->p2States = storm::storage::BitVector(this->enabledActions.size(), false);
@@ -162,11 +163,10 @@ namespace sw {
                 TotalPayoffGame<ValueType> totalPayoffGame(this->mdp,
                             this->rewardModelName,
                             remainingStateSpace,
-                            remainingEnabledActions);
-                BackwardTransitions backwardTransitions;
-                totalPayoffGame.initBackwardTransitions(backwardTransitions);
+                            remainingEnabledActions,
+                            true);
                 GameStates negSupTp = totalPayoffGame.negSupTP();
-                GameStates attractorsNegSupTp = totalPayoffGame.attractorsP2(negSupTp, backwardTransitions);
+                GameStates attractorsNegSupTp = totalPayoffGame.attractorsP2(negSupTp, totalPayoffGame.getBackwardTransition());
                 L->p1States = L_pre->p1States | attractorsNegSupTp.p1States;
                 L->p2States = L_pre->p2States | attractorsNegSupTp.p2States;
             } while (L->p1States != L_pre->p1States or L->p2States != L_pre->p2States);
@@ -221,14 +221,15 @@ namespace sw {
         }
 
         template <typename ValueType>
-        std::unique_ptr<WindowGame<ValueType>> WindowMeanPayoffGame<ValueType>::unsafeRestrict(
-                storm::storage::BitVector const &restrictedStateSpace) const {
+        std::unique_ptr<WindowGame<ValueType>>
+        WindowMeanPayoffGame<ValueType>::unsafeRestrict(storm::storage::BitVector const &restrictedStateSpace) const {
+
             return std::unique_ptr<WindowGame<ValueType>>(
                     new WindowMeanPayoffGame<ValueType>(this->mdp,
-                            this->rewardModelName,
-                            this->l_max,
-                            restrictedStateSpace,
-                            this->enabledActions));
+                                                        this->rewardModelName,
+                                                        this->l_max,
+                                                        restrictedStateSpace,
+                                                        this->enabledActions));
         }
 
         template class WindowGame<double>;

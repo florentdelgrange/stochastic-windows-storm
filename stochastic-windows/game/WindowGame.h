@@ -71,7 +71,7 @@ namespace sw {
             std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates) const;
 
             storm::storage::BitVector boundedProblem() const;
-            virtual GameStates unbOpenWindow() const;
+            virtual GameStates unbOpenWindow() const = 0;
 
         protected:
 
@@ -94,7 +94,7 @@ namespace sw {
             storm::storage::BitVector directFW(BackwardTransitions &backwardTransitions) const;
 
             virtual std::unique_ptr<WindowGame<ValueType>> unsafeRestrict(
-                    storm::storage::BitVector const &restrictedStateSpace) const;
+                    storm::storage::BitVector const &restrictedStateSpace) const = 0;
 
 
         };
