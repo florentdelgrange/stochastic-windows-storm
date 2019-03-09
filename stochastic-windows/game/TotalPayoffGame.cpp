@@ -13,25 +13,21 @@ namespace sw {
                 const storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
                 const std::string &rewardModelName,
                 const storm::storage::BitVector &restrictedStateSpace,
-                const storm::storage::BitVector &enabledActions,
-                bool initTransitionStructure)
+                const storm::storage::BitVector &enabledActions)
                 : MdpGame<ValueType>(mdp, restrictedStateSpace, enabledActions),
                   rewardModelName(rewardModelName),
                   rewardModel(mdp.getRewardModel(rewardModelName)) {
 
-            if (initTransitionStructure) {
-                this->initBackwardTransitions(this->backwardTransitions);
-                this->forwardTransitions.successors = std::vector<std::forward_list<uint_fast64_t>>(this->matrix.getRowCount());
-                for (uint_fast64_t const& state: this->restrictedStateSpace) {
-                    for (uint_fast64_t action = this->enabledActions.getNextSetIndex(this->matrix.getRowGroupIndices()[state]);
-                         action < this->matrix.getRowGroupIndices()[state + 1];
-                         action = this->enabledActions.getNextSetIndex(action + 1)) {
-                        for (const auto &entry: this->matrix.getRow(action)) {
-                            const uint_fast64_t& successorState = entry.getColumn();
-                            // in total-payoff games, actions may lead to states not belonging to the restricted state space
-                            if (this->restrictedStateSpace[successorState]) {
-                                this->forwardTransitions.successors[action].push_front(successorState);
-                            }
+            this->forwardTransitions.successors = std::vector<std::forward_list<uint_fast64_t>>(this->matrix.getRowCount());
+            for (uint_fast64_t const& state: this->restrictedStateSpace) {
+                for (uint_fast64_t action = this->enabledActions.getNextSetIndex(this->matrix.getRowGroupIndices()[state]);
+                     action < this->matrix.getRowGroupIndices()[state + 1];
+                     action = this->enabledActions.getNextSetIndex(action + 1)) {
+                    for (const auto &entry: this->matrix.getRow(action)) {
+                        const uint_fast64_t& successorState = entry.getColumn();
+                        // in total-payoff games, actions may lead to states not belonging to the restricted state space
+                        if (this->restrictedStateSpace[successorState]) {
+                            this->forwardTransitions.successors[action].push_front(successorState);
                         }
                     }
                 }
@@ -44,41 +40,39 @@ namespace sw {
             std::vector<ValueType> absoluteWeights(weights.size());
             std::transform(weights.begin(), weights.end(), absoluteWeights.begin(),
                            [](ValueType w) -> ValueType { return storm::utility::abs(w); });
-
-            std::function<std::unique_ptr<successors>(uint_fast64_t)> p2TransitionFunction;
-            if (this->forwardTransitions.successors.empty()) {
-                p2TransitionFunction = [&](uint_fast64_t state) -> std::unique_ptr<successors> {
-                    return std::unique_ptr<successors>( new successorsP2(state, this->matrix, this->restrictedStateSpace, this->enabledActions)); };
-            }
-            else {
-                p2TransitionFunction = [&](uint_fast64_t state) -> std::unique_ptr<successors> {
-                    return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state])); };
-            }
-            std::function<std::unique_ptr<successors>(uint_fast64_t)> p1TransitionFunction =
-                    [&](uint_fast64_t state) -> std::unique_ptr<successors> {
-                        return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); };
+            {
+                std::function<std::unique_ptr<successors>(uint_fast64_t)> p2TransitionFunction =
+                        [&](uint_fast64_t state) -> std::unique_ptr<successors> {
+                        return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state])); };
+                std::function<std::unique_ptr<successors>(uint_fast64_t)> p1TransitionFunction =
+                        [&](uint_fast64_t state) -> std::unique_ptr<successors> {
+                            return std::unique_ptr<successors>(
+                                    new successorsP1(state, this->matrix, this->restrictedStateSpace,
+                                                     this->enabledActions));
+                        };
 
 
-            for (uint_fast64_t s: this->restrictedStateSpace) {
-                successors &succ = *p1TransitionFunction(s);
-                auto it = succ.begin();
-                auto end = succ.end();
-                std::cout << "succ of state " << s << "=[";
-                for (uint_fast64_t a: *p1TransitionFunction(s)) {
-                    std::cout << a << ", ";
+                for (uint_fast64_t s: this->restrictedStateSpace) {
+                    successors &succ = *p1TransitionFunction(s);
+                    auto it = succ.begin();
+                    auto end = succ.end();
+                    std::cout << "succ of state " << s << "=[";
+                    for (uint_fast64_t a: *p1TransitionFunction(s)) {
+                        std::cout << a << ", ";
+                    }
+                    std::cout << "]" << std::endl;
                 }
-                std::cout << "]"<<std::endl;
-            }
 
-            for (uint_fast64_t a: this->enabledActions) {
-                successors &succ = *p2TransitionFunction(a);
-                auto it = succ.begin();
-                auto end = succ.end();
-                std::cout << "succ of action " << a << "=[";
-                for (uint_fast64_t s: *p2TransitionFunction(a)) {
-                    std::cout << s << ", ";
+                for (uint_fast64_t a: this->enabledActions) {
+                    successors &succ = *p2TransitionFunction(a);
+                    auto it = succ.begin();
+                    auto end = succ.end();
+                    std::cout << "succ of action " << a << "=[";
+                    for (uint_fast64_t s: *p2TransitionFunction(a)) {
+                        std::cout << s << ", ";
+                    }
+                    std::cout << "]" << std::endl;
                 }
-                std::cout << "]"<<std::endl;
             }
 
             return maxTotalPayoffInf(
@@ -87,7 +81,8 @@ namespace sw {
                     this->enabledActions,
                     [&](uint_fast64_t state) -> std::unique_ptr<successors> {
                         return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); },
-                    p2TransitionFunction,
+                    [&](uint_fast64_t state) -> std::unique_ptr<successors> {
+                        return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state]) ); },
                     [&](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return weights[s_prime]; },
                     [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
                     storm::utility::maximum(absoluteWeights))
@@ -104,18 +99,10 @@ namespace sw {
             std::transform(weights.begin(), weights.end(), absoluteWeights.begin(),
                            [](ValueType w) -> ValueType { return storm::utility::abs(w); });
 
-            std::function<std::unique_ptr<successors>(uint_fast64_t)> p2TransitionFunction;
-            if (this->forwardTransitions.successors.empty()) {
-                p2TransitionFunction = [&](uint_fast64_t state) -> std::unique_ptr<successors> {
-                    return std::unique_ptr<successors>( new successorsP2(state, this->matrix, this->restrictedStateSpace, this->enabledActions)); };
-            }
-            else {
-                p2TransitionFunction = [&](uint_fast64_t state) -> std::unique_ptr<successors> {
-                    return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state])); };
-            }
-
             std::vector<ValueType> result = maxTotalPayoffInf(
-                    storm::Environment(), this->enabledActions, this->restrictedStateSpace, p2TransitionFunction,
+                    storm::Environment(), this->enabledActions, this->restrictedStateSpace,
+                    [&](uint_fast64_t state) -> std::unique_ptr<successors> {
+                        return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state]) ); },
                     [&](uint_fast64_t state) -> std::unique_ptr<successors> {
                         return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); },
                     [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
@@ -136,19 +123,11 @@ namespace sw {
             std::transform(weights.begin(), weights.end(), absoluteWeights.begin(),
                            [](ValueType w) -> ValueType { return storm::utility::abs(w); });
 
-            std::function<std::unique_ptr<successors>(uint_fast64_t)> p2TransitionFunction;
-            if (this->forwardTransitions.successors.empty()) {
-                p2TransitionFunction = [&](uint_fast64_t state) -> std::unique_ptr<successors> {
-                    return std::unique_ptr<successors>( new successorsP2(state, this->matrix, this->restrictedStateSpace, this->enabledActions)); };
-            }
-            else {
-                p2TransitionFunction = [&](uint_fast64_t state) -> std::unique_ptr<successors> {
-                    return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state])); };
-            }
-
             Values result = maxTotalPayoffInf(
                     storm::Environment(),
-                    this->enabledActions, this->restrictedStateSpace, p2TransitionFunction,
+                    this->enabledActions, this->restrictedStateSpace,
+                    [&](uint_fast64_t state) -> std::unique_ptr<successors> {
+                        return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state]) ); },
                     [&](uint_fast64_t state) -> std::unique_ptr<successors> {
                         return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); },
                     [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
@@ -394,12 +373,6 @@ namespace sw {
             }
         }
 
-        template<typename ValueType>
-        BackwardTransitions const &TotalPayoffGame<ValueType>::getBackwardTransition() {
-            return this->backwardTransitions;
-        }
-
-
         /**
          * -------------------------------------------------------------------------------------------------------------
          * Iterators implementation
@@ -457,13 +430,6 @@ namespace sw {
         }
 
         template<typename ValueType>
-        const typename TotalPayoffGame<ValueType>::iteratorP1 TotalPayoffGame<ValueType>::iteratorP1::operator++(int) {
-            iteratorP1 it = *this;
-            ++*this;
-            return it;
-        }
-
-        template<typename ValueType>
         bool TotalPayoffGame<ValueType>::iteratorP1::operator!=(const iterator &otherIterator) {
             /*
                 bool end = this->end() and otherIterator.end();
@@ -509,98 +475,7 @@ namespace sw {
 
         template <typename ValueType>
         typename TotalPayoffGame<ValueType>::successorsIterator TotalPayoffGame<ValueType>::successorsP1::end() {
-            return successorsIterator(std::unique_ptr<iterator>(new iteratorP1(0, 0, this->enabledActions)));;
-        }
-
-        template <typename ValueType>
-        TotalPayoffGame<ValueType>::iteratorP2::iteratorP2(
-                typename std::vector<storm::storage::MatrixEntry<uint_fast64_t, ValueType>>::const_iterator entriesIteratorBegin,
-                typename std::vector<storm::storage::MatrixEntry<uint_fast64_t, ValueType>>::const_iterator entriesIteratorEnd,
-                storm::storage::BitVector const& restrictedStateSpace)
-                : matrixEntryIterator(entriesIteratorBegin), ptr_end(entriesIteratorEnd),
-                  restrictedStateSpace(restrictedStateSpace),
-                  stop(false) {
-
-            // handle the case where first elements are not in the restricted state space
-            if (not this->restrictedStateSpace[this->matrixEntryIterator->getColumn()]) {
-                ++*this;
-            }
-
-        }
-
-        template<typename ValueType>
-        typename TotalPayoffGame<ValueType>::iterator &TotalPayoffGame<ValueType>::iteratorP2::operator++() {
-            if (not this->end()) {
-                ++this->matrixEntryIterator;
-                // continue while the current successor is not in the restricted state space
-                if (not this->restrictedStateSpace[this->matrixEntryIterator->getColumn()]) {
-                    ++*this;
-                }
-            }
-            else {
-                // the last elements of the matrix entry iterator are not in the restricted state space
-                this->stop = true;
-            }
-            return *this;
-        }
-
-        template<typename ValueType>
-        const typename TotalPayoffGame<ValueType>::iteratorP2 TotalPayoffGame<ValueType>::iteratorP2::operator++(int) {
-            iteratorP2 it = *this;
-            ++*this;
-            return it;
-        }
-
-        template<typename ValueType>
-        bool TotalPayoffGame<ValueType>::iteratorP2::operator!=(const iterator &otherIterator) {
-            return not (this->end() and otherIterator.end()) ;
-        }
-
-        template <typename ValueType>
-        uint_fast64_t TotalPayoffGame<ValueType>::iteratorP2::operator*() {
-            return this->matrixEntryIterator->getColumn();
-        }
-
-        template<typename ValueType>
-        uint_fast64_t TotalPayoffGame<ValueType>::iteratorP2::operator*() const {
-            return this->matrixEntryIterator->getColumn();
-        }
-
-        template<typename ValueType>
-        bool TotalPayoffGame<ValueType>::iteratorP2::end() const {
-            return this->stop or this->matrixEntryIterator == this->ptr_end;
-        }
-
-        template <typename ValueType>
-        TotalPayoffGame<ValueType>::successorsP2::successorsP2(
-                uint_fast64_t action,
-                storm::storage::SparseMatrix<ValueType> const& matrix,
-                storm::storage::BitVector const& restrictedStateSpace,
-                storm::storage::BitVector const& enabledActions)
-                : action(action), matrix(matrix), restrictedStateSpace(restrictedStateSpace), enabledActions(enabledActions){}
-
-        template <typename ValueType>
-        typename TotalPayoffGame<ValueType>::successorsIterator TotalPayoffGame<ValueType>::successorsP2::begin() {
-            return this->enabledActions[this->action] ?
-                   successorsIterator(
-                           std::unique_ptr<iterator>(
-                                   new iteratorP2(this->matrix.getRow(this->action).begin(), this->matrix.getRow(this->action).end(), this->restrictedStateSpace)
-                           )
-                   )
-                   : successorsIterator(
-                           std::unique_ptr<iterator>(
-                                   new iteratorP2(this->matrix.getRow(this->action).end(), this->matrix.getRow(this->action).end(), this->restrictedStateSpace)
-                           )
-                   );
-        }
-
-        template <typename ValueType>
-        typename TotalPayoffGame<ValueType>::successorsIterator TotalPayoffGame<ValueType>::successorsP2::end() {
-            return successorsIterator(
-                           std::unique_ptr<iterator>(
-                                   new iteratorP2(this->matrix.getRow(this->action).end(), this->matrix.getRow(this->action).end(), this->restrictedStateSpace)
-                           )
-                   );
+            return successorsIterator(std::unique_ptr<iterator>(new iteratorP1(0, 0, this->enabledActions)));
         }
 
         template <typename ValueType>
@@ -615,13 +490,6 @@ namespace sw {
                 ++this->successorsIterator;
             }
             return *this;
-        }
-
-        template<typename ValueType>
-        const typename TotalPayoffGame<ValueType>::forwardIteratorP2 TotalPayoffGame<ValueType>::forwardIteratorP2::operator++(int) {
-            forwardIteratorP2 it = *this;
-            ++*this;
-            return it;
         }
 
         template<typename ValueType>

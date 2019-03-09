@@ -32,11 +32,11 @@ namespace sw {
              * @param restrictedStateSpace
              * @param enabledActions
              */
-            TotalPayoffGame(storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
+            TotalPayoffGame(
+                    storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
                     std::string const &rewardModelName,
                     storm::storage::BitVector const &restrictedStateSpace,
-                    storm::storage::BitVector const &enabledActions,
-                    bool initTransitionStructure=false);
+                    storm::storage::BitVector const &enabledActions);
 
             std::vector<ValueType> maxTotalPayoffInf() const;
             std::vector<ValueType> minTotalPayoffSup() const;
@@ -52,7 +52,54 @@ namespace sw {
              */
             void initBackwardTransitions(BackwardTransitions &backwardTransitions) const override;
 
-            BackwardTransitions const& getBackwardTransition();
+        private:
+            /**
+             * Name of the reward model to consider
+             */
+            std::string const& rewardModelName;
+            /**
+             * Reward Model to consider
+             */
+            storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel;
+
+            struct Values {
+                std::vector<ValueType> max;
+                std::vector<ValueType> min;
+            };
+
+            struct ForwardTransitions {
+                std::vector<std::forward_list<uint_fast64_t>> successors;
+            };
+
+            ForwardTransitions forwardTransitions;
+
+            /*!
+             * Compares the given elements and determines whether they are equal modulo the given precision. The provided flag
+             * additionally specifies whether the error is computed in relative or absolute terms.
+             *
+             * @param val1 The first value to compare.
+             * @param val2 The second value to compare.
+             * @param precision The precision up to which the elements are compared.
+             * @param relativeError the error is computed relative to the second value.
+             * @return True iff the elements are considered equal.
+             * @note same than the version of storm::utility::vector but with infinite values handling
+             */
+            bool equalModuloPrecision(ValueType const& val1, ValueType const& val2,
+                                      ValueType const& precision, bool relativeError) const;
+
+            /*!
+             * Compares the two vectors and determines whether they are equal modulo the provided precision. Depending on whether the
+             * flag is set, the difference between the vectors is computed relative to the value or in absolute terms.
+             * @note same than storm::utility::vector::equalModuloPrecision but with infinite values handling
+             */
+            bool vectorEquality(std::vector<ValueType> const& vectorLeft,
+                                std::vector<ValueType> const& vectorRight,
+                                ValueType const& precision, bool relativeError) const;
+
+            /*!
+             * Checks if values of vectors from X are equal to values of vectors from Y
+             */
+            bool valuesEqual(Values const& X, Values const& Y, ValueType precision, bool relativeError) const;
 
             /*!
              * Iterators: allow to iterate on successors of states or actions, given the transition matrix, the
@@ -73,7 +120,6 @@ namespace sw {
             public:
                 iteratorP1(uint_fast64_t rowBegin, uint_fast64_t rowEnd, storm::storage::BitVector const& enabledActions);
                 iterator& operator++() override;
-                const iteratorP1 operator++(int);
                 bool operator!=(iterator const& otherIterator) override;
                 uint_fast64_t operator*() override;
                 uint_fast64_t operator*() const override;
@@ -118,45 +164,11 @@ namespace sw {
                 storm::storage::BitVector const& enabledActions;
             };
 
-            class iteratorP2: public iterator {
-            public:
-                iteratorP2(typename std::vector<storm::storage::MatrixEntry<uint_fast64_t, ValueType>>::const_iterator entriesIteratorBegin,
-                           typename std::vector<storm::storage::MatrixEntry<uint_fast64_t, ValueType>>::const_iterator entriesIteratorEnd,
-                           storm::storage::BitVector const& restrictedStateSpace);
-                iterator& operator++() override;
-                const iteratorP2 operator++(int);
-                bool operator!=(iterator const& otherIterator) override;
-                uint_fast64_t operator*() override;
-                uint_fast64_t operator*() const override;
-                bool end() const override;
-            private:
-                typename std::vector<storm::storage::MatrixEntry<uint_fast64_t, ValueType>>::const_iterator matrixEntryIterator;
-                typename std::vector<storm::storage::MatrixEntry<uint_fast64_t, ValueType>>::const_iterator ptr_end;
-                storm::storage::BitVector const& restrictedStateSpace;
-                bool stop;
-            };
-
-            class successorsP2: public successors {
-            public:
-                successorsP2(uint_fast64_t action,
-                             storm::storage::SparseMatrix<ValueType> const& matrix,
-                             storm::storage::BitVector const& restrictedStateSpace,
-                             storm::storage::BitVector const& enabledActions);
-                successorsIterator begin() override;
-                successorsIterator end() override;
-            private:
-                uint_fast64_t action;
-                storm::storage::SparseMatrix<ValueType> const& matrix;
-                storm::storage::BitVector const& restrictedStateSpace;
-                storm::storage::BitVector const& enabledActions;
-            };
-
             class forwardIteratorP2: public iterator {
             public:
                 forwardIteratorP2(typename std::forward_list<uint_fast64_t>::const_iterator successorsIteratorBegin,
                                   typename std::forward_list<uint_fast64_t>::const_iterator successorsIteratorEnd);
                 iterator& operator++() override;
-                const forwardIteratorP2 operator++(int);
                 bool operator!=(iterator const& otherIterator) override;
                 uint_fast64_t operator*() override;
                 uint_fast64_t operator*() const override;
@@ -174,57 +186,6 @@ namespace sw {
             private:
                 std::forward_list<uint_fast64_t> const& successorList;
             };
-
-        private:
-            /**
-             * Name of the reward model to consider
-             */
-            std::string const& rewardModelName;
-            /**
-             * Reward Model to consider
-             */
-            storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel;
-
-            struct Values {
-                std::vector<ValueType> max;
-                std::vector<ValueType> min;
-            };
-
-            struct ForwardTransitions {
-                std::vector<std::forward_list<uint_fast64_t>> successors;
-            };
-
-            BackwardTransitions backwardTransitions;
-            ForwardTransitions forwardTransitions;
-
-
-            /*!
-             * Compares the given elements and determines whether they are equal modulo the given precision. The provided flag
-             * additionally specifies whether the error is computed in relative or absolute terms.
-             *
-             * @param val1 The first value to compare.
-             * @param val2 The second value to compare.
-             * @param precision The precision up to which the elements are compared.
-             * @param relativeError the error is computed relative to the second value.
-             * @return True iff the elements are considered equal.
-             * @note same than the version of storm::utility::vector but with infinite values handling
-             */
-            bool equalModuloPrecision(ValueType const& val1, ValueType const& val2,
-                                      ValueType const& precision, bool relativeError) const;
-
-            /*!
-             * Compares the two vectors and determines whether they are equal modulo the provided precision. Depending on whether the
-             * flag is set, the difference between the vectors is computed relative to the value or in absolute terms.
-             * @note same than storm::utility::vector::equalModuloPrecision but with infinite values handling
-             */
-            bool vectorEquality(std::vector<ValueType> const& vectorLeft,
-                                std::vector<ValueType> const& vectorRight,
-                                ValueType const& precision, bool relativeError) const;
-
-            /*!
-             * Checks if values of vectors from X are equal to values of vectors from Y
-             */
-            bool valuesEqual(Values const& X, Values const& Y, ValueType precision, bool relativeError) const;
 
             /*!
              * Compute the max total payoff inf values for all maximizer and minimizer states.

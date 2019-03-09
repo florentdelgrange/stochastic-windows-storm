@@ -163,10 +163,13 @@ namespace sw {
                 TotalPayoffGame<ValueType> totalPayoffGame(this->mdp,
                             this->rewardModelName,
                             remainingStateSpace,
-                            remainingEnabledActions,
-                            true);
+                            remainingEnabledActions);
+
+                BackwardTransitions backwardTransitions;
+                totalPayoffGame.initBackwardTransitions(backwardTransitions);
+
                 GameStates negSupTp = totalPayoffGame.negSupTP();
-                GameStates attractorsNegSupTp = totalPayoffGame.attractorsP2(negSupTp, totalPayoffGame.getBackwardTransition());
+                GameStates attractorsNegSupTp = totalPayoffGame.attractorsP2(negSupTp, backwardTransitions);
                 L->p1States = L_pre->p1States | attractorsNegSupTp.p1States;
                 L->p2States = L_pre->p2States | attractorsNegSupTp.p2States;
             } while (L->p1States != L_pre->p1States or L->p2States != L_pre->p2States);
