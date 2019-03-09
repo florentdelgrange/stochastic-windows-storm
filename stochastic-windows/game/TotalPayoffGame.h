@@ -27,12 +27,16 @@ namespace sw {
              * Brihaye, T., Geeraerts, G., Haddad, A. et al. Acta Informatica (2017) 54: 85.
              * https://doi.org/10.1007/s00236-016-0276-z
              * arXiv:1407.5030v4
+             * @param mdp
+             * @param rewardModelName
+             * @param restrictedStateSpace
+             * @param enabledActions
              */
             TotalPayoffGame(storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
-                            std::string const &rewardModelName,
-                            storm::storage::BitVector const &restrictedStateSpace,
-                            storm::storage::BitVector const &enabledActions,
-                            bool initTransitionStructure=false);
+                    std::string const &rewardModelName,
+                    storm::storage::BitVector const &restrictedStateSpace,
+                    storm::storage::BitVector const &enabledActions,
+                    bool initTransitionStructure=false);
 
             std::vector<ValueType> maxTotalPayoffInf() const;
             std::vector<ValueType> minTotalPayoffSup() const;
@@ -57,73 +61,118 @@ namespace sw {
 
             class iterator {
             public:
-                iterator(uint_fast64_t rowBegin, uint_fast64_t rowEnd,
-                         storm::storage::BitVector const& restrictedStateSpace,
-                         storm::storage::BitVector const& enabledActions);
-                iterator(typename std::vector<storm::storage::MatrixEntry<uint_fast64_t, ValueType>>::const_iterator entriesIteratorBegin,
-                         typename std::vector<storm::storage::MatrixEntry<uint_fast64_t, ValueType>>::const_iterator entriesIteratorEnd,
-                         storm::storage::BitVector const& restrictedStateSpace,
-                         storm::storage::BitVector const& enabledActions);
-                iterator(typename std::forward_list<uint_fast64_t>::const_iterator successorsIteratorBegin,
-                         typename std::forward_list<uint_fast64_t>::const_iterator successorsIteratorEnd,
-                         storm::storage::BitVector const& restrictedStateSpace,
-                         storm::storage::BitVector const& enabledActions);
-                // prefix ++
-                iterator& operator++();
-                // postfix ++
-                const iterator operator++(int);
-                bool operator!=(iterator const& otherIterator);
-                uint_fast64_t operator*();
+                virtual ~iterator() = 0;
+                virtual iterator& operator++() = 0;
+                virtual bool operator!=(iterator const& otherIterator) = 0;
+                virtual uint_fast64_t operator*() = 0;
+                virtual uint_fast64_t operator*() const = 0;
+                virtual bool end() const = 0;
+            };
+
+            class iteratorP1: public iterator {
+            public:
+                iteratorP1(uint_fast64_t rowBegin, uint_fast64_t rowEnd, storm::storage::BitVector const& enabledActions);
+                iterator& operator++() override;
+                const iteratorP1 operator++(int);
+                bool operator!=(iterator const& otherIterator) override;
+                uint_fast64_t operator*() override;
+                uint_fast64_t operator*() const override;
+                bool end() const override;
             private:
                 uint_fast64_t currentRow;
                 uint_fast64_t rowEnd;
-                uint_fast64_t currentColumn;
-                typename std::vector<storm::storage::MatrixEntry<uint_fast64_t, ValueType>>::const_iterator matrixEntryIterator;
-                typename std::vector<storm::storage::MatrixEntry<uint_fast64_t, ValueType>>::const_iterator matrix_ptr_end;
-                typename std::forward_list<uint_fast64_t>::const_iterator successorsIterator;
-                typename std::forward_list<uint_fast64_t>::const_iterator successors_ptr_end;
-                bool iterate_on_columns;
-                bool forwardSuccessors;
-                storm::storage::BitVector const& restrictedStateSpace;
                 storm::storage::BitVector const& enabledActions;
             };
 
-            class successors {
-
+            class successorsIterator: public iterator {
             public:
-                successors(uint_fast64_t state,
-                           storm::storage::SparseMatrix<ValueType> const& matrix,
-                           storm::storage::BitVector const& restrictedStateSpace,
-                           storm::storage::BitVector const& enabledActions);
-                virtual ~successors() = 0;
-                virtual iterator begin() = 0;
-                virtual iterator end();
-
+                explicit successorsIterator(std::unique_ptr<iterator> concreteIterator);
+                iterator& operator++() override;
+                bool operator!=(iterator const& otherIterator) override;
+                uint_fast64_t operator*() override;
+                uint_fast64_t operator*() const override;
+                bool end() const override;
             protected:
+                std::unique_ptr<iterator> concreteIterator;
+            };
+
+            class successors {
+            public:
+                virtual ~successors() = 0;
+                virtual successorsIterator begin() = 0;
+                virtual successorsIterator end() = 0;
+            };
+
+            class successorsP1: public successors {
+            public:
+                successorsP1(uint_fast64_t state,
+                             storm::storage::SparseMatrix<ValueType> const& matrix,
+                             storm::storage::BitVector const& restrictedStateSpace,
+                             storm::storage::BitVector const& enabledActions);
+                successorsIterator begin() override;
+                successorsIterator end() override;
+            private:
                 uint_fast64_t state;
                 storm::storage::SparseMatrix<ValueType> const& matrix;
                 storm::storage::BitVector const& restrictedStateSpace;
                 storm::storage::BitVector const& enabledActions;
             };
 
-            class successorsP1: public successors {
-
+            class iteratorP2: public iterator {
             public:
-                successorsP1(uint_fast64_t state,
-                             storm::storage::SparseMatrix<ValueType> const& matrix,
-                             storm::storage::BitVector const& restrictedStateSpace,
-                             storm::storage::BitVector const& enabledActions);
-                iterator begin() override;
-
+                iteratorP2(typename std::vector<storm::storage::MatrixEntry<uint_fast64_t, ValueType>>::const_iterator entriesIteratorBegin,
+                           typename std::vector<storm::storage::MatrixEntry<uint_fast64_t, ValueType>>::const_iterator entriesIteratorEnd,
+                           storm::storage::BitVector const& restrictedStateSpace);
+                iterator& operator++() override;
+                const iteratorP2 operator++(int);
+                bool operator!=(iterator const& otherIterator) override;
+                uint_fast64_t operator*() override;
+                uint_fast64_t operator*() const override;
+                bool end() const override;
+            private:
+                typename std::vector<storm::storage::MatrixEntry<uint_fast64_t, ValueType>>::const_iterator matrixEntryIterator;
+                typename std::vector<storm::storage::MatrixEntry<uint_fast64_t, ValueType>>::const_iterator ptr_end;
+                storm::storage::BitVector const& restrictedStateSpace;
+                bool stop;
             };
 
             class successorsP2: public successors {
             public:
-                successorsP2(uint_fast64_t state,
+                successorsP2(uint_fast64_t action,
                              storm::storage::SparseMatrix<ValueType> const& matrix,
                              storm::storage::BitVector const& restrictedStateSpace,
                              storm::storage::BitVector const& enabledActions);
-                iterator begin() override;
+                successorsIterator begin() override;
+                successorsIterator end() override;
+            private:
+                uint_fast64_t action;
+                storm::storage::SparseMatrix<ValueType> const& matrix;
+                storm::storage::BitVector const& restrictedStateSpace;
+                storm::storage::BitVector const& enabledActions;
+            };
+
+            class forwardIteratorP2: public iterator {
+            public:
+                forwardIteratorP2(typename std::forward_list<uint_fast64_t>::const_iterator successorsIteratorBegin,
+                                  typename std::forward_list<uint_fast64_t>::const_iterator successorsIteratorEnd);
+                iterator& operator++() override;
+                const forwardIteratorP2 operator++(int);
+                bool operator!=(iterator const& otherIterator) override;
+                uint_fast64_t operator*() override;
+                uint_fast64_t operator*() const override;
+                bool end() const override;
+            private:
+                typename std::forward_list<uint_fast64_t>::const_iterator successorsIterator;
+                typename std::forward_list<uint_fast64_t>::const_iterator ptr_end;
+            };
+
+            class forwardSuccessorsP2: public successors {
+            public:
+                explicit forwardSuccessorsP2(std::forward_list<uint_fast64_t> const& successorList);
+                successorsIterator begin() override;
+                successorsIterator end() override;
+            private:
+                std::forward_list<uint_fast64_t> const& successorList;
             };
 
         private:
@@ -147,6 +196,7 @@ namespace sw {
 
             BackwardTransitions backwardTransitions;
             ForwardTransitions forwardTransitions;
+
 
             /*!
              * Compares the given elements and determines whether they are equal modulo the given precision. The provided flag
@@ -188,22 +238,7 @@ namespace sw {
                     std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMaxToMin,
                     std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMinToMax,
                     ValueType W) const;
-
-            class forwardSuccessorsP2: public successors {
-            public:
-                forwardSuccessorsP2(
-                        uint_fast64_t action,
-                        storm::storage::SparseMatrix<ValueType> const& matrix,
-                        ForwardTransitions const& forwardTransitions,
-                        storm::storage::BitVector const& restrictedStateSpace,
-                        storm::storage::BitVector const& enabledActions);
-                iterator begin() override;
-            protected:
-                std::forward_list<uint_fast64_t> const& successorList;
-            };
-
         };
-
 
     }
 };

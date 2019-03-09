@@ -52,7 +52,33 @@ namespace sw {
             }
             else {
                 p2TransitionFunction = [&](uint_fast64_t state) -> std::unique_ptr<successors> {
-                    return std::unique_ptr<successors>( new forwardSuccessorsP2(state, this->matrix, this->forwardTransitions, this->restrictedStateSpace, this->enabledActions) ); };
+                    return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state])); };
+            }
+            std::function<std::unique_ptr<successors>(uint_fast64_t)> p1TransitionFunction =
+                    [&](uint_fast64_t state) -> std::unique_ptr<successors> {
+                        return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); };
+
+
+            for (uint_fast64_t s: this->restrictedStateSpace) {
+                successors &succ = *p1TransitionFunction(s);
+                auto it = succ.begin();
+                auto end = succ.end();
+                std::cout << "succ of state " << s << "=[";
+                for (uint_fast64_t a: *p1TransitionFunction(s)) {
+                    std::cout << a << ", ";
+                }
+                std::cout << "]"<<std::endl;
+            }
+
+            for (uint_fast64_t a: this->enabledActions) {
+                successors &succ = *p2TransitionFunction(a);
+                auto it = succ.begin();
+                auto end = succ.end();
+                std::cout << "succ of action " << a << "=[";
+                for (uint_fast64_t s: *p2TransitionFunction(a)) {
+                    std::cout << s << ", ";
+                }
+                std::cout << "]"<<std::endl;
             }
 
             return maxTotalPayoffInf(
@@ -85,14 +111,11 @@ namespace sw {
             }
             else {
                 p2TransitionFunction = [&](uint_fast64_t state) -> std::unique_ptr<successors> {
-                    return std::unique_ptr<successors>( new forwardSuccessorsP2(state, this->matrix, this->forwardTransitions, this->restrictedStateSpace, this->enabledActions)); };
+                    return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state])); };
             }
 
             std::vector<ValueType> result = maxTotalPayoffInf(
-                    storm::Environment(),
-                    this->enabledActions,
-                    this->restrictedStateSpace,
-                    p2TransitionFunction,
+                    storm::Environment(), this->enabledActions, this->restrictedStateSpace, p2TransitionFunction,
                     [&](uint_fast64_t state) -> std::unique_ptr<successors> {
                         return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); },
                     [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
@@ -120,14 +143,12 @@ namespace sw {
             }
             else {
                 p2TransitionFunction = [&](uint_fast64_t state) -> std::unique_ptr<successors> {
-                    return std::unique_ptr<successors>( new forwardSuccessorsP2(state, this->matrix, this->forwardTransitions, this->restrictedStateSpace, this->enabledActions)); };
+                    return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state])); };
             }
 
             Values result = maxTotalPayoffInf(
                     storm::Environment(),
-                    this->enabledActions,
-                    this->restrictedStateSpace,
-                    p2TransitionFunction,
+                    this->enabledActions, this->restrictedStateSpace, p2TransitionFunction,
                     [&](uint_fast64_t state) -> std::unique_ptr<successors> {
                         return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); },
                     [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
@@ -386,174 +407,259 @@ namespace sw {
          */
 
         template <typename ValueType>
-        TotalPayoffGame<ValueType>::successors::successors(
-                uint_fast64_t state,
-                const storm::storage::SparseMatrix<ValueType> &matrix,
-                const storm::storage::BitVector &restrictedStateSpace,
-                const storm::storage::BitVector &enabledActions)
-                : state(state), matrix(matrix), restrictedStateSpace(restrictedStateSpace), enabledActions(enabledActions) {}
+        TotalPayoffGame<ValueType>::iterator::~iterator() = default;
+
+        template<typename ValueType>
+        TotalPayoffGame<ValueType>::successorsIterator::successorsIterator(std::unique_ptr<iterator> concreteIterator)
+        : concreteIterator(std::move(concreteIterator)) {}
+
+        template<typename ValueType>
+        typename TotalPayoffGame<ValueType>::iterator &TotalPayoffGame<ValueType>::successorsIterator::operator++() {
+            return ++*this->concreteIterator;
+        }
+
+        template<typename ValueType>
+        bool TotalPayoffGame<ValueType>::successorsIterator::operator!=(const iterator &otherIterator) {
+            return *this->concreteIterator != otherIterator;
+        }
+
+        template<typename ValueType>
+        uint_fast64_t TotalPayoffGame<ValueType>::successorsIterator::operator*() {
+            return **this->concreteIterator;
+        }
+
+        template<typename ValueType>
+        uint_fast64_t TotalPayoffGame<ValueType>::successorsIterator::operator*() const {
+            return **this->concreteIterator;
+        }
+
+        template<typename ValueType>
+        bool TotalPayoffGame<ValueType>::successorsIterator::end() const {
+            return this->concreteIterator->end();
+        }
 
         template <typename ValueType>
         TotalPayoffGame<ValueType>::successors::~successors() = default;
 
         template <typename ValueType>
+        TotalPayoffGame<ValueType>::iteratorP1::iteratorP1(uint_fast64_t rowBegin, uint_fast64_t rowEnd,
+                                                           storm::storage::BitVector const &enabledActions)
+                                                           : currentRow(enabledActions.getNextSetIndex(rowBegin)),
+                                                             rowEnd(rowEnd),
+                                                             enabledActions(enabledActions) {}
+
+        template<typename ValueType>
+        typename TotalPayoffGame<ValueType>::iterator &TotalPayoffGame<ValueType>::iteratorP1::operator++() {
+            if (this->currentRow < this->rowEnd) {
+                this->currentRow = this->enabledActions.getNextSetIndex(currentRow + 1);
+            }
+            return *this;
+        }
+
+        template<typename ValueType>
+        const typename TotalPayoffGame<ValueType>::iteratorP1 TotalPayoffGame<ValueType>::iteratorP1::operator++(int) {
+            iteratorP1 it = *this;
+            ++*this;
+            return it;
+        }
+
+        template<typename ValueType>
+        bool TotalPayoffGame<ValueType>::iteratorP1::operator!=(const iterator &otherIterator) {
+            /*
+                bool end = this->end() and otherIterator.end();
+                bool sameCurrentRow = this->currentRow == *otherIterator and not otherIterator.end();
+                return not (end or sameCurrentRow);
+            */
+            return not (this->end() and otherIterator.end());
+        }
+
+        template<typename ValueType>
+        bool TotalPayoffGame<ValueType>::iteratorP1::end() const {
+            return this->currentRow >= this->rowEnd;
+        }
+
+        template <typename ValueType>
+        uint_fast64_t TotalPayoffGame<ValueType>::iteratorP1::operator*() {
+            return this->currentRow;
+        }
+
+        template <typename ValueType>
+        uint_fast64_t TotalPayoffGame<ValueType>::iteratorP1::operator*() const {
+            return this->currentRow;
+        }
+
+        template <typename ValueType>
         TotalPayoffGame<ValueType>::successorsP1::successorsP1(
                 uint_fast64_t state,
                 const storm::storage::SparseMatrix<ValueType> &matrix,
-                const storm::storage::BitVector &restrictedStateSpace,
+                storm::storage::BitVector const& restrictedStateSpace,
                 storm::storage::BitVector const& enabledActions)
-                : successors(state, matrix, restrictedStateSpace, enabledActions) {}
+                : state(state), matrix(matrix), restrictedStateSpace(restrictedStateSpace), enabledActions(enabledActions){}
+
+        template <typename ValueType>
+        typename TotalPayoffGame<ValueType>::successorsIterator TotalPayoffGame<ValueType>::successorsP1::begin() {
+            return restrictedStateSpace[this->state] ?
+                successorsIterator(
+                        std::unique_ptr<iterator>(
+                                new iteratorP1(this->matrix.getRowGroupIndices()[this->state], this->matrix.getRowGroupIndices()[this->state + 1], this->enabledActions)
+                        )
+                )
+                : successorsIterator(std::unique_ptr<iterator>(new iteratorP1(0, 0, this->enabledActions)));
+        }
+
+        template <typename ValueType>
+        typename TotalPayoffGame<ValueType>::successorsIterator TotalPayoffGame<ValueType>::successorsP1::end() {
+            return successorsIterator(std::unique_ptr<iterator>(new iteratorP1(0, 0, this->enabledActions)));;
+        }
+
+        template <typename ValueType>
+        TotalPayoffGame<ValueType>::iteratorP2::iteratorP2(
+                typename std::vector<storm::storage::MatrixEntry<uint_fast64_t, ValueType>>::const_iterator entriesIteratorBegin,
+                typename std::vector<storm::storage::MatrixEntry<uint_fast64_t, ValueType>>::const_iterator entriesIteratorEnd,
+                storm::storage::BitVector const& restrictedStateSpace)
+                : matrixEntryIterator(entriesIteratorBegin), ptr_end(entriesIteratorEnd),
+                  restrictedStateSpace(restrictedStateSpace),
+                  stop(false) {
+
+            // handle the case where first elements are not in the restricted state space
+            if (not this->restrictedStateSpace[this->matrixEntryIterator->getColumn()]) {
+                ++*this;
+            }
+
+        }
+
+        template<typename ValueType>
+        typename TotalPayoffGame<ValueType>::iterator &TotalPayoffGame<ValueType>::iteratorP2::operator++() {
+            if (not this->end()) {
+                ++this->matrixEntryIterator;
+                // continue while the current successor is not in the restricted state space
+                if (not this->restrictedStateSpace[this->matrixEntryIterator->getColumn()]) {
+                    ++*this;
+                }
+            }
+            else {
+                // the last elements of the matrix entry iterator are not in the restricted state space
+                this->stop = true;
+            }
+            return *this;
+        }
+
+        template<typename ValueType>
+        const typename TotalPayoffGame<ValueType>::iteratorP2 TotalPayoffGame<ValueType>::iteratorP2::operator++(int) {
+            iteratorP2 it = *this;
+            ++*this;
+            return it;
+        }
+
+        template<typename ValueType>
+        bool TotalPayoffGame<ValueType>::iteratorP2::operator!=(const iterator &otherIterator) {
+            return not (this->end() and otherIterator.end()) ;
+        }
+
+        template <typename ValueType>
+        uint_fast64_t TotalPayoffGame<ValueType>::iteratorP2::operator*() {
+            return this->matrixEntryIterator->getColumn();
+        }
+
+        template<typename ValueType>
+        uint_fast64_t TotalPayoffGame<ValueType>::iteratorP2::operator*() const {
+            return this->matrixEntryIterator->getColumn();
+        }
+
+        template<typename ValueType>
+        bool TotalPayoffGame<ValueType>::iteratorP2::end() const {
+            return this->stop or this->matrixEntryIterator == this->ptr_end;
+        }
 
         template <typename ValueType>
         TotalPayoffGame<ValueType>::successorsP2::successorsP2(
                 uint_fast64_t action,
-                const storm::storage::SparseMatrix<ValueType> &matrix,
-                const storm::storage::BitVector &restrictedStateSpace,
-                storm::storage::BitVector const& enabledActions)
-                : successors(action, matrix, restrictedStateSpace, enabledActions) {}
-
-        template <typename ValueType>
-        typename TotalPayoffGame<ValueType>::iterator TotalPayoffGame<ValueType>::successors::end() {
-            return iterator(0, 0, this->restrictedStateSpace, this->enabledActions);
-        }
-
-        template <typename ValueType>
-        typename TotalPayoffGame<ValueType>::iterator TotalPayoffGame<ValueType>::successorsP1::begin() {
-            uint_fast64_t end = this->state == this->matrix.getRowGroupCount() - 1 ?
-                                this->matrix.getRowCount()
-                                : this->matrix.getRowGroupIndices()[this->state + 1];
-            return iterator(this->matrix.getRowGroupIndices()[this->state], end,
-                            this->restrictedStateSpace, this->enabledActions);
-        }
-
-        template <typename ValueType>
-        typename TotalPayoffGame<ValueType>::iterator TotalPayoffGame<ValueType>::successorsP2::begin() {
-            return this->enabledActions[this->state] ?
-                   iterator(this->matrix.getRow(this->state).begin(), this->matrix.getRow(this->state).end(),
-                            this->restrictedStateSpace, this->enabledActions)
-                   : iterator(0, 0, this->restrictedStateSpace, this->enabledActions);
-        }
-
-        template<typename ValueType>
-        TotalPayoffGame<ValueType>::iterator::iterator(uint_fast64_t rowBegin, uint_fast64_t rowEnd,
+                storm::storage::SparseMatrix<ValueType> const& matrix,
                 storm::storage::BitVector const& restrictedStateSpace,
                 storm::storage::BitVector const& enabledActions)
-                : currentRow(enabledActions.getNextSetIndex(rowBegin)), rowEnd(rowEnd),
-                  iterate_on_columns(false), forwardSuccessors(false),
-                  restrictedStateSpace(restrictedStateSpace),
-                  enabledActions(enabledActions) {}
+                : action(action), matrix(matrix), restrictedStateSpace(restrictedStateSpace), enabledActions(enabledActions){}
 
-        template<typename ValueType>
-        TotalPayoffGame<ValueType>::iterator::iterator(
-                typename std::vector<storm::storage::MatrixEntry<uint_fast64_t, ValueType>>::const_iterator entriesIteratorBegin,
-                typename std::vector<storm::storage::MatrixEntry<uint_fast64_t, ValueType>>::const_iterator entriesIteratorEnd,
-                storm::storage::BitVector const& restrictedStateSpace,
-                storm::storage::BitVector const& enabledActions)
-                : currentRow(0), rowEnd(0), currentColumn(entriesIteratorBegin->getColumn()),
-                  matrixEntryIterator(entriesIteratorBegin), matrix_ptr_end(entriesIteratorEnd),
-                  iterate_on_columns(true), forwardSuccessors(false),
-                  restrictedStateSpace(restrictedStateSpace), enabledActions(enabledActions) {
-
-            if (this->matrixEntryIterator != this->matrix_ptr_end) {
-                ++this->matrixEntryIterator;
-            }
-            while (not this->restrictedStateSpace[this->currentColumn]) {
-                this->currentColumn = this->matrixEntryIterator->getColumn();
-                if (this->matrixEntryIterator != this->matrix_ptr_end) {
-                    ++this->matrixEntryIterator;
-                }
-                // none of successors of the current action is in the restricted state space
-                else {
-                    this->iterate_on_columns = false;
-                    break;
-                }
-            }
-
+        template <typename ValueType>
+        typename TotalPayoffGame<ValueType>::successorsIterator TotalPayoffGame<ValueType>::successorsP2::begin() {
+            return this->enabledActions[this->action] ?
+                   successorsIterator(
+                           std::unique_ptr<iterator>(
+                                   new iteratorP2(this->matrix.getRow(this->action).begin(), this->matrix.getRow(this->action).end(), this->restrictedStateSpace)
+                           )
+                   )
+                   : successorsIterator(
+                           std::unique_ptr<iterator>(
+                                   new iteratorP2(this->matrix.getRow(this->action).end(), this->matrix.getRow(this->action).end(), this->restrictedStateSpace)
+                           )
+                   );
         }
 
-        template<typename ValueType>
-        TotalPayoffGame<ValueType>::iterator::iterator(
+        template <typename ValueType>
+        typename TotalPayoffGame<ValueType>::successorsIterator TotalPayoffGame<ValueType>::successorsP2::end() {
+            return successorsIterator(
+                           std::unique_ptr<iterator>(
+                                   new iteratorP2(this->matrix.getRow(this->action).end(), this->matrix.getRow(this->action).end(), this->restrictedStateSpace)
+                           )
+                   );
+        }
+
+        template <typename ValueType>
+        TotalPayoffGame<ValueType>::forwardIteratorP2::forwardIteratorP2(
                 typename std::forward_list<uint_fast64_t>::const_iterator successorsIteratorBegin,
-                typename std::forward_list<uint_fast64_t>::const_iterator successorsIteratorEnd,
-                storm::storage::BitVector const &restrictedStateSpace,
-                storm::storage::BitVector const &enabledActions)
-                : currentRow(0), rowEnd(0),
-                successorsIterator(successorsIteratorBegin), successors_ptr_end(successorsIteratorEnd),
-                iterate_on_columns(false), forwardSuccessors(true),
-                restrictedStateSpace(restrictedStateSpace), enabledActions(enabledActions) {}
+                typename std::forward_list<uint_fast64_t>::const_iterator successorsIteratorEnd)
+                : successorsIterator(successorsIteratorBegin), ptr_end(successorsIteratorEnd) {}
 
         template<typename ValueType>
-        typename TotalPayoffGame<ValueType>::iterator& TotalPayoffGame<ValueType>::iterator::operator++() {
-            if (this->matrixEntryIterator == this->matrix_ptr_end) {
-                this->iterate_on_columns = false;
-            }
-            if (this->currentRow < this->rowEnd) {
-                this->currentRow = this->enabledActions.getNextSetIndex(currentRow + 1);
-            }
-            else if (this->iterate_on_columns) {
-                this->currentColumn = this->matrixEntryIterator->getColumn();
-                this->matrixEntryIterator++;
-                if (not this->restrictedStateSpace[this->currentColumn]) {
-                    ++*this;
-                }
-            }
-            else if (this->forwardSuccessors) {
+        typename TotalPayoffGame<ValueType>::iterator &TotalPayoffGame<ValueType>::forwardIteratorP2::operator++() {
+            if (this->successorsIterator != this->ptr_end) {
                 ++this->successorsIterator;
             }
             return *this;
         }
 
-        template <typename ValueType>
-        const typename TotalPayoffGame<ValueType>::iterator TotalPayoffGame<ValueType>::iterator::operator++(int) {
-            iterator it = *this;
+        template<typename ValueType>
+        const typename TotalPayoffGame<ValueType>::forwardIteratorP2 TotalPayoffGame<ValueType>::forwardIteratorP2::operator++(int) {
+            forwardIteratorP2 it = *this;
             ++*this;
             return it;
         }
 
-        template <typename ValueType>
-        bool TotalPayoffGame<ValueType>::iterator::operator!=(const TotalPayoffGame<ValueType>::iterator &otherIterator) {
-            if (this->forwardSuccessors) {
-                return this->successorsIterator != otherIterator.successorsIterator;
-            }
-            else {
-                bool stopped = this->currentRow >= this->rowEnd and otherIterator.currentRow >= otherIterator.rowEnd
-                               and (not this->iterate_on_columns) and (not otherIterator.iterate_on_columns);
-                bool sameCurrentRow = not this->iterate_on_columns and not otherIterator.iterate_on_columns
-                                      and this->currentRow == otherIterator.currentRow
-                                      and not (otherIterator.currentRow == 0 and otherIterator.rowEnd == 0); // empty iterator case
-                bool sameCurrentColumn = this->iterate_on_columns and otherIterator.iterate_on_columns
-                                         and this->currentColumn == otherIterator.currentColumn;
-                bool isEqual = stopped or sameCurrentRow or sameCurrentColumn;
-                return not isEqual;
-            }
+        template<typename ValueType>
+        bool TotalPayoffGame<ValueType>::forwardIteratorP2::operator!=(const iterator &otherIterator) {
+            return not (this->end() and otherIterator.end());
         }
 
         template <typename ValueType>
-        uint_fast64_t TotalPayoffGame<ValueType>::iterator::operator*() {
-            if (iterate_on_columns) {
-                return this->currentColumn;
-            }
-            else if (forwardSuccessors) {
-                return *this->successorsIterator;
-            }
-            else {
-                return this->currentRow;
-            }
+        uint_fast64_t TotalPayoffGame<ValueType>::forwardIteratorP2::operator*() {
+            return *this->successorsIterator;
+        }
+
+        template<typename ValueType>
+        uint_fast64_t TotalPayoffGame<ValueType>::forwardIteratorP2::operator*() const {
+            return *this->successorsIterator;
+        }
+
+        template<typename ValueType>
+        bool TotalPayoffGame<ValueType>::forwardIteratorP2::end() const {
+            return this->successorsIterator == this->ptr_end;
         }
 
         template <typename ValueType>
         TotalPayoffGame<ValueType>::forwardSuccessorsP2::forwardSuccessorsP2(
-                uint_fast64_t action,
-                const storm::storage::SparseMatrix<ValueType> &matrix,
-                const sw::game::TotalPayoffGame<ValueType>::ForwardTransitions &forwardTransitions,
-                storm::storage::BitVector const &restrictedStateSpace,
-                storm::storage::BitVector const &enabledActions)
-                : successors(action, matrix, restrictedStateSpace, enabledActions),
-                  successorList(forwardTransitions.successors[action]) {}
+                std::forward_list<uint_fast64_t> const &successorList): successorList(successorList) {}
 
         template <typename ValueType>
-        typename TotalPayoffGame<ValueType>::iterator TotalPayoffGame<ValueType>::forwardSuccessorsP2::begin() {
-            return iterator(this->successorList.begin(), this->successorList.end(), this->restrictedStateSpace, this->enabledActions);
+        typename TotalPayoffGame<ValueType>::successorsIterator TotalPayoffGame<ValueType>::forwardSuccessorsP2::begin() {
+            return successorsIterator(
+                    std::unique_ptr<iterator>(new forwardIteratorP2(this->successorList.begin(), this->successorList.end()))
+            );
+        }
+
+        template <typename ValueType>
+        typename TotalPayoffGame<ValueType>::successorsIterator TotalPayoffGame<ValueType>::forwardSuccessorsP2::end() {
+            return successorsIterator(
+                    std::unique_ptr<iterator>(new forwardIteratorP2(this->successorList.end(), this->successorList.end()))
+            );
         }
 
         template class TotalPayoffGame<double>;
