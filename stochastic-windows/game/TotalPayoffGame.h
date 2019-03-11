@@ -41,7 +41,8 @@ namespace sw {
             std::vector<ValueType> maxTotalPayoffInf() const;
             std::vector<ValueType> minTotalPayoffSup() const;
             /**
-             * Computes the set of states from which P2 can enforce a strictly negative supremum total-payoff
+             * Computes the set of states (P1 states -- states of the MDP, and P2 states -- actions of the MDP) from
+             * which P2 can enforce a strictly negative supremum total-payoff
              */
             GameStates negSupTP() const;
 

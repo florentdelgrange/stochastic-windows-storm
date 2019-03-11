@@ -40,10 +40,11 @@ namespace sw {
             while (!stack.empty()) {
                 currentState = stack.front();
                 stack.pop_front();
+                // actions of backward transitions are assumed to be enabled
                 for (const auto &action : backwardTransitions.statePredecessors[currentState]) {
                     state = backwardTransitions.actionPredecessor[action];
                     // looking at enabled actions of states not currently in the attractors of the target set
-                    if (this->enabledActions[action] and not attractors[state]) {
+                    if (not attractors[state]) {
                         if (not actionVisited[action]) {
                             actionVisited.set(action, true);
                             // note that this only holds by the assumption that all successors of actions stay in the
@@ -69,7 +70,6 @@ namespace sw {
             GameStates attractors = targetSet;
             storm::storage::BitVector stateVisited(this->restrictedStateSpace.size(), false);
             std::vector<uint_fast64_t> remainingEnabledActions(this->restrictedStateSpace.size());
-
 
             // Initialize a stack to iterate on P2 attractors of the targetSet
             std::forward_list<uint_fast64_t> stack(attractors.p1States.begin(), attractors.p1States.end());
@@ -98,7 +98,7 @@ namespace sw {
             }
 
             uint_fast64_t currentState;
-            while (!stack.empty()) {
+            while (not stack.empty()) {
                 currentState = stack.front();
                 stack.pop_front();
                 for (uint_fast64_t action: backwardTransitions.statePredecessors[currentState]) {
@@ -128,6 +128,7 @@ namespace sw {
                     backwardTransitions.numberOfEnabledActions[state] += 1;
                     for (const auto &entry: this->matrix.getRow(action)) {
                         const uint_fast64_t& successorState = entry.getColumn();
+                        // note that here, this successor state is assumed to be in the restricted state space
                         backwardTransitions.statePredecessors[successorState].push_front(action);
                     }
                 }

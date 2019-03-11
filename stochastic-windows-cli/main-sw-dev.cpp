@@ -338,31 +338,115 @@ void windowExamples(){
     std::cout << "]" << std::endl;
     std::cout << std::endl;
 
+    // Total Payoff
+    std::cout << std::endl;
+    std::cout << "MDP as a Total Payoff game" << std::endl;
     sw::game::TotalPayoffGame<double> game(*mdp, "weights", restrictedStateSpace, enabledActions);
-    std::cout << "actions of s_7 = ";
-    for (auto s_prime: sw::game::TotalPayoffGame<double>::successorsP1(7, mdp->getTransitionMatrix(), enabledActions)) {
-        std::cout << s_prime << ",";
+    /*
+    {
+        std::vector<double> values = game.maxTotalPayoffInf();
+        std::cout << "max total payoff inf values= [";
+        for (uint_fast64_t state: restrictedStateSpace) {
+            std::cout << "s_" << state << "=" << values[state] << ", ";
+        }
+        std::cout << "]" << std::endl;
+        values = game.minTotalPayoffSup();
+        std::cout << "min total payoff sup values= [";
+        for (uint_fast64_t state: restrictedStateSpace) {
+            std::cout << "s_" << state << "=" << values[state] << ", ";
+        }
+        std::cout << "]" << std::endl;
+        std::cout << std::endl;
     }
-    std::cout << std::endl;
-    storm::storage::BitVector newEnabledActions(mdp->getNumberOfChoices(), true);
-    newEnabledActions.set(10, false);
-    std::cout << "actions \\ (a10)  of s_7 = ";
-    for (auto s_prime: sw::game::TotalPayoffGame<double>::successorsP1(7, mdp->getTransitionMatrix(), newEnabledActions)) {
-        std::cout << s_prime << ",";
+     */
+
+    // Attractors
+    // P1
+    for (uint_fast64_t state: restrictedStateSpace) {
+        storm::storage::BitVector T(restrictedStateSpace.size(), false);
+        T.set(state, true);
+        sw::game::BackwardTransitions backwardTransitions;
+        game.initBackwardTransitions(backwardTransitions);
+        std::cout << "P1 attractors of {" << state << "}: ";
+        std::cout << game.attractorsP1(T, backwardTransitions) << std::endl;
     }
-    std::cout << std::endl;
-    newEnabledActions.set(10, true);
-    newEnabledActions.set(11, false);
-    std::cout << "actions \\ (a11)  of s_7 = ";
-    for (auto s_prime: sw::game::TotalPayoffGame<double>::successorsP1(7, mdp->getTransitionMatrix(), newEnabledActions)) {
-        std::cout << s_prime << ",";
+    {
+        storm::storage::BitVector T(restrictedStateSpace.size(), false);
+        T.set(4, true); T.set(7, true); T.set(11, true);
+        sw::game::BackwardTransitions backwardTransitions;
+        game.initBackwardTransitions(backwardTransitions);
+        std::cout << "P1 attractors of T = {4, 7, 11}: ";
+        std::cout << game.attractorsP1(T, backwardTransitions) << std::endl;
     }
-    std::cout << std::endl;
-    std::cout << "successors of action 6 = ";
-    for (auto s_prime: sw::game::TotalPayoffGame<double>::successorsP2(6, mdp->getTransitionMatrix(), newEnabledActions)) {
-        std::cout << s_prime << ",";
+    {
+        storm::storage::BitVector T(restrictedStateSpace.size(), false);
+        T.set(5, true); T.set(4, true);
+        sw::game::BackwardTransitions backwardTransitions;
+        game.initBackwardTransitions(backwardTransitions);
+        std::cout << "P1 attractors of T = {5, 4}: ";
+        std::cout << game.attractorsP1(T, backwardTransitions) << std::endl;
     }
+
+    // Attractors
+    // P1
+    for (uint_fast64_t state: restrictedStateSpace) {
+        storm::storage::BitVector T(restrictedStateSpace.size(), false);
+        T.set(state, true);
+        sw::game::BackwardTransitions backwardTransitions;
+        game.initBackwardTransitions(backwardTransitions);
+        std::cout << "P1 attractors of {" << state << "}: ";
+        std::cout << game.attractorsP1(T, backwardTransitions) << std::endl;
+    }
+    {
+        storm::storage::BitVector T(restrictedStateSpace.size(), false);
+        T.set(4, true); T.set(7, true); T.set(11, true);
+        sw::game::BackwardTransitions backwardTransitions;
+        game.initBackwardTransitions(backwardTransitions);
+        std::cout << "P1 attractors of T = {4, 7, 11}: ";
+        std::cout << game.attractorsP1(T, backwardTransitions) << std::endl;
+    }
+    {
+        storm::storage::BitVector T(restrictedStateSpace.size(), false);
+        T.set(5, true); T.set(4, true);
+        sw::game::BackwardTransitions backwardTransitions;
+        game.initBackwardTransitions(backwardTransitions);
+        std::cout << "P1 attractors of T = {5, 4}: ";
+        std::cout << game.attractorsP1(T, backwardTransitions) << std::endl;
+    }
+    // P2
     std::cout << std::endl;
+    for (uint_fast64_t state: restrictedStateSpace) {
+        sw::game::GameStates S;
+        S.p1States = storm::storage::BitVector(restrictedStateSpace.size(), false);
+        S.p2States = storm::storage::BitVector(enabledActions.size(), false);
+        S.p1States.set(state, true);
+        std::cout << "P2 attractors of {" << state << "}" << std::endl;
+        sw::game::BackwardTransitions backwardTransitions;
+        game.initBackwardTransitions(backwardTransitions);
+        sw::game::GameStates T = game.attractorsP2(S, backwardTransitions);
+        std::cout << "S1=" << T.p1States << ", S2=" << T.p2States << std::endl;
+    }
+
+    {
+        std::cout << R"(With "non-trivial" restricted state space S\{9})" << std::endl;
+        sw::game::GameStates S;
+        storm::storage::BitVector state_space(restrictedStateSpace.size(), true);
+        state_space.set(9, false);
+        S.p1States = storm::storage::BitVector(restrictedStateSpace.size(), false);
+        S.p1States.set(10, true); S.p1States.set(4, true);
+        S.p2States = storm::storage::BitVector(enabledActions.size(), false);
+        S.p2States.set(0, true);
+        std::cout << "P2 attractors of S1=" << S.p1States << ", S2=" << S.p2States << std::endl;
+        sw::game::BackwardTransitions backwardTransitions;
+        game.initBackwardTransitions(backwardTransitions);
+        sw::game::GameStates T = game.attractorsP2(S, backwardTransitions);
+        std::cout << "S1=" << T.p1States << ", S2=" << T.p2States << std::endl;
+    }
+
+    std::cout << std::endl;
+    std::cout << "Bounded problem" << std::endl;
+    std::cout << "Winning states=" << wmpGame->boundedProblem();
+
 }
 
 

@@ -66,6 +66,7 @@ namespace sw {
         storm::storage::BitVector WindowGame<ValueType>::boundedProblem() const {
             BackwardTransitions backwardTransitions;
             this->initBackwardTransitions(backwardTransitions);
+
             storm::storage::BitVector W_bp(this->restrictedStateSpace.size(), false);
             storm::storage::BitVector L = unbOpenWindow().p1States;
             storm::storage::BitVector remainingSet = this->restrictedStateSpace;
@@ -158,12 +159,12 @@ namespace sw {
             do {
                 L_pre = L;
                 L = std::shared_ptr<GameStates>(new GameStates());
-                storm::storage::BitVector remainingStateSpace = this->restrictedStateSpace & ~L->p1States;
-                storm::storage::BitVector remainingEnabledActions = this->enabledActions & ~L->p2States;
+                storm::storage::BitVector remainingStateSpace = this->restrictedStateSpace & ~L_pre->p1States;
+                storm::storage::BitVector remainingEnabledActions = this->enabledActions & ~L_pre->p2States;
                 TotalPayoffGame<ValueType> totalPayoffGame(this->mdp,
-                            this->rewardModelName,
-                            remainingStateSpace,
-                            remainingEnabledActions);
+                                                           this->rewardModelName,
+                                                           remainingStateSpace,
+                                                           remainingEnabledActions);
 
                 BackwardTransitions backwardTransitions;
                 totalPayoffGame.initBackwardTransitions(backwardTransitions);
@@ -220,7 +221,8 @@ namespace sw {
                                                         this->rewardModelName,
                                                         this->l_max,
                                                         std::move(restrictedStateSpace),
-                                                        std::move(enabledActions)));
+                                                        std::move(enabledActions))
+            );
         }
 
         template <typename ValueType>
@@ -232,7 +234,8 @@ namespace sw {
                                                         this->rewardModelName,
                                                         this->l_max,
                                                         restrictedStateSpace,
-                                                        this->enabledActions));
+                                                        this->enabledActions)
+            );
         }
 
         template class WindowGame<double>;

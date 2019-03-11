@@ -40,6 +40,7 @@ namespace sw {
             std::vector<ValueType> absoluteWeights(weights.size());
             std::transform(weights.begin(), weights.end(), absoluteWeights.begin(),
                            [](ValueType w) -> ValueType { return storm::utility::abs(w); });
+            /*
             {
                 std::function<std::unique_ptr<successors>(uint_fast64_t)> p2TransitionFunction =
                         [&](uint_fast64_t state) -> std::unique_ptr<successors> {
@@ -74,6 +75,7 @@ namespace sw {
                     std::cout << "]" << std::endl;
                 }
             }
+             */
 
             return maxTotalPayoffInf(
                     storm::Environment(),
