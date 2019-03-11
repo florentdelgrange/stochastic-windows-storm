@@ -8,8 +8,8 @@
 #include <stochastic-windows/WindowObjective.h>
 #include <storm/storage/MaximalEndComponentDecomposition.h>
 #include <storm/storage/BitVector.h>
-#include <stochastic-windows/fixedwindow/MaximalEndComponentDecompositionWindowGame.h>
-#include <stochastic-windows/fixedwindow/MaximalEndComponentDecompositionUnfolding.h>
+#include <stochastic-windows/prefixindependent/MaximalEndComponentDecompositionWindowGame.h>
+#include <stochastic-windows/prefixindependent/MaximalEndComponentDecompositionUnfolding.h>
 #include <stochastic-windows/fixedwindow/MaximalEndComponentClassifier.cpp>
 #include <storm/modelchecker/prctl/helper/SparseMdpPrctlHelper.h>
 #include <storm/environment/Environment.h>

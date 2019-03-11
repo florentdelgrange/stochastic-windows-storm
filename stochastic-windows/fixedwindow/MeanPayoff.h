@@ -3,7 +3,7 @@
 //
 
 #include <storm/models/sparse/Mdp.h>
-#include <stochastic-windows/fixedwindow/MaximalEndComponentDecompositionUnfolding.h>
+#include <stochastic-windows/prefixindependent/MaximalEndComponentDecompositionUnfolding.h>
 #include <storm/utility/graph.h>
 #include <storm/storage/BitVector.h>
 #include <storm/storage/Scheduler.h>

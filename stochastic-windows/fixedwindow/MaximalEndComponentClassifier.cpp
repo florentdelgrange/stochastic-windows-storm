@@ -11,10 +11,7 @@ namespace sw {
         MaximalEndComponentClassifier<ValueType>::MaximalEndComponentClassifier(
                 storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
                 sw::storage::MaximalEndComponentDecompositionUnfolding<ValueType> const& mecDecompositionUnfolding)
-                : maximalEndComponentDecomposition(mecDecompositionUnfolding),
-                  safeStateSpace(mdp.getNumberOfStates(), false),
-                  goodStateSpace(mdp.getNumberOfStates(), false),
-                  goodMECs(mecDecompositionUnfolding.size(), false) {
+                : sw::util::MaximalEndComponentClassifier<ValueType>(mdp, mecDecompositionUnfolding) {
 
             // For each unfolded EC, we start by computing the safe states w.r.t. the sink state
             for (uint_fast64_t k = 0; k < mecDecompositionUnfolding.size(); ++ k) {
@@ -45,10 +42,7 @@ namespace sw {
         MaximalEndComponentClassifier<ValueType>::MaximalEndComponentClassifier(
                 storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
                 sw::storage::MaximalEndComponentDecompositionWindowGame<ValueType> const& mecDecompositionGame)
-                : maximalEndComponentDecomposition(mecDecompositionGame),
-                  safeStateSpace(mdp.getNumberOfStates(), false),
-                  goodStateSpace(mdp.getNumberOfStates(), false),
-                  goodMECs(mecDecompositionGame.size(), false) {
+                : sw::util::MaximalEndComponentClassifier<ValueType>(mdp, mecDecompositionGame) {
 
             for (uint_fast64_t k = 0; k < mecDecompositionGame.size(); ++ k) {
                 sw::game::WindowGame<ValueType> const& mecGame = mecDecompositionGame.getGame(k);
@@ -61,28 +55,6 @@ namespace sw {
                     this->safeStateSpace |= winningSet;
                 }
             }
-        }
-
-        template <typename ValueType>
-        std::vector<std::reference_wrapper<const storm::storage::MaximalEndComponent>>
-        MaximalEndComponentClassifier<ValueType>::getGoodMaximalEndComponents() {
-
-            std::vector<std::reference_wrapper<const storm::storage::MaximalEndComponent>> goodMaximalEndComponents;
-            goodMaximalEndComponents.reserve(this->goodMECs.getNumberOfSetBits());
-            for (uint_fast64_t k: this->goodMECs) {
-                goodMaximalEndComponents.push_back(std::cref(this->maximalEndComponentDecomposition[k]));
-            }
-            return goodMaximalEndComponents;
-        }
-
-        template <typename ValueType>
-        storm::storage::BitVector const& MaximalEndComponentClassifier<ValueType>::getSafeStateSpace() {
-            return this->safeStateSpace;
-        }
-
-        template <typename ValueType>
-        storm::storage::BitVector const& MaximalEndComponentClassifier<ValueType>::getGoodStateSpace() {
-            return this->goodStateSpace;
         }
 
         template class MaximalEndComponentClassifier<double>;

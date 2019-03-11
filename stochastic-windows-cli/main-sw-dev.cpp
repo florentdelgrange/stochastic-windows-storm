@@ -12,12 +12,12 @@
 #include "storm/storage/SymbolicModelDescription.h"
 #include "storm-parsers/parser/PrismParser.h"
 #include <iostream>
-#include <stochastic-windows/fixedwindow/MaximalEndComponentDecompositionUnfolding.h>
+#include <stochastic-windows/prefixindependent/MaximalEndComponentDecompositionUnfolding.h>
 #include <stochastic-windows/fixedwindow/MeanPayoff.h>
 #include <stochastic-windows/directfixedwindow/DirectFixedWindowObjective.h>
 #include <stochastic-windows/game/WindowGame.h>
 #include <stochastic-windows/game/PredecessorsSquaredLinkedList.h>
-#include <stochastic-windows/fixedwindow/MaximalEndComponentDecompositionWindowGame.h>
+#include <stochastic-windows/prefixindependent/MaximalEndComponentDecompositionWindowGame.h>
 #include <stochastic-windows/fixedwindow/MaximalEndComponentClassifier.h>
 #include <stochastic-windows/fixedwindow/FixedWindowObjective.h>
 #include <stochastic-windows/game/TotalPayoffGame.h>
