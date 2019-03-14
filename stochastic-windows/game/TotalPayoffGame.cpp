@@ -340,7 +340,7 @@ namespace sw {
                         X->max[s] = -1 * storm::utility::infinity<ValueType>();
                         for (uint_fast64_t next_state: *maximizerSuccessors(state)) {
                             s_prime = oldToNewStateMappingMin[next_state];
-                            ValueType x = wMaxToMin(s, s_prime) + storm::utility::min(X_pre->min[s_prime], Y->min[s_prime]);
+                            ValueType x = wMaxToMin(state, next_state) + storm::utility::min(X_pre->min[s_prime], Y->min[s_prime]);
                             if (x > X->max[s]) {
                                 X->max[s] = x;
                             }
@@ -353,7 +353,7 @@ namespace sw {
                         X->min[s] = storm::utility::infinity<ValueType>();
                         for (uint_fast64_t next_state: *minimizerSuccessors(state)) {
                             s_prime = oldToNewStateMappingMax[next_state];
-                            ValueType x = wMinToMax(s, s_prime) + storm::utility::min(X_pre->max[s_prime], Y->max[s_prime]);
+                            ValueType x = wMinToMax(state, next_state) + storm::utility::min(X_pre->max[s_prime], Y->max[s_prime]);
                             if (x < X->min[s]) {
                                 X->min[s] = x;
                             }
@@ -404,11 +404,9 @@ namespace sw {
                 if (maximizerStateSpace[state]) {
                     Y->max[state] = Y_pre->max[s];
                 }
-                /*
                 else {
                     Y->max[state] = storm::utility::zero<ValueType>();
                 }
-                 */
             }
             Y->min = std::vector<ValueType>(minimizerStateSpace.size());
             for (uint_fast64_t state = 0; state < minimizerStateSpace.size(); ++ state) {
@@ -416,11 +414,9 @@ namespace sw {
                 if (minimizerStateSpace[state]) {
                     Y->min[s] = Y_pre->min[s];
                 }
-                /*
                 else {
                     Y->min[state] = storm::utility::zero<ValueType>();
                 }
-                 */
             }
 
             return *Y;
