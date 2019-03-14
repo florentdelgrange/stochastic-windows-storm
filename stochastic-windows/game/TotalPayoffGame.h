@@ -103,6 +103,11 @@ namespace sw {
             bool valuesEqual(Values const& X, Values const& Y, ValueType precision, bool relativeError) const;
 
             /*!
+             * Checks if values of vectors from X are strictly positive
+             */
+            bool valuesStrictlyPositive(Values const& X) const;
+
+            /*!
              * Iterators: allow to iterate on successors of states or actions, given the transition matrix, the
              * restricted state space, the set of enabled actions or a transition structure
              */
@@ -190,6 +195,10 @@ namespace sw {
 
             /*!
              * Compute the max total payoff inf values for all maximizer and minimizer states.
+             * @note the early stopping criterion is the following: since Y is non-decreasing, as soon as the sum
+             *       becomes strictly positive, it remains strictly positive for all other iterations. Thus, by enabling
+             *       this early stopping criterion, you should be aware that the computation of values may stop before
+             *       getting the exact values for total payoff.
              */
             Values maxTotalPayoffInf(
                     storm::Environment const& env,
@@ -199,7 +208,7 @@ namespace sw {
                     std::function<std::unique_ptr<successors>(uint_fast64_t)> const& minimizerSuccessors,
                     std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMaxToMin,
                     std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMinToMax,
-                    ValueType W) const;
+                    ValueType W, bool earlyStopping=false) const;
         };
 
     }

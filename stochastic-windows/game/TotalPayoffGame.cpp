@@ -109,7 +109,7 @@ namespace sw {
                         return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); },
                     [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
                     [&](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return oppositeWeights[s_prime]; },
-                    storm::utility::maximum(absoluteWeights))
+                    storm::utility::maximum(absoluteWeights), true)
                     .min;
             std::transform(result.begin(), result.end(), result.begin(), [](ValueType v) -> ValueType { return v * -1; });
             return result;
@@ -236,8 +236,7 @@ namespace sw {
         bool TotalPayoffGame<ValueType>::valuesEqual(
                 typename TotalPayoffGame<ValueType>::Values const& X,
                 typename TotalPayoffGame<ValueType>::Values const& Y,
-                ValueType precision,
-                bool relativeError) const {
+                ValueType precision, bool relativeError) const {
 
             if (not relativeError) {
                 precision *= storm::utility::convertNumber<ValueType>(2.0);
@@ -245,6 +244,21 @@ namespace sw {
 
             return this->vectorEquality(X.max, Y.max, precision, relativeError) and
                    this->vectorEquality(X.min, Y.min, precision, relativeError);
+        }
+
+        template <typename ValueType>
+        bool TotalPayoffGame<ValueType>::valuesStrictlyPositive(const sw::game::TotalPayoffGame<ValueType>::Values &X) const {
+            for (const ValueType &val: X.max) {
+                if (val <= 0) {
+                    return false;
+                }
+            }
+            for (const ValueType &val: X.min) {
+                if (val <= 0) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         template <typename ValueType>
@@ -256,54 +270,76 @@ namespace sw {
                 std::function<std::unique_ptr<successors>(uint_fast64_t)> const& minimizerSuccessors,
                 std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMaxToMin,
                 std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMinToMax,
-                ValueType W) const {
+                ValueType W, bool earlyStopping) const {
+
+            uint_fast64_t numberOfMaxStates = maximizerStateSpace.getNumberOfSetBits();
+            uint_fast64_t numberOfMinStates = minimizerStateSpace.getNumberOfSetBits();
+
+            // allows to only consider enabled actions and states of the restricted state space in an efficient way
+            std::function<std::vector<uint_fast64_t>(storm::storage::BitVector const&)> initOldToNewStateMapping =
+                [](storm::storage::BitVector const& stateSpace) -> std::vector<uint_fast64_t> {
+                    std::vector<uint_fast64_t> oldToNewStateMapping(stateSpace.size());
+                    uint_fast64_t s = 0;
+                    for (uint_fast64_t state: stateSpace) {
+                        oldToNewStateMapping[state] = s;
+                        ++ s;
+                    }
+                    return oldToNewStateMapping;
+            };
+
+            std::vector<uint_fast64_t> oldToNewStateMappingMax = initOldToNewStateMapping(maximizerStateSpace);
+            std::vector<uint_fast64_t> oldToNewStateMappingMin = initOldToNewStateMapping(minimizerStateSpace);
 
             using Values = TotalPayoffGame<ValueType>::Values;
+            uint_fast64_t s, s_prime;
             std::shared_ptr<Values> Y = std::shared_ptr<Values>(new Values()), Y_pre, X, X_pre;
-            Y->max = std::vector<ValueType>(maximizerStateSpace.size(), -1 * storm::utility::infinity<ValueType>());
-            Y->min = std::vector<ValueType>(minimizerStateSpace.size(), -1 * storm::utility::infinity<ValueType>());
-            //ValueType upperBound = (maximizerStateSpace.size() + minimizerStateSpace.size() - 1) * W;
+            Y->max = std::vector<ValueType>(numberOfMaxStates, -1 * storm::utility::infinity<ValueType>());
+            Y->min = std::vector<ValueType>(numberOfMinStates, -1 * storm::utility::infinity<ValueType>());
             ValueType upperBound = storm::utility::convertNumber<ValueType>(this->restrictedStateSpace.getNumberOfSetBits() - 1) * W;
             ValueType lowerBound = -1 * upperBound;
             // for the vector equality check
             auto precision = storm::utility::convertNumber<ValueType>(env.solver().minMax().getPrecision());
             bool relative = env.solver().minMax().getRelativeTerminationCriterion();
 
-            // uint_fast64_t external_counter = 0;
-            // uint_fast64_t internal_counter = 0;
-            // clock_t start = clock();
+            uint_fast64_t external_counter = 0;
+            uint_fast64_t internal_counter = 0;
+            clock_t start = clock();
 
             do {
-                // ++external_counter;
+                ++external_counter;
                 // incorporate weights of the previous copy of the game into the current copy of the game
                 Y_pre = Y;
                 Y = std::shared_ptr<Values>(new Values());
 
-                Y->max = std::vector<ValueType>(maximizerStateSpace.size());
-                for (uint_fast64_t s: maximizerStateSpace) {
+                Y->max = std::vector<ValueType>(numberOfMaxStates);
+                for (uint_fast64_t state: maximizerStateSpace) {
+                    s = oldToNewStateMappingMax[state];
                     Y->max[s] = storm::utility::max<ValueType>(storm::utility::zero<ValueType>(), Y_pre->max[s]);
                 }
 
-                Y->min = std::vector<ValueType>(minimizerStateSpace.size());
-                for (uint_fast64_t s: minimizerStateSpace) {
+                Y->min = std::vector<ValueType>(numberOfMinStates);
+                for (uint_fast64_t state: minimizerStateSpace) {
+                    s = oldToNewStateMappingMin[state];
                     Y->min[s] = storm::utility::max<ValueType>(storm::utility::zero<ValueType>(), Y_pre->min[s]);
                 }
 
                 X = std::shared_ptr<Values>(new Values());
-                X->max = std::vector<ValueType>(maximizerStateSpace.size(), storm::utility::infinity<ValueType>());
-                X->min = std::vector<ValueType>(minimizerStateSpace.size(), storm::utility::infinity<ValueType>());
+                X->max = std::vector<ValueType>(numberOfMaxStates, storm::utility::infinity<ValueType>());
+                X->min = std::vector<ValueType>(numberOfMinStates, storm::utility::infinity<ValueType>());
 
                 // min-cost reachability
                 do {
-                    // ++ internal_counter;
+                    ++ internal_counter;
                     X_pre = X;
                     X = std::shared_ptr<Values>(new Values());
 
                     // maximizer phase
-                    X->max = std::vector<ValueType>(maximizerStateSpace.size());
-                    for (uint_fast64_t s: maximizerStateSpace) {
+                    X->max = std::vector<ValueType>(numberOfMaxStates);
+                    for (uint_fast64_t state: maximizerStateSpace) {
+                        s = oldToNewStateMappingMax[state];
                         X->max[s] = -1 * storm::utility::infinity<ValueType>();
-                        for (uint_fast64_t s_prime: *maximizerSuccessors(s)) {
+                        for (uint_fast64_t next_state: *maximizerSuccessors(state)) {
+                            s_prime = oldToNewStateMappingMin[next_state];
                             ValueType x = wMaxToMin(s, s_prime) + storm::utility::min(X_pre->min[s_prime], Y->min[s_prime]);
                             if (x > X->max[s]) {
                                 X->max[s] = x;
@@ -311,10 +347,12 @@ namespace sw {
                         }
                     }
                     // minimizer phase
-                    X->min = std::vector<ValueType>(minimizerStateSpace.size());
-                    for (uint_fast64_t s: minimizerStateSpace) {
+                    X->min = std::vector<ValueType>(numberOfMinStates);
+                    for (uint_fast64_t state: minimizerStateSpace) {
+                        s = oldToNewStateMappingMin[state];
                         X->min[s] = storm::utility::infinity<ValueType>();
-                        for (uint_fast64_t s_prime: *minimizerSuccessors(s)) {
+                        for (uint_fast64_t next_state: *minimizerSuccessors(state)) {
+                            s_prime = oldToNewStateMappingMax[next_state];
                             ValueType x = wMinToMax(s, s_prime) + storm::utility::min(X_pre->max[s_prime], Y->max[s_prime]);
                             if (x < X->min[s]) {
                                 X->min[s] = x;
@@ -322,12 +360,14 @@ namespace sw {
                         }
                     }
                     // lower bound checking phase
-                    for (uint_fast64_t s: maximizerStateSpace) {
+                    for (uint_fast64_t state: maximizerStateSpace) {
+                        s = oldToNewStateMappingMax[state];
                         if (X->max[s] < lowerBound) {
                             X->max[s] = -1 * storm::utility::infinity<ValueType>();
                         }
                     }
-                    for (uint_fast64_t s: minimizerStateSpace) {
+                    for (uint_fast64_t state: minimizerStateSpace) {
+                        s = oldToNewStateMappingMin[state];
                         if (X->min[s] < lowerBound) {
                             X->min[s] = -1 * storm::utility::infinity<ValueType>();
                         }
@@ -336,20 +376,53 @@ namespace sw {
 
                 Y = X;
                 // upper bound checking phase
-                for (uint_fast64_t s: maximizerStateSpace) {
+                for (uint_fast64_t state: maximizerStateSpace) {
+                    s = oldToNewStateMappingMax[state];
                     if (Y->max[s] > upperBound) {
                         Y->max[s] = storm::utility::infinity<ValueType>();
                     }
                 }
-                for (uint_fast64_t s: minimizerStateSpace) {
+                for (uint_fast64_t state: minimizerStateSpace) {
+                    s = oldToNewStateMappingMin[state];
                     if (Y->min[s] > upperBound) {
                         Y->min[s] = storm::utility::infinity<ValueType>();
                     }
                 }
-            } while (not valuesEqual(*Y, *Y_pre, precision, relative));
-            // clock_t stop = clock();
-            // double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
-            // printf("\nTime elapsed: %.5f | internal iterations: %llu | external iterations: %llu \n", elapsed, internal_counter, external_counter);
+            } while (not valuesEqual(*Y, *Y_pre, precision, relative) and
+                     not (earlyStopping and valuesStrictlyPositive(*Y)));
+
+            clock_t stop = clock();
+            double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
+            printf("\nTime elapsed: %.5f | internal iterations: %llu | external iterations: %llu \n", elapsed, internal_counter, external_counter);
+
+            // back to the original state enumeration
+            Y_pre = Y;
+            Y = std::shared_ptr<Values>(new Values());
+            Y->max = std::vector<ValueType>(maximizerStateSpace.size());
+            for (uint_fast64_t state = 0; state < maximizerStateSpace.size(); ++ state) {
+                s = oldToNewStateMappingMax[state];
+                if (maximizerStateSpace[state]) {
+                    Y->max[state] = Y_pre->max[s];
+                }
+                /*
+                else {
+                    Y->max[state] = storm::utility::zero<ValueType>();
+                }
+                 */
+            }
+            Y->min = std::vector<ValueType>(minimizerStateSpace.size());
+            for (uint_fast64_t state = 0; state < minimizerStateSpace.size(); ++ state) {
+                s = oldToNewStateMappingMin[state];
+                if (minimizerStateSpace[state]) {
+                    Y->min[s] = Y_pre->min[s];
+                }
+                /*
+                else {
+                    Y->min[state] = storm::utility::zero<ValueType>();
+                }
+                 */
+            }
+
             return *Y;
         }
 
