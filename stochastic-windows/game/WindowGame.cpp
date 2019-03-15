@@ -228,13 +228,21 @@ namespace sw {
         template <typename ValueType>
         std::unique_ptr<WindowGame<ValueType>>
         WindowMeanPayoffGame<ValueType>::unsafeRestrict(storm::storage::BitVector const &restrictedStateSpace) const {
-
+            storm::storage::BitVector removedStates = this->restrictedStateSpace & ~restrictedStateSpace;
+            storm::storage::BitVector enabledActions = this->enabledActions;
+            for (uint_fast64_t state: removedStates) {
+                for (uint_fast64_t action = this->enabledActions.getNextSetIndex(this->matrix.getRowGroupIndices()[state]);
+                     action < this->matrix.getRowGroupIndices()[state + 1];
+                     action = this->enabledActions.getNextSetIndex(action + 1)) {
+                    enabledActions.set(action, false);
+                }
+            }
             return std::unique_ptr<WindowGame<ValueType>>(
                     new WindowMeanPayoffGame<ValueType>(this->mdp,
                                                         this->rewardModelName,
                                                         this->l_max,
                                                         restrictedStateSpace,
-                                                        this->enabledActions)
+                                                        enabledActions)
             );
         }
 
