@@ -209,6 +209,15 @@ namespace sw {
                     std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMaxToMin,
                     std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMinToMax,
                     ValueType W, bool earlyStopping=false) const;
+
+            void internalMinCostReachability(
+                    std::vector<ValueType> &X, std::vector<ValueType> const& X_pre, std::vector<ValueType> const& Y,
+                    std::vector<uint_fast64_t> const& oldToNewStateMapping,
+                    std::vector<uint_fast64_t> const& oldToNewStateMappingSucc,
+                    storm::storage::BitVector const& stateSpace,
+                    std::function<std::unique_ptr<successors>(uint_fast64_t)> const& successors,
+                    std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& w,
+                    bool maximizerPhase) const;
         };
 
     }
