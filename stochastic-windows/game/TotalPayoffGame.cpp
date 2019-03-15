@@ -37,9 +37,16 @@ namespace sw {
         template<typename ValueType>
         std::vector<ValueType> TotalPayoffGame<ValueType>::maxTotalPayoffInf() const {
             std::vector<ValueType> const& weights = rewardModel.getStateActionRewardVector();
-            std::vector<ValueType> absoluteWeights(weights.size());
-            std::transform(weights.begin(), weights.end(), absoluteWeights.begin(),
-                           [](ValueType w) -> ValueType { return storm::utility::abs(w); });
+            ValueType W = -1 * storm::utility::infinity<ValueType>();
+            {
+                ValueType absoluteWeight;
+                for (uint_fast64_t action: this->enabledActions) {
+                    absoluteWeight = storm::utility::abs(weights[action]);
+                    if (W < absoluteWeight) {
+                        W = absoluteWeight;
+                    }
+                }
+            }
             /*
             {
                 std::function<std::unique_ptr<successors>(uint_fast64_t)> p2TransitionFunction =
@@ -87,7 +94,7 @@ namespace sw {
                         return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state]) ); },
                     [&](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return weights[s_prime]; },
                     [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
-                    storm::utility::maximum(absoluteWeights))
+                    W)
                     .max;
         }
 
@@ -97,9 +104,16 @@ namespace sw {
             std::vector<ValueType> oppositeWeights(weights.size());
             std::transform(weights.begin(), weights.end(), oppositeWeights.begin(),
                            [](ValueType w) -> ValueType { return w * -1; });
-            std::vector<ValueType> absoluteWeights(weights.size());
-            std::transform(weights.begin(), weights.end(), absoluteWeights.begin(),
-                           [](ValueType w) -> ValueType { return storm::utility::abs(w); });
+            ValueType W = -1 * storm::utility::infinity<ValueType>();
+            {
+                ValueType absoluteWeight;
+                for (uint_fast64_t action: this->enabledActions) {
+                    absoluteWeight = storm::utility::abs(weights[action]);
+                    if (W < absoluteWeight) {
+                        W = absoluteWeight;
+                    }
+                }
+            }
 
             std::vector<ValueType> result = maxTotalPayoffInf(
                     storm::Environment(), this->enabledActions, this->restrictedStateSpace,
@@ -109,7 +123,7 @@ namespace sw {
                         return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); },
                     [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
                     [&](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return oppositeWeights[s_prime]; },
-                    storm::utility::maximum(absoluteWeights), true)
+                    W, true)
                     .min;
             std::transform(result.begin(), result.end(), result.begin(), [](ValueType v) -> ValueType { return v * -1; });
             return result;
@@ -121,9 +135,16 @@ namespace sw {
             std::vector<ValueType> oppositeWeights(weights.size());
             std::transform(weights.begin(), weights.end(), oppositeWeights.begin(),
                            [](ValueType w) -> ValueType { return w * -1; });
-            std::vector<ValueType> absoluteWeights(weights.size());
-            std::transform(weights.begin(), weights.end(), absoluteWeights.begin(),
-                           [](ValueType w) -> ValueType { return storm::utility::abs(w); });
+            ValueType W = -1 * storm::utility::infinity<ValueType>();
+            {
+                ValueType absoluteWeight;
+                for (uint_fast64_t action: this->enabledActions) {
+                    absoluteWeight = storm::utility::abs(weights[action]);
+                    if (W < absoluteWeight) {
+                        W = absoluteWeight;
+                    }
+                }
+            }
 
             Values result = maxTotalPayoffInf(
                     storm::Environment(),
@@ -134,7 +155,7 @@ namespace sw {
                         return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); },
                     [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
                     [&](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return oppositeWeights[s_prime]; },
-                    storm::utility::maximum(absoluteWeights));
+                    W);
             GameStates badStates;
             badStates.p1States = storm::storage::BitVector(this->restrictedStateSpace.size(), false);
             badStates.p2States = storm::storage::BitVector(this->enabledActions.size(), false);
