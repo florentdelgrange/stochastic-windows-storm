@@ -211,6 +211,17 @@ namespace sw {
                     std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMinToMax,
                     ValueType W, bool earlyStopping=false) const;
 
+            Values acceleratedMaxTotalPayoffInf(
+                    storm::Environment const &env,
+                    storm::storage::BitVector const& maximizerStateSpace,
+                    storm::storage::BitVector const& minimizerStateSpace,
+                    bool mdpStatesAreMaximizer,
+                    std::function<std::unique_ptr<successors>(uint_fast64_t)> const &maximizerSuccessors,
+                    std::function<std::unique_ptr<successors>(uint_fast64_t)> const &minimizerSuccessors,
+                    std::function<ValueType(uint_fast64_t, uint_fast64_t)> const &wMaxToMin,
+                    std::function<ValueType(uint_fast64_t, uint_fast64_t)> const &wMinToMax,
+                    std::vector<ValueType> const& actionsWeight, bool earlyStopping = false) const;
+
             void internalMinCostReachability(
                     std::vector<ValueType> &X, std::vector<ValueType> const& X_pre, std::vector<ValueType> const& Y,
                     std::vector<uint_fast64_t> const& oldToNewStateMapping,
@@ -234,6 +245,13 @@ namespace sw {
             void initNextValues(std::vector<ValueType> const& Y_pre, std::vector<ValueType> &Y,
                                 storm::storage::BitVector const& stateSpace,
                                 std::vector<uint_fast64_t> const& oldToNewStateMapping) const;
+            void initNextValues(std::vector<ValueType> const& Y_pre, std::vector<ValueType> &Y, std::vector<ValueType> &X,
+                                storm::storage::BitVector const& stateSpace,
+                                storm::storage::BitVector const& currentStateSpace,
+                                std::vector<uint_fast64_t> const& oldToNewStateMapping) const;
+            void initNextMeanCostReachabilityValues(std::vector<ValueType> const& X_pre, std::vector<ValueType> &X,
+                                                    storm::storage::BitVector const& frozenStateSpace,
+                                                    std::vector<uint_fast64_t> const& oldToNewStateMapping) const;
 
             /*!
              * update each value of the vector according to the lower bound, i.e., set values to -inf that are

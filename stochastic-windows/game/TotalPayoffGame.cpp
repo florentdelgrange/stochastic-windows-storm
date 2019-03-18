@@ -115,15 +115,15 @@ namespace sw {
                 }
             }
 
-            std::vector<ValueType> result = maxTotalPayoffInf(
-                    storm::Environment(), this->enabledActions, this->restrictedStateSpace,
+            std::vector<ValueType> result = acceleratedMaxTotalPayoffInf(
+                    storm::Environment(), this->enabledActions, this->restrictedStateSpace, false,
                     [&](uint_fast64_t state) -> std::unique_ptr<successors> {
                         return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state]) ); },
                     [&](uint_fast64_t state) -> std::unique_ptr<successors> {
                         return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); },
                     [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
                     [&](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return oppositeWeights[s_prime]; },
-                    W, true)
+                    oppositeWeights, true)
                     .min;
             std::transform(result.begin(), result.end(), result.begin(), [](ValueType v) -> ValueType { return v * -1; });
             return result;
@@ -170,6 +170,344 @@ namespace sw {
                 }
             }
             return badStates;
+        }
+
+        template <typename ValueType>
+        typename TotalPayoffGame<ValueType>::Values TotalPayoffGame<ValueType>::maxTotalPayoffInf(
+                storm::Environment const& env,
+                storm::storage::BitVector const& maximizerStateSpace,
+                storm::storage::BitVector const& minimizerStateSpace,
+                std::function<std::unique_ptr<successors>(uint_fast64_t)> const& maximizerSuccessors,
+                std::function<std::unique_ptr<successors>(uint_fast64_t)> const& minimizerSuccessors,
+                std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMaxToMin,
+                std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMinToMax,
+                ValueType W, bool earlyStopping) const {
+
+            uint_fast64_t numberOfMaxStates = maximizerStateSpace.getNumberOfSetBits();
+            uint_fast64_t numberOfMinStates = minimizerStateSpace.getNumberOfSetBits();
+
+            std::vector<uint_fast64_t> oldToNewStateMappingMax = initOldToNewStateMapping(maximizerStateSpace);
+            std::vector<uint_fast64_t> oldToNewStateMappingMin = initOldToNewStateMapping(minimizerStateSpace);
+
+            using Values = TotalPayoffGame<ValueType>::Values;
+            std::shared_ptr<Values> Y = std::shared_ptr<Values>(new Values()), Y_pre, X, X_pre;
+            Y->max = std::vector<ValueType>(numberOfMaxStates, -1 * storm::utility::infinity<ValueType>());
+            Y->min = std::vector<ValueType>(numberOfMinStates, -1 * storm::utility::infinity<ValueType>());
+            ValueType upperBound = storm::utility::convertNumber<ValueType>(this->restrictedStateSpace.getNumberOfSetBits() - 1) * W;
+            ValueType lowerBound = -1 * upperBound;
+            // for the vector equality check
+            auto precision = storm::utility::convertNumber<ValueType>(env.solver().minMax().getPrecision());
+            bool relative = env.solver().minMax().getRelativeTerminationCriterion();
+
+            uint_fast64_t external_counter = 0;
+            uint_fast64_t internal_counter = 0;
+            clock_t start = clock();
+
+            do {
+                ++external_counter;
+
+                // incorporate values of the previous copy of the game into the current copy of the game
+                Y_pre = Y;
+                Y = std::shared_ptr<Values>(new Values());
+                Y->max = std::vector<ValueType>(numberOfMaxStates);
+                initNextValues(Y_pre->max, Y->max, maximizerStateSpace, oldToNewStateMappingMax);
+                Y->min = std::vector<ValueType>(numberOfMinStates);
+                initNextValues(Y_pre->min, Y->min, minimizerStateSpace, oldToNewStateMappingMin);
+
+                X = std::shared_ptr<Values>(new Values());
+                X->max = std::vector<ValueType>(numberOfMaxStates, storm::utility::infinity<ValueType>());
+                X->min = std::vector<ValueType>(numberOfMinStates, storm::utility::infinity<ValueType>());
+
+                // min-cost reachability
+                do {
+                    ++ internal_counter;
+
+                    X_pre = X;
+                    X = std::shared_ptr<Values>(new Values());
+                    // maximizer phase
+                    X->max = std::vector<ValueType>(numberOfMaxStates);
+                    internalMinCostReachability(X->max, X_pre->min, Y->min,
+                                                oldToNewStateMappingMax, oldToNewStateMappingMin,
+                                                maximizerStateSpace, maximizerSuccessors, wMaxToMin, true);
+                    // minimizer phase
+                    X->min = std::vector<ValueType>(numberOfMinStates);
+                    internalMinCostReachability(X->min, X_pre->max, Y->max,
+                                                oldToNewStateMappingMin, oldToNewStateMappingMax,
+                                                minimizerStateSpace, minimizerSuccessors, wMinToMax, false);
+                    // lower bound checking phase
+                    lowerBoundUpdate(X->max, maximizerStateSpace, oldToNewStateMappingMax, lowerBound);
+                    lowerBoundUpdate(X->min, minimizerStateSpace, oldToNewStateMappingMin, lowerBound);
+
+                } while (not valuesEqual(*X, *X_pre, precision, relative));
+
+                Y = X;
+
+                // upper bound checking phase
+                upperBoundUpdate(Y->max, maximizerStateSpace, oldToNewStateMappingMax, upperBound);
+                upperBoundUpdate(Y->min, minimizerStateSpace, oldToNewStateMappingMin, upperBound);
+
+            } while (not valuesEqual(*Y, *Y_pre, precision, relative) and
+                     not (earlyStopping and valuesStrictlyPositive(*Y)));
+
+            clock_t stop = clock();
+            double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
+            printf("\nTime elapsed: %.5f | internal iterations: %llu | external iterations: %llu \n", elapsed, internal_counter, external_counter);
+
+            Y_pre = Y;
+            Y = std::shared_ptr<Values>(new Values());
+            Y->max = std::vector<ValueType>(maximizerStateSpace.size());
+            backToOldStateMapping(Y_pre->max, Y->max, maximizerStateSpace, oldToNewStateMappingMax);
+            Y->min = std::vector<ValueType>(minimizerStateSpace.size());
+            backToOldStateMapping(Y_pre->min, Y->min, minimizerStateSpace, oldToNewStateMappingMin);
+
+            return *Y;
+        }
+
+        template<typename ValueType>
+        typename TotalPayoffGame<ValueType>::Values TotalPayoffGame<ValueType>::acceleratedMaxTotalPayoffInf(
+                storm::Environment const &env,
+                storm::storage::BitVector const& maximizerStateSpace,
+                storm::storage::BitVector const& minimizerStateSpace,
+                bool mdpStatesAreMaximizer,
+                std::function<std::unique_ptr<successors>(uint_fast64_t)> const &maximizerSuccessors,
+                std::function<std::unique_ptr<successors>(uint_fast64_t)> const &minimizerSuccessors,
+                std::function<ValueType(uint_fast64_t, uint_fast64_t)> const &wMaxToMin,
+                std::function<ValueType(uint_fast64_t, uint_fast64_t)> const &wMinToMax,
+                std::vector<ValueType> const& actionsWeight, bool earlyStopping) const {
+
+            auto precision = storm::utility::convertNumber<ValueType>(env.solver().minMax().getPrecision());
+            bool relative = env.solver().minMax().getRelativeTerminationCriterion();
+            ValueType W = -1 * storm::utility::infinity<ValueType>();
+            using Values = TotalPayoffGame<ValueType>::Values;
+            uint_fast64_t numberOfMaxStates = maximizerStateSpace.getNumberOfSetBits();
+            uint_fast64_t numberOfMinStates = minimizerStateSpace.getNumberOfSetBits();
+            uint_fast64_t currentNumberOfStates = 0;
+            std::vector<uint_fast64_t> oldToNewStateMappingMax = initOldToNewStateMapping(maximizerStateSpace);
+            std::vector<uint_fast64_t> oldToNewStateMappingMin = initOldToNewStateMapping(minimizerStateSpace);
+
+            std::shared_ptr<Values> Y = std::shared_ptr<Values>(new Values()), Y_pre, X = std::shared_ptr<Values>(new Values()), X_pre;
+            Y->max = std::vector<ValueType>(numberOfMaxStates, -1 * storm::utility::infinity<ValueType>());
+            Y->min = std::vector<ValueType>(numberOfMinStates, -1 * storm::utility::infinity<ValueType>());
+            X->max = std::vector<ValueType>(numberOfMaxStates);
+            X->min = std::vector<ValueType>(numberOfMinStates);
+
+            uint_fast64_t external_counter = 0;
+            uint_fast64_t internal_counter = 0;
+            clock_t start = clock();
+
+            storm::storage::StronglyConnectedComponentDecomposition<ValueType>
+            stronglyConnectedComponentDecomposition(this->matrix, this->restrictedStateSpace, this->enabledActions);
+
+            for (const auto &component: stronglyConnectedComponentDecomposition) {
+                storm::storage::BitVector sccStates(this->restrictedStateSpace.size(), false);
+                storm::storage::BitVector sccActions(this->enabledActions.size(), false);
+                for (auto const& state: component) {
+                    sccStates.set(state, true);
+                    for (uint_fast64_t action = this->enabledActions.getNextSetIndex(this->matrix.getRowGroupIndices()[state]);
+                         action < this->matrix.getRowGroupIndices()[state + 1];
+                         action = this->enabledActions.getNextSetIndex(action + 1)) {
+                        sccActions.set(action, true);
+                    }
+                }
+                currentNumberOfStates += component.size();
+                // update the upper and lower bounds according to the greatest absolute weight inside the current SCC
+                ValueType absoluteWeight;
+                for (uint_fast64_t action: sccActions) {
+                    absoluteWeight = storm::utility::abs(actionsWeight[action]);
+                    if (W < absoluteWeight) {
+                        W = absoluteWeight;
+                    }
+                }
+                ValueType upperBound = storm::utility::convertNumber<ValueType>(currentNumberOfStates - 1) * W;
+                ValueType lowerBound = -1 * upperBound;
+
+                storm::storage::BitVector const& sccMaximizerStateSpace = mdpStatesAreMaximizer ? sccStates : sccActions;
+                storm::storage::BitVector const& sccMinimizerStateSpace = mdpStatesAreMaximizer ? sccActions : sccStates;
+                storm::storage::BitVector frozenMaximizerStateSpace = maximizerStateSpace & ~sccMaximizerStateSpace;
+                storm::storage::BitVector frozenMinimizerStateSpace = minimizerStateSpace & ~sccMinimizerStateSpace;
+
+                do {
+                    ++ external_counter;
+                    // incorporate values of the previous copy of the game into the current copy of the game
+                    Y_pre = Y;
+                    Y = std::shared_ptr<Values>(new Values()); X = std::shared_ptr<Values>(new Values());
+                    Y->max = std::vector<ValueType>(numberOfMaxStates); X->max = std::vector<ValueType>(numberOfMaxStates);
+                    initNextValues(Y_pre->max, Y->max, X->max, maximizerStateSpace, sccMaximizerStateSpace, oldToNewStateMappingMax);
+                    Y->min = std::vector<ValueType>(numberOfMinStates); X->min = std::vector<ValueType>(numberOfMinStates);
+                    initNextValues(Y_pre->min, Y->min, X->min, minimizerStateSpace, sccMinimizerStateSpace, oldToNewStateMappingMin);
+
+                    // min-cost reachability
+                    do {
+                        ++ internal_counter;
+
+                        X_pre = X;
+                        X = std::shared_ptr<Values>(new Values());
+                        X->max = std::vector<ValueType>(numberOfMaxStates); X->min = std::vector<ValueType>(numberOfMinStates);
+                        initNextMeanCostReachabilityValues(X_pre->max, X->max, frozenMaximizerStateSpace, oldToNewStateMappingMax);
+                        initNextMeanCostReachabilityValues(X_pre->min, X->min, frozenMinimizerStateSpace, oldToNewStateMappingMin);
+                        // maximizer phase
+                        internalMinCostReachability(X->max, X_pre->min, Y->min,
+                                                    oldToNewStateMappingMax, oldToNewStateMappingMin,
+                                                    sccMaximizerStateSpace, maximizerSuccessors, wMaxToMin, true);
+                        // minimizer phase
+                        internalMinCostReachability(X->min, X_pre->max, Y->max,
+                                                    oldToNewStateMappingMin, oldToNewStateMappingMax,
+                                                    sccMinimizerStateSpace, minimizerSuccessors, wMinToMax, false);
+                        // lower bound checking phase
+                        lowerBoundUpdate(X->max, sccMaximizerStateSpace, oldToNewStateMappingMax, lowerBound);
+                        lowerBoundUpdate(X->min, sccMinimizerStateSpace, oldToNewStateMappingMin, lowerBound);
+
+                    } while (not valuesEqual(*X, *X_pre, precision, relative));
+
+                    Y = X;
+
+                    // upper bound checking phase
+                    upperBoundUpdate(Y->max, sccMaximizerStateSpace, oldToNewStateMappingMax, upperBound);
+                    upperBoundUpdate(Y->min, sccMinimizerStateSpace, oldToNewStateMappingMin, upperBound);
+
+                } while (not valuesEqual(*Y, *Y_pre, precision, relative) and
+                         not (earlyStopping and valuesStrictlyPositive(*Y)));
+            }
+
+            clock_t stop = clock();
+            double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
+            printf("\nTime elapsed: %.5f | internal iterations: %llu | external iterations: %llu \n", elapsed, internal_counter, external_counter);
+
+            Y_pre = Y;
+            Y = std::shared_ptr<Values>(new Values());
+            Y->max = std::vector<ValueType>(maximizerStateSpace.size());
+            backToOldStateMapping(Y_pre->max, Y->max, maximizerStateSpace, oldToNewStateMappingMax);
+            Y->min = std::vector<ValueType>(minimizerStateSpace.size());
+            backToOldStateMapping(Y_pre->min, Y->min, minimizerStateSpace, oldToNewStateMappingMin);
+
+            return *Y;
+
+        }
+
+        template<typename ValueType>
+        void TotalPayoffGame<ValueType>::internalMinCostReachability(
+                std::vector<ValueType> &X, std::vector<ValueType> const& X_pre, std::vector<ValueType> const& Y,
+                std::vector<uint_fast64_t> const& oldToNewStateMapping,
+                std::vector<uint_fast64_t> const& oldToNewStateMappingSucc,
+                storm::storage::BitVector const& stateSpace,
+                std::function<std::unique_ptr<successors>(uint_fast64_t)> const& successors,
+                std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& w,
+                bool maximizerPhase) const {
+
+            uint_fast64_t s, s_prime;
+            ValueType x;
+
+            for (uint_fast64_t state: stateSpace) {
+                s = oldToNewStateMapping[state];
+                X[s] = maximizerPhase ? -1 * storm::utility::infinity<ValueType>(): storm::utility::infinity<ValueType>();
+                for (uint_fast64_t next_state: *successors(state)) {
+                    s_prime = oldToNewStateMappingSucc[next_state];
+                    x = w(state, next_state) + storm::utility::min(X_pre[s_prime], Y[s_prime]);
+                    if ((maximizerPhase and x > X[s]) or (not maximizerPhase and x < X[s])) {
+                        X[s] = x;
+                    }
+                }
+            }
+        }
+
+        template<typename ValueType>
+        std::vector<uint_fast64_t>
+        TotalPayoffGame<ValueType>::initOldToNewStateMapping(storm::storage::BitVector const &stateSpace) const {
+            std::vector<uint_fast64_t> oldToNewStateMapping(stateSpace.size());
+            uint_fast64_t s = 0;
+            for (uint_fast64_t const& state: stateSpace) {
+                oldToNewStateMapping[state] = s;
+                ++ s;
+            }
+            return oldToNewStateMapping;
+        }
+
+        template<typename ValueType>
+        void TotalPayoffGame<ValueType>::initNextValues(const std::vector<ValueType> &Y_pre, std::vector<ValueType> &Y,
+                                                        storm::storage::BitVector const &stateSpace,
+                                                        std::vector<uint_fast64_t> const &oldToNewStateMapping) const {
+            uint_fast64_t s;
+            for (uint_fast64_t const& state: stateSpace) {
+                s = oldToNewStateMapping[state];
+                Y[s] = storm::utility::max<ValueType>(storm::utility::zero<ValueType>(), Y_pre[s]);
+            }
+
+        }
+
+        template<typename ValueType>
+        void TotalPayoffGame<ValueType>::initNextValues(const std::vector<ValueType> &Y_pre, std::vector<ValueType> &Y,
+                                                        std::vector<ValueType> &X,
+                                                        storm::storage::BitVector const &stateSpace,
+                                                        storm::storage::BitVector const& currentStateSpace,
+                                                        std::vector<uint_fast64_t> const &oldToNewStateMapping) const {
+            uint_fast64_t s;
+            for (uint_fast64_t const& state: stateSpace) {
+                s = oldToNewStateMapping[state];
+                if (currentStateSpace[state]) {
+                    Y[s] = storm::utility::max<ValueType>(storm::utility::zero<ValueType>(), Y_pre[s]);
+                    X[s] = storm::utility::infinity<ValueType>();
+                }
+                else {
+                    Y[s] = Y_pre[s];
+                    X[s] = Y_pre[s];
+                }
+            }
+        }
+
+        template<typename ValueType>
+        void TotalPayoffGame<ValueType>::initNextMeanCostReachabilityValues(const std::vector<ValueType> &X_pre,
+                                                                            std::vector<ValueType> &X,
+                                                                            storm::storage::BitVector const &frozenStateSpace,
+                                                                            std::vector<uint_fast64_t> const &oldToNewStateMapping) const {
+            uint_fast64_t s;
+            for (uint_fast64_t const& state: frozenStateSpace) {
+                s = oldToNewStateMapping[state];
+                X[s] = X_pre[s];
+            }
+        }
+
+        template<typename ValueType>
+        void TotalPayoffGame<ValueType>::lowerBoundUpdate(std::vector<ValueType> &X,
+                                                          storm::storage::BitVector const &stateSpace,
+                                                          std::vector<uint_fast64_t> const &oldToNewStateMapping,
+                                                          ValueType const& lowerBound) const {
+            uint_fast64_t s;
+            for (uint_fast64_t const& state: stateSpace) {
+                s = oldToNewStateMapping[state];
+                if (X[s] < lowerBound) {
+                    X[s] = -1 * storm::utility::infinity<ValueType>();
+                }
+            }
+
+        }
+
+        template<typename ValueType>
+        void TotalPayoffGame<ValueType>::upperBoundUpdate(std::vector<ValueType> &Y,
+                                                          storm::storage::BitVector const &stateSpace,
+                                                          std::vector<uint_fast64_t> const &oldToNewStateMapping,
+                                                          ValueType const& upperBound) const {
+            uint_fast64_t s;
+            for (uint_fast64_t state: stateSpace) {
+                s = oldToNewStateMapping[state];
+                if (Y[s] > upperBound) {
+                    Y[s] = storm::utility::infinity<ValueType>();
+                }
+            }
+        }
+
+        template<typename ValueType>
+        void TotalPayoffGame<ValueType>::backToOldStateMapping(const std::vector<ValueType> &Y_pre,
+                                                               std::vector<ValueType> &Y,
+                                                               storm::storage::BitVector const &stateSpace,
+                                                               std::vector<uint_fast64_t> const &oldToNewStateMapping) const {
+
+            uint_fast64_t s;
+            for (uint_fast64_t state = 0; state < stateSpace.size(); ++ state) {
+                s = oldToNewStateMapping[state];
+                // we set Y_pre[s] to zero as default value if the state does not belong to the restricted state
+                // space to avoid conflicts with the strictly positive or negative checking phase
+                Y[state] = stateSpace[state] ? Y_pre[s]: storm::utility::zero<ValueType>();
+            }
         }
 
         template <typename ValueType>
@@ -283,195 +621,6 @@ namespace sw {
         }
 
         template<typename ValueType>
-        void TotalPayoffGame<ValueType>::internalMinCostReachability(
-                std::vector<ValueType> &X, std::vector<ValueType> const& X_pre, std::vector<ValueType> const& Y,
-                std::vector<uint_fast64_t> const& oldToNewStateMapping,
-                std::vector<uint_fast64_t> const& oldToNewStateMappingSucc,
-                storm::storage::BitVector const& stateSpace,
-                std::function<std::unique_ptr<successors>(uint_fast64_t)> const& successors,
-                std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& w,
-                bool maximizerPhase) const {
-
-            uint_fast64_t s, s_prime;
-            ValueType x;
-
-            for (uint_fast64_t state: stateSpace) {
-                s = oldToNewStateMapping[state];
-                X[s] = maximizerPhase ? -1 * storm::utility::infinity<ValueType>(): storm::utility::infinity<ValueType>();
-                for (uint_fast64_t next_state: *successors(state)) {
-                    s_prime = oldToNewStateMappingSucc[next_state];
-                    x = w(state, next_state) + storm::utility::min(X_pre[s_prime], Y[s_prime]);
-                    if ((maximizerPhase and x > X[s]) or (not maximizerPhase and x < X[s])) {
-                        X[s] = x;
-                    }
-                }
-            }
-        }
-
-        template<typename ValueType>
-        std::vector<uint_fast64_t>
-        TotalPayoffGame<ValueType>::initOldToNewStateMapping(storm::storage::BitVector const &stateSpace) const {
-            std::vector<uint_fast64_t> oldToNewStateMapping(stateSpace.size());
-            uint_fast64_t s = 0;
-            for (uint_fast64_t const& state: stateSpace) {
-                oldToNewStateMapping[state] = s;
-                ++ s;
-            }
-            return oldToNewStateMapping;
-        }
-
-        template<typename ValueType>
-        void TotalPayoffGame<ValueType>::initNextValues(const std::vector<ValueType> &Y_pre, std::vector<ValueType> &Y,
-                                                        storm::storage::BitVector const &stateSpace,
-                                                        std::vector<uint_fast64_t> const &oldToNewStateMapping) const {
-            uint_fast64_t s;
-            for (uint_fast64_t const& state: stateSpace) {
-                s = oldToNewStateMapping[state];
-                Y[s] = storm::utility::max<ValueType>(storm::utility::zero<ValueType>(), Y_pre[s]);
-            }
-
-        }
-
-        template<typename ValueType>
-        void TotalPayoffGame<ValueType>::lowerBoundUpdate(std::vector<ValueType> &X,
-                                                          storm::storage::BitVector const &stateSpace,
-                                                          std::vector<uint_fast64_t> const &oldToNewStateMapping,
-                                                          ValueType const& lowerBound) const {
-            uint_fast64_t s;
-            for (uint_fast64_t const& state: stateSpace) {
-                s = oldToNewStateMapping[state];
-                if (X[s] < lowerBound) {
-                    X[s] = -1 * storm::utility::infinity<ValueType>();
-                }
-            }
-
-        }
-
-        template<typename ValueType>
-        void TotalPayoffGame<ValueType>::upperBoundUpdate(std::vector<ValueType> &Y,
-                                                          storm::storage::BitVector const &stateSpace,
-                                                          std::vector<uint_fast64_t> const &oldToNewStateMapping,
-                                                          ValueType const& upperBound) const {
-            uint_fast64_t s;
-            for (uint_fast64_t state: stateSpace) {
-                s = oldToNewStateMapping[state];
-                if (Y[s] > upperBound) {
-                    Y[s] = storm::utility::infinity<ValueType>();
-                }
-            }
-        }
-
-        template<typename ValueType>
-        void TotalPayoffGame<ValueType>::backToOldStateMapping(const std::vector<ValueType> &Y_pre,
-                                                               std::vector<ValueType> &Y,
-                                                               storm::storage::BitVector const &stateSpace,
-                                                               std::vector<uint_fast64_t> const &oldToNewStateMapping) const {
-
-            uint_fast64_t s;
-            for (uint_fast64_t state = 0; state < stateSpace.size(); ++ state) {
-                s = oldToNewStateMapping[state];
-                // we set Y_pre[s] to zero as default value if the state does not belong to the restricted state
-                // space to avoid conflicts with the strictly positive or negative checking phase
-                Y[state] = stateSpace[state] ? Y_pre[s]: storm::utility::zero<ValueType>();
-            }
-        }
-
-        template <typename ValueType>
-        typename TotalPayoffGame<ValueType>::Values TotalPayoffGame<ValueType>::maxTotalPayoffInf(
-                storm::Environment const& env,
-                storm::storage::BitVector const& maximizerStateSpace,
-                storm::storage::BitVector const& minimizerStateSpace,
-                std::function<std::unique_ptr<successors>(uint_fast64_t)> const& maximizerSuccessors,
-                std::function<std::unique_ptr<successors>(uint_fast64_t)> const& minimizerSuccessors,
-                std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMaxToMin,
-                std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMinToMax,
-                ValueType W, bool earlyStopping) const {
-
-            // std::cout << "state space: " << this->restrictedStateSpace << ", enabled actions: " << this->enabledActions << std::endl;
-            // storm::storage::StronglyConnectedComponentDecomposition<ValueType> stronglyConnectedComponentDecomposition(this->matrix, this->restrictedStateSpace, this->enabledActions);
-            // std::cout << "SCCs of the total payoff game: " << stronglyConnectedComponentDecomposition << std::endl;
-
-            uint_fast64_t numberOfMaxStates = maximizerStateSpace.getNumberOfSetBits();
-            uint_fast64_t numberOfMinStates = minimizerStateSpace.getNumberOfSetBits();
-
-            std::vector<uint_fast64_t> oldToNewStateMappingMax = initOldToNewStateMapping(maximizerStateSpace);
-            std::vector<uint_fast64_t> oldToNewStateMappingMin = initOldToNewStateMapping(minimizerStateSpace);
-
-            using Values = TotalPayoffGame<ValueType>::Values;
-            std::shared_ptr<Values> Y = std::shared_ptr<Values>(new Values()), Y_pre, X, X_pre;
-            Y->max = std::vector<ValueType>(numberOfMaxStates, -1 * storm::utility::infinity<ValueType>());
-            Y->min = std::vector<ValueType>(numberOfMinStates, -1 * storm::utility::infinity<ValueType>());
-            ValueType upperBound = storm::utility::convertNumber<ValueType>(this->restrictedStateSpace.getNumberOfSetBits() - 1) * W;
-            ValueType lowerBound = -1 * upperBound;
-            // for the vector equality check
-            auto precision = storm::utility::convertNumber<ValueType>(env.solver().minMax().getPrecision());
-            bool relative = env.solver().minMax().getRelativeTerminationCriterion();
-
-            uint_fast64_t external_counter = 0;
-            uint_fast64_t internal_counter = 0;
-            clock_t start = clock();
-
-            do {
-                ++external_counter;
-
-                // incorporate values of the previous copy of the game into the current copy of the game
-                Y_pre = Y;
-                Y = std::shared_ptr<Values>(new Values());
-                Y->max = std::vector<ValueType>(numberOfMaxStates);
-                initNextValues(Y_pre->max, Y->max, maximizerStateSpace, oldToNewStateMappingMax);
-                Y->min = std::vector<ValueType>(numberOfMinStates);
-                initNextValues(Y_pre->min, Y->min, minimizerStateSpace, oldToNewStateMappingMin);
-
-                X = std::shared_ptr<Values>(new Values());
-                X->max = std::vector<ValueType>(numberOfMaxStates, storm::utility::infinity<ValueType>());
-                X->min = std::vector<ValueType>(numberOfMinStates, storm::utility::infinity<ValueType>());
-
-                // min-cost reachability
-                do {
-                    ++ internal_counter;
-
-                    X_pre = X;
-                    X = std::shared_ptr<Values>(new Values());
-                    // maximizer phase
-                    X->max = std::vector<ValueType>(numberOfMaxStates);
-                    internalMinCostReachability(X->max, X_pre->min, Y->min,
-                                                oldToNewStateMappingMax, oldToNewStateMappingMin,
-                                                maximizerStateSpace, maximizerSuccessors, wMaxToMin, true);
-                    // minimizer phase
-                    X->min = std::vector<ValueType>(numberOfMinStates);
-                    internalMinCostReachability(X->min, X_pre->max, Y->max,
-                                                oldToNewStateMappingMin, oldToNewStateMappingMax,
-                                                minimizerStateSpace, minimizerSuccessors, wMinToMax, false);
-                    // lower bound checking phase
-                    lowerBoundUpdate(X->max, maximizerStateSpace, oldToNewStateMappingMax, lowerBound);
-                    lowerBoundUpdate(X->min, minimizerStateSpace, oldToNewStateMappingMin, lowerBound);
-
-                } while (not valuesEqual(*X, *X_pre, precision, relative));
-
-                Y = X;
-
-                // upper bound checking phase
-                upperBoundUpdate(Y->max, maximizerStateSpace, oldToNewStateMappingMax, upperBound);
-                upperBoundUpdate(Y->min, minimizerStateSpace, oldToNewStateMappingMin, upperBound);
-
-            } while (not valuesEqual(*Y, *Y_pre, precision, relative) and
-                     not (earlyStopping and valuesStrictlyPositive(*Y)));
-
-            clock_t stop = clock();
-            double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
-            printf("\nTime elapsed: %.5f | internal iterations: %llu | external iterations: %llu \n", elapsed, internal_counter, external_counter);
-
-            Y_pre = Y;
-            Y = std::shared_ptr<Values>(new Values());
-            Y->max = std::vector<ValueType>(maximizerStateSpace.size());
-            backToOldStateMapping(Y_pre->max, Y->max, maximizerStateSpace, oldToNewStateMappingMax);
-            Y->min = std::vector<ValueType>(minimizerStateSpace.size());
-            backToOldStateMapping(Y_pre->min, Y->min, minimizerStateSpace, oldToNewStateMappingMin);
-
-            return *Y;
-        }
-
-        template<typename ValueType>
         void TotalPayoffGame<ValueType>::initBackwardTransitions(BackwardTransitions &backwardTransitions) const {
             backwardTransitions.statePredecessors = std::vector<std::forward_list<uint_fast64_t>>(this->matrix.getRowGroupCount());
             backwardTransitions.actionPredecessor = std::vector<uint_fast64_t>(this->matrix.getRowCount());
@@ -492,6 +641,7 @@ namespace sw {
                 }
             }
         }
+
 
         /**
          * -------------------------------------------------------------------------------------------------------------
