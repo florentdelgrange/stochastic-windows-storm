@@ -14,6 +14,7 @@
 #include <storm/utility/vector.h>
 #include <storm/environment/Environment.h>
 #include "storm/environment/solver/MinMaxSolverEnvironment.h"
+#include <storm/storage/StronglyConnectedComponentDecomposition.h>
 
 namespace sw {
     namespace game {
@@ -218,6 +219,45 @@ namespace sw {
                     std::function<std::unique_ptr<successors>(uint_fast64_t)> const& successors,
                     std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& w,
                     bool maximizerPhase) const;
+
+            /*!
+             * allows to only consider enabled actions and states of the restricted state space in an efficient way by
+             * generating a mapping between indices of the system and the indices of the vector handled during the
+             * execution of the value iteration algorithm.
+             */
+            std::vector<uint_fast64_t> initOldToNewStateMapping(storm::storage::BitVector const& stateSpace) const;
+
+
+            /*!
+             * Copy the previous values to the new one.
+             */
+            void initNextValues(std::vector<ValueType> const& Y_pre, std::vector<ValueType> &Y,
+                                storm::storage::BitVector const& stateSpace,
+                                std::vector<uint_fast64_t> const& oldToNewStateMapping) const;
+
+            /*!
+             * update each value of the vector according to the lower bound, i.e., set values to -inf that are
+             * below the lower bound.
+             */
+            void lowerBoundUpdate(std::vector<ValueType>& X,
+                                  storm::storage::BitVector const& stateSpace,
+                                  std::vector<uint_fast64_t> const& oldToNewStateMapping,
+                                  ValueType const& lowerBound) const;
+            /*!
+             * update each value of the vector according to the upper bound, i.e., set values to +inf that are
+             * beyond the lower bound.
+             */
+            void upperBoundUpdate(std::vector<ValueType>& Y,
+                                  storm::storage::BitVector const& stateSpace,
+                                  std::vector<uint_fast64_t> const& oldToNewStateMapping,
+                                  ValueType const& upperBound) const;
+            /*!
+             * back to the original state enumeration
+             */
+            void backToOldStateMapping(std::vector<ValueType> const& Y_pre, std::vector<ValueType>& Y,
+                                       storm::storage::BitVector const& stateSpace,
+                                       std::vector<uint_fast64_t> const& oldToNewStateMapping) const;
+
         };
 
     }

@@ -306,7 +306,74 @@ namespace sw {
                     }
                 }
             }
+        }
 
+        template<typename ValueType>
+        std::vector<uint_fast64_t>
+        TotalPayoffGame<ValueType>::initOldToNewStateMapping(storm::storage::BitVector const &stateSpace) const {
+            std::vector<uint_fast64_t> oldToNewStateMapping(stateSpace.size());
+            uint_fast64_t s = 0;
+            for (uint_fast64_t const& state: stateSpace) {
+                oldToNewStateMapping[state] = s;
+                ++ s;
+            }
+            return oldToNewStateMapping;
+        }
+
+        template<typename ValueType>
+        void TotalPayoffGame<ValueType>::initNextValues(const std::vector<ValueType> &Y_pre, std::vector<ValueType> &Y,
+                                                        storm::storage::BitVector const &stateSpace,
+                                                        std::vector<uint_fast64_t> const &oldToNewStateMapping) const {
+            uint_fast64_t s;
+            for (uint_fast64_t const& state: stateSpace) {
+                s = oldToNewStateMapping[state];
+                Y[s] = storm::utility::max<ValueType>(storm::utility::zero<ValueType>(), Y_pre[s]);
+            }
+
+        }
+
+        template<typename ValueType>
+        void TotalPayoffGame<ValueType>::lowerBoundUpdate(std::vector<ValueType> &X,
+                                                          storm::storage::BitVector const &stateSpace,
+                                                          std::vector<uint_fast64_t> const &oldToNewStateMapping,
+                                                          ValueType const& lowerBound) const {
+            uint_fast64_t s;
+            for (uint_fast64_t const& state: stateSpace) {
+                s = oldToNewStateMapping[state];
+                if (X[s] < lowerBound) {
+                    X[s] = -1 * storm::utility::infinity<ValueType>();
+                }
+            }
+
+        }
+
+        template<typename ValueType>
+        void TotalPayoffGame<ValueType>::upperBoundUpdate(std::vector<ValueType> &Y,
+                                                          storm::storage::BitVector const &stateSpace,
+                                                          std::vector<uint_fast64_t> const &oldToNewStateMapping,
+                                                          ValueType const& upperBound) const {
+            uint_fast64_t s;
+            for (uint_fast64_t state: stateSpace) {
+                s = oldToNewStateMapping[state];
+                if (Y[s] > upperBound) {
+                    Y[s] = storm::utility::infinity<ValueType>();
+                }
+            }
+        }
+
+        template<typename ValueType>
+        void TotalPayoffGame<ValueType>::backToOldStateMapping(const std::vector<ValueType> &Y_pre,
+                                                               std::vector<ValueType> &Y,
+                                                               storm::storage::BitVector const &stateSpace,
+                                                               std::vector<uint_fast64_t> const &oldToNewStateMapping) const {
+
+            uint_fast64_t s;
+            for (uint_fast64_t state = 0; state < stateSpace.size(); ++ state) {
+                s = oldToNewStateMapping[state];
+                // we set Y_pre[s] to zero as default value if the state does not belong to the restricted state
+                // space to avoid conflicts with the strictly positive or negative checking phase
+                Y[state] = stateSpace[state] ? Y_pre[s]: storm::utility::zero<ValueType>();
+            }
         }
 
         template <typename ValueType>
@@ -320,20 +387,12 @@ namespace sw {
                 std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMinToMax,
                 ValueType W, bool earlyStopping) const {
 
+            // std::cout << "state space: " << this->restrictedStateSpace << ", enabled actions: " << this->enabledActions << std::endl;
+            // storm::storage::StronglyConnectedComponentDecomposition<ValueType> stronglyConnectedComponentDecomposition(this->matrix, this->restrictedStateSpace, this->enabledActions);
+            // std::cout << "SCCs of the total payoff game: " << stronglyConnectedComponentDecomposition << std::endl;
+
             uint_fast64_t numberOfMaxStates = maximizerStateSpace.getNumberOfSetBits();
             uint_fast64_t numberOfMinStates = minimizerStateSpace.getNumberOfSetBits();
-
-            // allows to only consider enabled actions and states of the restricted state space in an efficient way
-            std::function<std::vector<uint_fast64_t>(storm::storage::BitVector const&)> initOldToNewStateMapping =
-                [](storm::storage::BitVector const& stateSpace) -> std::vector<uint_fast64_t> {
-                   std::vector<uint_fast64_t> oldToNewStateMapping(stateSpace.size());
-                    uint_fast64_t s = 0;
-                    for (uint_fast64_t state: stateSpace) {
-                        oldToNewStateMapping[state] = s;
-                        ++ s;
-                    }
-                    return oldToNewStateMapping;
-            };
 
             std::vector<uint_fast64_t> oldToNewStateMappingMax = initOldToNewStateMapping(maximizerStateSpace);
             std::vector<uint_fast64_t> oldToNewStateMappingMin = initOldToNewStateMapping(minimizerStateSpace);
@@ -351,51 +410,6 @@ namespace sw {
             uint_fast64_t external_counter = 0;
             uint_fast64_t internal_counter = 0;
             clock_t start = clock();
-
-            // copy the previous values into the new one
-            std::function<void(std::vector<ValueType> const&, std::vector<ValueType>&,
-                               storm::storage::BitVector const&, std::vector<uint_fast64_t> const&)>
-            initNextValues =
-                [&] (std::vector<ValueType> const& Y_pre, std::vector<ValueType> &Y,
-                     storm::storage::BitVector const& stateSpace,
-                     std::vector<uint_fast64_t> const& oldToNewStateMapping) -> void {
-
-                    uint_fast64_t s;
-                    for (uint_fast64_t state: stateSpace) {
-                        s = oldToNewStateMapping[state];
-                        Y[s] = storm::utility::max<ValueType>(storm::utility::zero<ValueType>(), Y_pre[s]);
-                    }
-            };
-            // update each value of the vector according to the lower bound, i.e., set values to -inf that are
-            // below the lower bound.
-            std::function<void(std::vector<ValueType>&, storm::storage::BitVector const&, std::vector<uint_fast64_t> const&)>
-            lowerBoundUpdate =
-                [&] (std::vector<ValueType>& X, storm::storage::BitVector const& stateSpace,
-                     std::vector<uint_fast64_t> const& oldToNewStateMapping) -> void {
-
-                    uint_fast64_t s;
-                    for (uint_fast64_t state: stateSpace) {
-                        s = oldToNewStateMapping[state];
-                        if (X[s] < lowerBound) {
-                            X[s] = -1 * storm::utility::infinity<ValueType>();
-                        }
-                    }
-            };
-            // update each value of the vector according to the upper bound, i.e., set values to +inf that are
-            // beyond the lower bound.
-            std::function<void(std::vector<ValueType>&, storm::storage::BitVector const&, std::vector<uint_fast64_t> const&)>
-            upperBoundUpdate =
-            [&] (std::vector<ValueType>& Y, storm::storage::BitVector const& stateSpace,
-                 std::vector<uint_fast64_t> const& oldToNewStateMapping) -> void {
-
-                uint_fast64_t s;
-                for (uint_fast64_t state: stateSpace) {
-                    s = oldToNewStateMapping[state];
-                    if (Y[s] > upperBound) {
-                        Y[s] = storm::utility::infinity<ValueType>();
-                    }
-                }
-            };
 
             do {
                 ++external_counter;
@@ -429,16 +443,16 @@ namespace sw {
                                                 oldToNewStateMappingMin, oldToNewStateMappingMax,
                                                 minimizerStateSpace, minimizerSuccessors, wMinToMax, false);
                     // lower bound checking phase
-                    lowerBoundUpdate(X->max, maximizerStateSpace, oldToNewStateMappingMax);
-                    lowerBoundUpdate(X->min, minimizerStateSpace, oldToNewStateMappingMin);
+                    lowerBoundUpdate(X->max, maximizerStateSpace, oldToNewStateMappingMax, lowerBound);
+                    lowerBoundUpdate(X->min, minimizerStateSpace, oldToNewStateMappingMin, lowerBound);
 
                 } while (not valuesEqual(*X, *X_pre, precision, relative));
 
                 Y = X;
 
                 // upper bound checking phase
-                upperBoundUpdate(Y->max, maximizerStateSpace, oldToNewStateMappingMax);
-                upperBoundUpdate(Y->min, minimizerStateSpace, oldToNewStateMappingMin);
+                upperBoundUpdate(Y->max, maximizerStateSpace, oldToNewStateMappingMax, upperBound);
+                upperBoundUpdate(Y->min, minimizerStateSpace, oldToNewStateMappingMin, upperBound);
 
             } while (not valuesEqual(*Y, *Y_pre, precision, relative) and
                      not (earlyStopping and valuesStrictlyPositive(*Y)));
@@ -446,22 +460,6 @@ namespace sw {
             clock_t stop = clock();
             double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
             printf("\nTime elapsed: %.5f | internal iterations: %llu | external iterations: %llu \n", elapsed, internal_counter, external_counter);
-
-            // back to the original state enumeration
-            std::function<void(std::vector<ValueType> const&, std::vector<ValueType>&, storm::storage::BitVector const&, std::vector<uint_fast64_t> const&)>
-            backToOldStateMapping =
-            [&] (std::vector<ValueType> const& Y_pre, std::vector<ValueType>& Y,
-                 storm::storage::BitVector const& stateSpace,
-                 std::vector<uint_fast64_t> const& oldToNewStateMapping) -> void {
-
-                uint_fast64_t s;
-                for (uint_fast64_t state = 0; state < stateSpace.size(); ++ state) {
-                    s = oldToNewStateMapping[state];
-                    // we set Y_pre[s] to zero as default value if the state does not belong to the restricted state
-                    // space to avoid conflicts with the strictly positive or negative checking phase
-                    Y[state] = stateSpace[state] ? Y_pre[s]: storm::utility::zero<ValueType>();
-                }
-            };
 
             Y_pre = Y;
             Y = std::shared_ptr<Values>(new Values());
