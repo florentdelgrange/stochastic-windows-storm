@@ -39,13 +39,13 @@ namespace sw {
                     storm::storage::BitVector const &restrictedStateSpace,
                     storm::storage::BitVector const &enabledActions);
 
-            std::vector<ValueType> maxTotalPayoffInf() const;
-            std::vector<ValueType> minTotalPayoffSup() const;
+            std::vector<ValueType> maxTotalPayoffInf(bool acceleration=true) const;
+            std::vector<ValueType> minTotalPayoffSup(bool acceleration=true) const;
             /**
-             * Computes the set of states (P1 states -- states of the MDP, and P2 states -- actions of the MDP) from
+             * Computes the set of states (P1 states -- states of the MDP -- and P2 states -- actions of the MDP) from
              * which P2 can enforce a strictly negative supremum total-payoff
              */
-            GameStates negSupTP() const;
+            GameStates negSupTP(bool acceleration=true) const;
 
             /*!
              * initialize the input BackwardTransitions structure for this MDP game

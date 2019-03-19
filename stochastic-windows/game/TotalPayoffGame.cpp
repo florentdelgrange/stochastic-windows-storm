@@ -35,127 +35,146 @@ namespace sw {
         }
 
         template<typename ValueType>
-        std::vector<ValueType> TotalPayoffGame<ValueType>::maxTotalPayoffInf() const {
+        std::vector<ValueType> TotalPayoffGame<ValueType>::maxTotalPayoffInf(bool acceleration) const {
             std::vector<ValueType> const& weights = rewardModel.getStateActionRewardVector();
-            ValueType W = -1 * storm::utility::infinity<ValueType>();
-            {
-                ValueType absoluteWeight;
-                for (uint_fast64_t action: this->enabledActions) {
-                    absoluteWeight = storm::utility::abs(weights[action]);
-                    if (W < absoluteWeight) {
-                        W = absoluteWeight;
+            if (not acceleration) {
+                ValueType W = -1 * storm::utility::infinity<ValueType>();
+                {
+                    ValueType absoluteWeight;
+                    for (uint_fast64_t action: this->enabledActions) {
+                        absoluteWeight = storm::utility::abs(weights[action]);
+                        if (W < absoluteWeight) {
+                            W = absoluteWeight;
+                        }
                     }
                 }
-            }
-            /*
-            {
-                std::function<std::unique_ptr<successors>(uint_fast64_t)> p2TransitionFunction =
+
+                return maxTotalPayoffInf(
+                        storm::Environment(),
+                        this->restrictedStateSpace,
+                        this->enabledActions,
                         [&](uint_fast64_t state) -> std::unique_ptr<successors> {
-                        return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state])); };
-                std::function<std::unique_ptr<successors>(uint_fast64_t)> p1TransitionFunction =
+                            return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); },
                         [&](uint_fast64_t state) -> std::unique_ptr<successors> {
-                            return std::unique_ptr<successors>(
-                                    new successorsP1(state, this->matrix, this->restrictedStateSpace,
-                                                     this->enabledActions));
-                        };
-
-
-                for (uint_fast64_t s: this->restrictedStateSpace) {
-                    successors &succ = *p1TransitionFunction(s);
-                    auto it = succ.begin();
-                    auto end = succ.end();
-                    std::cout << "succ of state " << s << "=[";
-                    for (uint_fast64_t a: *p1TransitionFunction(s)) {
-                        std::cout << a << ", ";
-                    }
-                    std::cout << "]" << std::endl;
-                }
-
-                for (uint_fast64_t a: this->enabledActions) {
-                    successors &succ = *p2TransitionFunction(a);
-                    auto it = succ.begin();
-                    auto end = succ.end();
-                    std::cout << "succ of action " << a << "=[";
-                    for (uint_fast64_t s: *p2TransitionFunction(a)) {
-                        std::cout << s << ", ";
-                    }
-                    std::cout << "]" << std::endl;
-                }
+                            return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state]) ); },
+                        [&](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return weights[s_prime]; },
+                        [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
+                        W)
+                        .max;
             }
-             */
-
-            return maxTotalPayoffInf(
-                    storm::Environment(),
-                    this->restrictedStateSpace,
-                    this->enabledActions,
-                    [&](uint_fast64_t state) -> std::unique_ptr<successors> {
-                        return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); },
-                    [&](uint_fast64_t state) -> std::unique_ptr<successors> {
-                        return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state]) ); },
-                    [&](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return weights[s_prime]; },
-                    [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
-                    W)
-                    .max;
+            else {
+                return acceleratedMaxTotalPayoffInf(
+                        storm::Environment(),
+                        this->restrictedStateSpace,
+                        this->enabledActions,
+                        true,
+                        [&](uint_fast64_t state) -> std::unique_ptr<successors> {
+                            return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); },
+                        [&](uint_fast64_t state) -> std::unique_ptr<successors> {
+                            return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state]) ); },
+                        [&](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return weights[s_prime]; },
+                        [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
+                        weights).max;
+            }
         }
 
         template<typename ValueType>
-        std::vector<ValueType> TotalPayoffGame<ValueType>::minTotalPayoffSup() const {
+        std::vector<ValueType> TotalPayoffGame<ValueType>::minTotalPayoffSup(bool acceleration) const {
             std::vector<ValueType> const& weights = rewardModel.getStateActionRewardVector();
             std::vector<ValueType> oppositeWeights(weights.size());
             std::transform(weights.begin(), weights.end(), oppositeWeights.begin(),
                            [](ValueType w) -> ValueType { return w * -1; });
-            ValueType W = -1 * storm::utility::infinity<ValueType>();
-            {
-                ValueType absoluteWeight;
-                for (uint_fast64_t action: this->enabledActions) {
-                    absoluteWeight = storm::utility::abs(weights[action]);
-                    if (W < absoluteWeight) {
-                        W = absoluteWeight;
+            std::vector<ValueType> result;
+            if (not acceleration) {
+                ValueType W = -1 * storm::utility::infinity<ValueType>();
+                {
+                    ValueType absoluteWeight;
+                    for (uint_fast64_t action: this->enabledActions) {
+                        absoluteWeight = storm::utility::abs(weights[action]);
+                        if (W < absoluteWeight) {
+                            W = absoluteWeight;
+                        }
                     }
                 }
-            }
 
-            std::vector<ValueType> result = acceleratedMaxTotalPayoffInf(
-                    storm::Environment(), this->enabledActions, this->restrictedStateSpace, false,
+                result = maxTotalPayoffInf(
+                    storm::Environment(),
+                    this->enabledActions,
+                    this->restrictedStateSpace,
                     [&](uint_fast64_t state) -> std::unique_ptr<successors> {
                         return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state]) ); },
                     [&](uint_fast64_t state) -> std::unique_ptr<successors> {
                         return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); },
                     [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
                     [&](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return oppositeWeights[s_prime]; },
-                    oppositeWeights)
+                    W)
                     .min;
+
+            }
+            else {
+                result = acceleratedMaxTotalPayoffInf(
+                        storm::Environment(),
+                        this->enabledActions,
+                        this->restrictedStateSpace,
+                        false,
+                        [&](uint_fast64_t state) -> std::unique_ptr<successors> {
+                            return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state]) ); },
+                        [&](uint_fast64_t state) -> std::unique_ptr<successors> {
+                            return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); },
+                        [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
+                        [&](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return oppositeWeights[s_prime]; },
+                        oppositeWeights)
+                        .min;
+            }
             std::transform(result.begin(), result.end(), result.begin(), [](ValueType v) -> ValueType { return v * -1; });
             return result;
         }
 
         template <typename ValueType>
-        GameStates TotalPayoffGame<ValueType>::negSupTP() const {
+        GameStates TotalPayoffGame<ValueType>::negSupTP(bool acceleration) const {
             std::vector<ValueType> const& weights = rewardModel.getStateActionRewardVector();
             std::vector<ValueType> oppositeWeights(weights.size());
             std::transform(weights.begin(), weights.end(), oppositeWeights.begin(),
                            [](ValueType w) -> ValueType { return w * -1; });
-            ValueType W = -1 * storm::utility::infinity<ValueType>();
-            {
-                ValueType absoluteWeight;
-                for (uint_fast64_t action: this->enabledActions) {
-                    absoluteWeight = storm::utility::abs(weights[action]);
-                    if (W < absoluteWeight) {
-                        W = absoluteWeight;
+            Values result;
+            if (not acceleration) {
+                ValueType W = -1 * storm::utility::infinity<ValueType>();
+                {
+                    ValueType absoluteWeight;
+                    for (uint_fast64_t action: this->enabledActions) {
+                        absoluteWeight = storm::utility::abs(weights[action]);
+                        if (W < absoluteWeight) {
+                            W = absoluteWeight;
+                        }
                     }
                 }
-            }
 
-            Values result = maxTotalPayoffInf(
-                    storm::Environment(),
-                    this->enabledActions, this->restrictedStateSpace,
-                    [&](uint_fast64_t state) -> std::unique_ptr<successors> {
-                        return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state]) ); },
-                    [&](uint_fast64_t state) -> std::unique_ptr<successors> {
-                        return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); },
-                    [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
-                    [&](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return oppositeWeights[s_prime]; },
-                    W);
+                result = maxTotalPayoffInf(
+                        storm::Environment(),
+                        this->enabledActions, this->restrictedStateSpace,
+                        [&](uint_fast64_t state) -> std::unique_ptr<successors> {
+                            return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state]) ); },
+                        [&](uint_fast64_t state) -> std::unique_ptr<successors> {
+                            return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); },
+                        [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
+                        [&](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return oppositeWeights[s_prime]; },
+                        W);
+
+            }
+            else  {
+                result = acceleratedMaxTotalPayoffInf(
+                        storm::Environment(),
+                        this->enabledActions,
+                        this->restrictedStateSpace,
+                        false,
+                        [&](uint_fast64_t state) -> std::unique_ptr<successors> {
+                            return std::unique_ptr<successors>( new forwardSuccessorsP2(this->forwardTransitions.successors[state]) ); },
+                        [&](uint_fast64_t state) -> std::unique_ptr<successors> {
+                            return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); },
+                        [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
+                        [&](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return oppositeWeights[s_prime]; },
+                        oppositeWeights);
+            }
             GameStates badStates;
             badStates.p1States = storm::storage::BitVector(this->restrictedStateSpace.size(), false);
             badStates.p2States = storm::storage::BitVector(this->enabledActions.size(), false);
