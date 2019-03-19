@@ -123,7 +123,7 @@ namespace sw {
                         return std::unique_ptr<successors>( new successorsP1(state, this->matrix, this->restrictedStateSpace, this->enabledActions) ); },
                     [](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return storm::utility::zero<ValueType>(); },
                     [&](uint_fast64_t s, uint_fast64_t s_prime) -> ValueType { return oppositeWeights[s_prime]; },
-                    oppositeWeights, true)
+                    oppositeWeights)
                     .min;
             std::transform(result.begin(), result.end(), result.begin(), [](ValueType v) -> ValueType { return v * -1; });
             return result;
@@ -273,7 +273,7 @@ namespace sw {
                 std::function<std::unique_ptr<successors>(uint_fast64_t)> const &minimizerSuccessors,
                 std::function<ValueType(uint_fast64_t, uint_fast64_t)> const &wMaxToMin,
                 std::function<ValueType(uint_fast64_t, uint_fast64_t)> const &wMinToMax,
-                std::vector<ValueType> const& actionsWeight, bool earlyStopping) const {
+                std::vector<ValueType> const& actionsWeight) const {
 
             auto precision = storm::utility::convertNumber<ValueType>(env.solver().minMax().getPrecision());
             bool relative = env.solver().minMax().getRelativeTerminationCriterion();
@@ -285,11 +285,9 @@ namespace sw {
             std::vector<uint_fast64_t> oldToNewStateMappingMax = initOldToNewStateMapping(maximizerStateSpace);
             std::vector<uint_fast64_t> oldToNewStateMappingMin = initOldToNewStateMapping(minimizerStateSpace);
 
-            std::shared_ptr<Values> Y = std::shared_ptr<Values>(new Values()), Y_pre, X = std::shared_ptr<Values>(new Values()), X_pre;
+            std::shared_ptr<Values> Y = std::shared_ptr<Values>(new Values()), Y_pre, X, X_pre;
             Y->max = std::vector<ValueType>(numberOfMaxStates, -1 * storm::utility::infinity<ValueType>());
             Y->min = std::vector<ValueType>(numberOfMinStates, -1 * storm::utility::infinity<ValueType>());
-            X->max = std::vector<ValueType>(numberOfMaxStates);
-            X->min = std::vector<ValueType>(numberOfMinStates);
 
             uint_fast64_t external_counter = 0;
             uint_fast64_t internal_counter = 0;
@@ -357,7 +355,8 @@ namespace sw {
                         lowerBoundUpdate(X->max, sccMaximizerStateSpace, oldToNewStateMappingMax, lowerBound);
                         lowerBoundUpdate(X->min, sccMinimizerStateSpace, oldToNewStateMappingMin, lowerBound);
 
-                    } while (not valuesEqual(*X, *X_pre, precision, relative));
+                    } while (not valuesEqual(*X, *X_pre, sccMaximizerStateSpace, sccMinimizerStateSpace,
+                                             oldToNewStateMappingMax, oldToNewStateMappingMin, precision, relative));
 
                     Y = X;
 
@@ -365,8 +364,8 @@ namespace sw {
                     upperBoundUpdate(Y->max, sccMaximizerStateSpace, oldToNewStateMappingMax, upperBound);
                     upperBoundUpdate(Y->min, sccMinimizerStateSpace, oldToNewStateMappingMin, upperBound);
 
-                } while (not valuesEqual(*Y, *Y_pre, precision, relative) and
-                         not (earlyStopping and valuesStrictlyPositive(*Y)));
+                } while (not valuesEqual(*Y, *Y_pre, sccMaximizerStateSpace, sccMinimizerStateSpace,
+                                         oldToNewStateMappingMax, oldToNewStateMappingMin, precision, relative));
             }
 
             clock_t stop = clock();
@@ -590,6 +589,23 @@ namespace sw {
             return true;
         }
 
+        template<typename ValueType>
+        bool TotalPayoffGame<ValueType>::vectorEquality(const std::vector<ValueType> &vectorLeft,
+                                                        const std::vector<ValueType> &vectorRight,
+                                                        storm::storage::BitVector const& stateSpace,
+                                                        std::vector<uint_fast64_t> const& oldToNewStateMapping,
+                                                        const ValueType &precision, bool relativeError) const {
+
+            STORM_LOG_ASSERT(vectorLeft.size() == vectorRight.size(), "Lengths of vectors does not match.");
+            uint_fast64_t s;
+            for (uint_fast64_t state: stateSpace) {
+                s = oldToNewStateMapping[state];
+                if (!this->equalModuloPrecision(vectorLeft[s], vectorRight[s], precision, relativeError)) {
+                    return false;
+                }
+            }
+            return true;
+        }
 
         template <typename ValueType>
         bool TotalPayoffGame<ValueType>::valuesEqual(
@@ -603,6 +619,21 @@ namespace sw {
 
             return this->vectorEquality(X.max, Y.max, precision, relativeError) and
                    this->vectorEquality(X.min, Y.min, precision, relativeError);
+        }
+
+        template<typename ValueType>
+        bool TotalPayoffGame<ValueType>::valuesEqual(const TotalPayoffGame::Values &X, const TotalPayoffGame::Values &Y,
+                                                     storm::storage::BitVector const &maximizerStateSpace,
+                                                     storm::storage::BitVector const &minimizerStateSpace,
+                                                     std::vector<uint_fast64_t> const& oldToNewStateMappingMax,
+                                                     std::vector<uint_fast64_t> const& oldToNewStateMappingMin,
+                                                     ValueType precision, bool relativeError) const {
+            if (not relativeError) {
+                precision *= storm::utility::convertNumber<ValueType>(2.0);
+            }
+
+            return this->vectorEquality(X.max, Y.max, maximizerStateSpace, oldToNewStateMappingMax, precision, relativeError) and
+                   this->vectorEquality(X.min, Y.min, minimizerStateSpace, oldToNewStateMappingMin, precision, relativeError);
         }
 
         template <typename ValueType>
@@ -641,7 +672,6 @@ namespace sw {
                 }
             }
         }
-
 
         /**
          * -------------------------------------------------------------------------------------------------------------

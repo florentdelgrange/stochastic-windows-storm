@@ -97,11 +97,22 @@ namespace sw {
             bool vectorEquality(std::vector<ValueType> const& vectorLeft,
                                 std::vector<ValueType> const& vectorRight,
                                 ValueType const& precision, bool relativeError) const;
+            bool vectorEquality(std::vector<ValueType> const& vectorLeft,
+                                std::vector<ValueType> const& vectorRight,
+                                storm::storage::BitVector const& stateSpace,
+                                std::vector<uint_fast64_t> const& oldToNewStateMapping,
+                                ValueType const& precision, bool relativeError) const;
 
             /*!
              * Checks if values of vectors from X are equal to values of vectors from Y
              */
             bool valuesEqual(Values const& X, Values const& Y, ValueType precision, bool relativeError) const;
+            bool valuesEqual(Values const& X, Values const& Y,
+                             storm::storage::BitVector const& maximizerStateSpace,
+                             storm::storage::BitVector const& minimizerStateSpace,
+                             std::vector<uint_fast64_t> const& oldToNewStateMappingMax,
+                             std::vector<uint_fast64_t> const& oldToNewStateMappingMin,
+                             ValueType precision, bool relativeError) const;
 
             /*!
              * Checks if values of vectors from X are strictly positive
@@ -210,7 +221,10 @@ namespace sw {
                     std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMaxToMin,
                     std::function<ValueType(uint_fast64_t, uint_fast64_t)> const& wMinToMax,
                     ValueType W, bool earlyStopping=false) const;
-
+            /*!
+             * Compute the max total payoff inf values for all maximizer and minimizer states by steps according to the
+             * topologically sorted strongly connected component decomposition of the game.
+             */
             Values acceleratedMaxTotalPayoffInf(
                     storm::Environment const &env,
                     storm::storage::BitVector const& maximizerStateSpace,
@@ -220,7 +234,7 @@ namespace sw {
                     std::function<std::unique_ptr<successors>(uint_fast64_t)> const &minimizerSuccessors,
                     std::function<ValueType(uint_fast64_t, uint_fast64_t)> const &wMaxToMin,
                     std::function<ValueType(uint_fast64_t, uint_fast64_t)> const &wMinToMax,
-                    std::vector<ValueType> const& actionsWeight, bool earlyStopping = false) const;
+                    std::vector<ValueType> const& actionsWeight) const;
 
             void internalMinCostReachability(
                     std::vector<ValueType> &X, std::vector<ValueType> const& X_pre, std::vector<ValueType> const& Y,
