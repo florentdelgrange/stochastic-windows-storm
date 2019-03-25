@@ -65,6 +65,62 @@ namespace sw {
         }
 
         template <typename ValueType>
+        GameStates MdpGame<ValueType>::attractorsP1(GameStates const &targetSet,
+                                                    BackwardTransitions const &backwardTransitions) const {
+            GameStates attractors = targetSet;
+            storm::storage::BitVector actionVisited(this->enabledActions.size(), false);
+            std::vector<uint_fast64_t> remainingActionSuccessors(this->enabledActions.size());
+
+            // Initialize a stack to iterate on P1 attractors of the targetSet
+            std::forward_list<uint_fast64_t> stack(attractors.p1States.begin(), attractors.p1States.end());
+            // set actions of the target set as being in the attractors and push predecessors of these actions in the stack
+            uint_fast64_t state;
+            for (uint_fast64_t action: attractors.p2States) {
+                attractors.p2States.set(action, true);
+                state = backwardTransitions.actionPredecessor[action];
+                if (not attractors.p1States[state]) {
+                    stack.push_front(state);
+                }
+            }
+
+            uint_fast64_t currentState;
+            while (!stack.empty()) {
+                currentState = stack.front();
+                stack.pop_front();
+                // actions of backward transitions are assumed to be enabled
+                for (const auto &action : backwardTransitions.statePredecessors[currentState]) {
+                    // if the action is not yet in the attractors, then it remains some successors to be visited through this action
+                    if (not attractors.p2States[action]) {
+                        if (not actionVisited[action]) {
+                            actionVisited.set(action, true);
+                            // count the number of successors of the action to visit
+                            remainingActionSuccessors[action] = 0;
+                            // we assume here that all successors of the current action are not necessarily in the restricted state space
+                            for (const auto &entry: this->matrix.getRow(action)) {
+                                if (this->restrictedStateSpace[entry.getColumn()]) {
+                                    ++remainingActionSuccessors[action];
+                                }
+                            }
+                        }
+                        // visit the current state through the action
+                        --remainingActionSuccessors[action];
+                        if (not remainingActionSuccessors[action]) {
+                            // all successors of the action have been visited through this action
+                            attractors.p2States.set(action, true);
+                            state = backwardTransitions.actionPredecessor[action];
+                            if (not attractors.p1States[state]) {
+                                attractors.p1States.set(state, true);
+                                stack.push_front(state);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return attractors;
+        }
+
+        template <typename ValueType>
         GameStates MdpGame<ValueType>::attractorsP2(GameStates const& targetSet,
                                                     BackwardTransitions const& backwardTransitions) const {
             GameStates attractors = targetSet;
@@ -104,10 +160,10 @@ namespace sw {
                 for (uint_fast64_t action: backwardTransitions.statePredecessors[currentState]) {
                     if (not attractors.p2States[action]) {
                         attractors.p2States.set(action, true);
-                        // the state for which the current action belongs to is not in the attractors, otherwise,
-                        // the current action would be in it
                         state = backwardTransitions.actionPredecessor[action];
-                        visitState(state);
+                        if (not attractors.p1States[state]) {
+                            visitState(state);
+                        }
                     }
                 }
             }

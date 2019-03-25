@@ -55,7 +55,15 @@ namespace sw {
              */
             storm::storage::BitVector attractorsP1(storm::storage::BitVector const& targetSet,
                                                    BackwardTransitions const& backwardTransitions) const;
-
+            /*!
+             * Computes the full set (P1 states and P2 states) of P1 attractors of the target set in this MDP game.
+             * @note we assume here that all successors of actions are not necessarily in the restricted state space.
+             */
+            GameStates attractorsP1(GameStates const& targetSet,
+                                    BackwardTransitions const& backwardTransitions) const;
+            /*!
+             * Compute the P2 attractors of the target set in this MDP game
+             */
             GameStates attractorsP2(GameStates const& targetSet,
                                     BackwardTransitions const& backwardTransitions) const;
 

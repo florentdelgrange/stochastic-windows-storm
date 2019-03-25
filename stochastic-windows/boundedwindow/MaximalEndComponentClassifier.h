@@ -2,8 +2,8 @@
 // Created by Florent Delgrange on 2019-02-01.
 //
 
-#ifndef STORM_FW_MAXIMALENDCOMPONENTCLASSIFIER_H
-#define STORM_FW_MAXIMALENDCOMPONENTCLASSIFIER_H
+#ifndef STORM_BW_MAXIMALENDCOMPONENTCLASSIFIER_H
+#define STORM_BW_MAXIMALENDCOMPONENTCLASSIFIER_H
 
 #include <storm/storage/MaximalEndComponent.h>
 #include <stochastic-windows/game/WindowGame.h>
@@ -38,4 +38,4 @@ namespace sw {
 }
 
 
-#endif //STORM_FW_MAXIMALENDCOMPONENTCLASSIFIER_H
+#endif //STORM_BW_MAXIMALENDCOMPONENTCLASSIFIER_H

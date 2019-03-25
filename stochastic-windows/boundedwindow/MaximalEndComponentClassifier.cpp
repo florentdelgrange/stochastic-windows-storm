@@ -2,7 +2,7 @@
 // Created by Florent Delgrange on 2019-02-01.
 //
 
-#include "MaximalEndComponentClassifier.h"
+#include <stochastic-windows/boundedwindow/MaximalEndComponentClassifier.h>
 
 namespace sw {
     namespace BoundedWindow {

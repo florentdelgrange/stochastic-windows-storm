@@ -21,6 +21,7 @@
 #include <stochastic-windows/fixedwindow/MaximalEndComponentClassifier.h>
 #include <stochastic-windows/fixedwindow/FixedWindowObjective.h>
 #include <stochastic-windows/game/TotalPayoffGame.h>
+#include <stochastic-windows/game/WeakParityGame.h>
 
 #include "storm/utility/initialize.h"
 
@@ -342,7 +343,7 @@ void windowExamples(){
     std::cout << std::endl;
     std::cout << "MDP as a Total Payoff game" << std::endl;
     sw::game::TotalPayoffGame<double> game(*mdp, "weights", restrictedStateSpace, enabledActions);
-    /*
+    /* */
     {
         std::vector<double> values = game.maxTotalPayoffInf();
         std::cout << "max total payoff inf values= [";
@@ -358,7 +359,7 @@ void windowExamples(){
         std::cout << "]" << std::endl;
         std::cout << std::endl;
     }
-     */
+     /* */
 
     // Attractors
     // P1
@@ -412,6 +413,17 @@ void windowExamples(){
         game.initBackwardTransitions(backwardTransitions);
         std::cout << "P1 attractors of T = {5, 4}: ";
         std::cout << game.attractorsP1(T, backwardTransitions) << std::endl;
+    }
+    {
+        sw::game::GameStates S;
+        S.p1States = storm::storage::BitVector(restrictedStateSpace.size(), false);
+        S.p2States = storm::storage::BitVector(enabledActions.size(), false);
+        S.p1States.set(7, true); S.p2States.set(9, true);
+        sw::game::BackwardTransitions backwardTransitions;
+        game.initBackwardTransitions(backwardTransitions);
+        std::cout << "P1 attractors of  {s7, a9}: ";
+        sw::game::GameStates T = game.attractorsP1(S, backwardTransitions);
+        std::cout << "S1=" << T.p1States << ", S2=" << T.p2States << std::endl;
     }
     // P2
     std::cout << std::endl;
@@ -445,8 +457,10 @@ void windowExamples(){
 
     std::cout << std::endl;
     std::cout << "Bounded problem" << std::endl;
-    std::cout << "Winning states=" << wmpGame->boundedProblem();
+    std::cout << "BWmp=" << wmpGame->boundedProblem() << " | DBWmp=" << wmpGame->directBoundedProblem() << std::endl;
 
+    sw::game::WindowParityGame<double> wpGame(*mdp, "priorities", 3, restrictedStateSpace, enabledActions);
+    std::cout << "BWpar=" << wpGame.boundedProblem() << " | DBWpar=" << wpGame.directBoundedProblem() << std::endl;
 }
 
 

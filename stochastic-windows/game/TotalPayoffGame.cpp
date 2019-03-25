@@ -218,12 +218,14 @@ namespace sw {
             auto precision = storm::utility::convertNumber<ValueType>(env.solver().minMax().getPrecision());
             bool relative = env.solver().minMax().getRelativeTerminationCriterion();
 
+            /* runtime analysis
             uint_fast64_t external_counter = 0;
             uint_fast64_t internal_counter = 0;
             clock_t start = clock();
+            */
 
             do {
-                ++external_counter;
+                // ++external_counter;
 
                 // incorporate values of the previous copy of the game into the current copy of the game
                 Y_pre = Y;
@@ -239,7 +241,7 @@ namespace sw {
 
                 // min-cost reachability
                 do {
-                    ++ internal_counter;
+                    // ++ internal_counter;
 
                     X_pre = X;
                     X = std::shared_ptr<Values>(new Values());
@@ -268,9 +270,11 @@ namespace sw {
             } while (not valuesEqual(*Y, *Y_pre, precision, relative) and
                      not (earlyStopping and valuesStrictlyPositive(*Y)));
 
+            /* runtime analysis
             clock_t stop = clock();
             double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
             printf("\nTime elapsed: %.5f | internal iterations: %llu | external iterations: %llu \n", elapsed, internal_counter, external_counter);
+            */
 
             Y_pre = Y;
             Y = std::shared_ptr<Values>(new Values());
@@ -308,9 +312,11 @@ namespace sw {
             Y->max = std::vector<ValueType>(numberOfMaxStates, -1 * storm::utility::infinity<ValueType>());
             Y->min = std::vector<ValueType>(numberOfMinStates, -1 * storm::utility::infinity<ValueType>());
 
+            /* runtime analysis
             uint_fast64_t external_counter = 0;
             uint_fast64_t internal_counter = 0;
             clock_t start = clock();
+             */
 
             storm::storage::StronglyConnectedComponentDecomposition<ValueType>
             stronglyConnectedComponentDecomposition(this->matrix, this->restrictedStateSpace, this->enabledActions);
@@ -344,7 +350,7 @@ namespace sw {
                 storm::storage::BitVector frozenMinimizerStateSpace = minimizerStateSpace & ~sccMinimizerStateSpace;
 
                 do {
-                    ++ external_counter;
+                    // ++ external_counter;
                     // incorporate values of the previous copy of the game into the current copy of the game
                     Y_pre = Y;
                     Y = std::shared_ptr<Values>(new Values()); X = std::shared_ptr<Values>(new Values());
@@ -355,7 +361,7 @@ namespace sw {
 
                     // min-cost reachability
                     do {
-                        ++ internal_counter;
+                        // ++ internal_counter;
 
                         X_pre = X;
                         X = std::shared_ptr<Values>(new Values());
@@ -387,9 +393,11 @@ namespace sw {
                                          oldToNewStateMappingMax, oldToNewStateMappingMin, precision, relative));
             }
 
+            /* runtime analysis
             clock_t stop = clock();
             double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
             printf("\nTime elapsed: %.5f | internal iterations: %llu | external iterations: %llu \n", elapsed, internal_counter, external_counter);
+            */
 
             Y_pre = Y;
             Y = std::shared_ptr<Values>(new Values());

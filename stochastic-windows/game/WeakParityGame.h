@@ -1,0 +1,51 @@
+//
+// Created by Florent Delgrange on 2019-03-21.
+//
+
+#ifndef STORM_PARITYRESPONSEGAME_H
+#define STORM_PARITYRESPONSEGAME_H
+
+#include <stochastic-windows/game/MdpGame.h>
+
+namespace sw {
+    namespace game {
+
+        template <typename ValueType>
+        class WeakParityGame: public MdpGame<ValueType> {
+        public:
+
+            WeakParityGame(
+                    storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
+                    std::string const &rewardModelName,
+                    storm::storage::BitVector const &restrictedStateSpace,
+                    storm::storage::BitVector const &enabledActions);
+
+            struct WinningSet {
+                GameStates player1; // winning set for the weak parity objective
+                GameStates player2; // co-winning set for the weak parity objective
+            };
+
+            WinningSet weakParity() const;
+
+            /*!
+             * initialize the input BackwardTransitions structure for this MDP game
+             * @param backwardTransitions an empty BackwardTransitions structure to initialize
+             * @note in total-payoff games, actions may lead to states not belonging to the restricted state space
+             */
+            void initBackwardTransitions(BackwardTransitions &backwardTransitions) const override;
+
+        private:
+            /**
+             * Reward Model to consider
+             */
+            std::string const &rewardModelName;
+            storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel;
+
+            bool isEven(ValueType priority) const;
+        };
+
+    }
+}
+
+
+#endif //STORM_PARITYRESPONSEGAME_H
