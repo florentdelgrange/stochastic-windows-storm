@@ -60,7 +60,25 @@ namespace sw {
                     storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max);
+            MaximalEndComponentDecompositionWindowMeanPayoffGame(
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
+                    std::string const &rewardModelName);
 
+        protected:
+            void generateWindowGames(
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
+                    std::string const &rewardModelName,
+                    uint_fast64_t const &l_max) override;
+        };
+
+        template<typename ValueType>
+        class MaximalEndComponentDecompositionWindowParityGame: public MaximalEndComponentDecompositionWindowGame<ValueType> {
+        public:
+
+            MaximalEndComponentDecompositionWindowParityGame(
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
+                    std::string const &rewardModelName);
+            
         protected:
             void generateWindowGames(
                     storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,

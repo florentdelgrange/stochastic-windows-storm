@@ -94,7 +94,7 @@ namespace sw {
             /**
              * maximum window size
              */
-            uint_fast64_t const &l_max;
+            uint_fast64_t l_max;
 
             virtual std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates,
                     BackwardTransitions& backwardTransitions) const = 0;
@@ -126,6 +126,14 @@ namespace sw {
                     uint_fast64_t const &l_max,
                     storm::storage::BitVector const &restrictedStateSpace,
                     storm::storage::BitVector const &enabledActions);
+            /*!
+             * Consider the MDP as a game for bounded window mean-payoff objectives (no maximal window size set).
+             */
+            WindowMeanPayoffGame(
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
+                    std::string const &rewardModelName,
+                    storm::storage::BitVector const &restrictedStateSpace,
+                    storm::storage::BitVector const &enabledActions);
 
 
 
@@ -146,7 +154,7 @@ namespace sw {
         public:
 
             /**
-             * Consider the MDP as a game for window parity objectives.
+             * Consider the MDP as a game for bounded window parity objectives (no maximal window size set).
              * Linked window algorithms' implementations for the particular case of MDPs as games of the ones from
              * Véronique Bruyère, Quentin Hautem, Mickael Randour (2016)
              * Window parity games: an alternative approach toward parity games with time bounds Looking at Mean-Payoff
@@ -162,7 +170,6 @@ namespace sw {
             WindowParityGame(
                     storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
                     std::string const &rewardModelName,
-                    uint_fast64_t const &l_max,
                     storm::storage::BitVector const &restrictedStateSpace,
                     storm::storage::BitVector const &enabledActions);
 

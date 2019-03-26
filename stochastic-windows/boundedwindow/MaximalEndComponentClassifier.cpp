@@ -15,7 +15,7 @@ namespace sw {
 
             for (uint_fast64_t k = 0; k < mecDecompositionGame.size(); ++ k) {
                 sw::game::WindowGame<ValueType> const& mecGame = mecDecompositionGame.getGame(k);
-                storm::storage::BitVector winningSet = mecGame.boundedProblem();
+                storm::storage::BitVector winningSet = mecGame.directBoundedProblem();
                 // If the winning set in the current MEC game is not empty, then the MEC is classified as good.
                 if (not winningSet.empty()) {
                     this->goodMECs.set(k, true);

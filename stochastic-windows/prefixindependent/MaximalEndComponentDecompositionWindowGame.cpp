@@ -24,7 +24,57 @@ namespace sw {
         }
 
         template<typename ValueType>
+        MaximalEndComponentDecompositionWindowMeanPayoffGame<ValueType>::MaximalEndComponentDecompositionWindowMeanPayoffGame(
+                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
+                std::string const& rewardModelName)
+                : MaximalEndComponentDecompositionWindowGame<ValueType>::MaximalEndComponentDecompositionWindowGame(mdp, rewardModelName, 0) {
+            this->generateWindowGames(mdp, rewardModelName, 0);
+        }
+
+        template <typename ValueType>
+        MaximalEndComponentDecompositionWindowParityGame<ValueType>::MaximalEndComponentDecompositionWindowParityGame(
+                const storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
+                std::string const &rewardModelName)
+                : MaximalEndComponentDecompositionWindowGame<ValueType>::MaximalEndComponentDecompositionWindowGame(mdp, rewardModelName, 0) {
+            this->generateWindowGames(mdp, rewardModelName, 0);
+        }
+
+        template<typename ValueType>
         void MaximalEndComponentDecompositionWindowMeanPayoffGame<ValueType>::generateWindowGames(
+                storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
+                std::string const& rewardModelName,
+                uint_fast64_t const& l_max) {
+
+            for (storm::storage::MaximalEndComponent const &mec: *this) {
+                storm::storage::BitVector restrictedStateSpace(mdp.getNumberOfStates(), false);
+                storm::storage::BitVector enabledActions(mdp.getNumberOfChoices(), false);
+
+                for (auto state: mec.getStateSet()){
+                    restrictedStateSpace.set(state, true);
+                    for (auto action: mec.getChoicesForState(state)) {
+                        enabledActions.set(action, true);
+                    }
+                }
+
+                if (l_max) {
+                    this->windowGames.push_back(
+                            std::unique_ptr<sw::game::WindowGame<ValueType>>(
+                                    new sw::game::WindowMeanPayoffGame<ValueType>(mdp, rewardModelName, l_max, std::move(restrictedStateSpace), std::move(enabledActions))
+                            )
+                    );
+                }
+                else {
+                    this->windowGames.push_back(
+                            std::unique_ptr<sw::game::WindowGame<ValueType>>(
+                                    new sw::game::WindowMeanPayoffGame<ValueType>(mdp, rewardModelName, std::move(restrictedStateSpace), std::move(enabledActions))
+                            )
+                    );
+                }
+            }
+        }
+
+        template<typename ValueType>
+        void MaximalEndComponentDecompositionWindowParityGame<ValueType>::generateWindowGames(
                 storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                 std::string const& rewardModelName,
                 uint_fast64_t const& l_max) {
@@ -42,9 +92,9 @@ namespace sw {
 
                 this->windowGames.push_back(
                         std::unique_ptr<sw::game::WindowGame<ValueType>>(
-                                new sw::game::WindowMeanPayoffGame<ValueType>(mdp, rewardModelName, l_max, std::move(restrictedStateSpace), std::move(enabledActions))
-                                )
-                        );
+                                new sw::game::WindowParityGame<ValueType>(mdp, rewardModelName, std::move(restrictedStateSpace), std::move(enabledActions))
+                        )
+                );
             }
         }
 
@@ -57,6 +107,7 @@ namespace sw {
         template class  MaximalEndComponentDecompositionWindowGame<storm::RationalNumber>;
         template class  MaximalEndComponentDecompositionWindowMeanPayoffGame<double>;
         template class  MaximalEndComponentDecompositionWindowMeanPayoffGame<storm::RationalNumber>;
+        template class  MaximalEndComponentDecompositionWindowParityGame<double>;
 
     }
 }

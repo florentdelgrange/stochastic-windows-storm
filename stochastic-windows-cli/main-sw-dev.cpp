@@ -22,6 +22,7 @@
 #include <stochastic-windows/fixedwindow/FixedWindowObjective.h>
 #include <stochastic-windows/game/TotalPayoffGame.h>
 #include <stochastic-windows/game/WeakParityGame.h>
+#include <stochastic-windows/boundedwindow/BoundedWindowObjective.h>
 
 #include "storm/utility/initialize.h"
 
@@ -459,8 +460,27 @@ void windowExamples(){
     std::cout << "Bounded problem" << std::endl;
     std::cout << "BWmp=" << wmpGame->boundedProblem() << " | DBWmp=" << wmpGame->directBoundedProblem() << std::endl;
 
-    sw::game::WindowParityGame<double> wpGame(*mdp, "priorities", 3, restrictedStateSpace, enabledActions);
+    sw::game::WindowParityGame<double> wpGame(*mdp, "priorities", restrictedStateSpace, enabledActions);
     std::cout << "BWpar=" << wpGame.boundedProblem() << " | DBWpar=" << wpGame.directBoundedProblem() << std::endl;
+
+    // Bounded Window Objective
+    std::cout << "Bounded Window Objectives: mean payoff (with game classification)" << std::endl;
+    sw::BoundedWindow::BoundedWindowMeanPayoffObjective<double> boundedWindowMPObjectiveGame(*mdp, "weights");
+    result = sw::BoundedWindow::performMaxProb(boundedWindowMPObjectiveGame);
+    std::cout << "Pr(BWmp) = [";
+    for (uint_fast64_t state = 0; state < mdp->getNumberOfStates(); ++ state) {
+        std::cout << "s" << state << "=" << result[state] << ", ";
+    }
+    std::cout << "]" << std::endl;
+    std::cout << "Bounded Window Objectives: parity" << std::endl;
+    sw::BoundedWindow::BoundedWindowParityObjective<double> boundedWindowParityObjective(*mdp, "priorities");
+    result = sw::BoundedWindow::performMaxProb(boundedWindowParityObjective);
+    std::cout << "Pr(BWpar) = [";
+    for (uint_fast64_t state = 0; state < mdp->getNumberOfStates(); ++ state) {
+        std::cout << "s" << state << "=" << result[state] << ", ";
+    }
+    std::cout << "]" << std::endl;
+    std::cout << std::endl;
 }
 
 

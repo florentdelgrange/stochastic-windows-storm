@@ -22,8 +22,8 @@ namespace sw {
             /*!
              * This class allows to classify maximal end components as being good or not for the Bounded Window objective.
              *
-             * @note A good EC (end component) w.r.t. a fixed window objective is an EC for which there exists a
-             *       sub-EC where there exists a strategy surely winning this fixed window objective from every of its
+             * @note A good EC (end component) w.r.t. a bounded window objective is an EC for which there exists a
+             *       sub-EC where there exists a strategy surely winning this bounded window objective from every of its
              *       state.
              * @param mdp input model
              * @param mecDecompositionUnfolding window-game version of each maximal end component of the input model

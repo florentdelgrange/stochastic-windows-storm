@@ -11,7 +11,7 @@
 #include <boost/graph/graph_utility.hpp>
 #include <boost/variant.hpp>
 #include <fstream>
-#include <stochastic-windows/fixedwindow/MaximalEndComponentDecompositionUnfolding.h>
+#include <stochastic-windows/prefixindependent/MaximalEndComponentDecompositionUnfolding.h>
 #include <stochastic-windows/directfixedwindow/WindowUnfolding.h>
 #include <storm/utility/constants.h>
 

@@ -49,8 +49,6 @@ namespace sw {
             for(typename std::map<ValueType, storm::storage::BitVector>::iterator iter = priorityToStatesMapping.begin();
                 iter != priorityToStatesMapping.end(); ++iter) {
 
-                std::cout << "(debug) current state space S=" << currentStateSpace << ", A=" << currentActionSpace << std::endl;
-                std::cout << "(debug) priority=" << iter->first << ", states=" << iter->second << std::endl;
                 ValueType priority = iter->first;
                 GameStates priorityAttractors, T;
                 T.p1States = currentStateSpace & iter->second;
@@ -61,13 +59,11 @@ namespace sw {
                 restrictedGame.initBackwardTransitions(backwardTransitions);
                 if (isEven(priority)) {
                     priorityAttractors = restrictedGame.attractorsP1(T, backwardTransitions);
-                    std::cout << "(debug) Attractors p1 S=" << priorityAttractors.p1States << ", A=" << priorityAttractors.p2States << std::endl;
                     W.player1.p1States |= priorityAttractors.p1States;
                     W.player1.p2States |= priorityAttractors.p2States;
                 }
                 else {
                     priorityAttractors = restrictedGame.attractorsP2(T, backwardTransitions);
-                    std::cout << "(debug) Attractors p2 S=" << priorityAttractors.p1States << ", A=" << priorityAttractors.p2States << std::endl;
                     W.player2.p1States |= priorityAttractors.p1States;
                     W.player2.p2States |= priorityAttractors.p2States;
                 }

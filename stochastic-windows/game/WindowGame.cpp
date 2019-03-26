@@ -29,13 +29,20 @@ namespace sw {
                 storm::storage::BitVector const &enabledActions)
                 : WindowGame<ValueType>(mdp, rewardModelName, l_max, restrictedStateSpace, enabledActions) {}
 
+        template<typename ValueType>
+        WindowMeanPayoffGame<ValueType>::WindowMeanPayoffGame(
+                storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
+                std::string const &rewardModelName,
+                storm::storage::BitVector const &restrictedStateSpace,
+                storm::storage::BitVector const &enabledActions)
+                : WindowGame<ValueType>(mdp, rewardModelName, 0, restrictedStateSpace, enabledActions) {}
 
         template<typename ValueType>
         WindowParityGame<ValueType>::WindowParityGame(
                 const storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> &mdp,
-                std::string const &rewardModelName, uint_fast64_t const &l_max,
+                std::string const &rewardModelName,
                 storm::storage::BitVector const &restrictedStateSpace, storm::storage::BitVector const &enabledActions)
-                : WindowGame<ValueType>(mdp, rewardModelName, l_max, restrictedStateSpace, enabledActions) {}
+                : WindowGame<ValueType>(mdp, rewardModelName, 0, restrictedStateSpace, enabledActions) {}
 
         template<typename ValueType>
         storm::storage::BitVector const& WindowGame<ValueType>::getStateSpace() const {
@@ -44,6 +51,7 @@ namespace sw {
 
         template<typename ValueType>
         storm::storage::BitVector WindowGame<ValueType>::directFW() const {
+            STORM_LOG_ASSERT(l_max > 0, "no maximal window size (>0) set");
             BackwardTransitions backwardTransitions;
             this->initBackwardTransitions(backwardTransitions);
             return directFW(backwardTransitions);
@@ -312,7 +320,7 @@ namespace sw {
             return std::unique_ptr<WindowGame<ValueType>>(
                     new WindowParityGame<ValueType>(this->mdp,
                                                     this->rewardModelName,
-                                                    this->l_max,
+                                                    // this->l_max,
                                                     std::move(restrictedStateSpace),
                                                     std::move(enabledActions))
             );
@@ -354,7 +362,7 @@ namespace sw {
             return std::unique_ptr<WindowGame<ValueType>>(
                     new WindowParityGame<ValueType>(this->mdp,
                                                     this->rewardModelName,
-                                                    this->l_max,
+                                                    // this->l_max,
                                                     restrictedStateSpace,
                                                     std::move(enabledActions))
             );
