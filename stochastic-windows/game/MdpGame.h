@@ -50,17 +50,20 @@ namespace sw {
              * @param targetSet set of states of the MDP (this set of target states must be contained in the restricted
              *        state space)
              * @param backwardTransitions backward transitions of this MDP game
+             * @param scheduler (optional) scheduler to fill with the choices of states of the attractors
              * @return the P1 attractors of the target set in this MDP game
              * @note P1 attractors are here states of the restricted state space of the MDP
              */
             storm::storage::BitVector attractorsP1(storm::storage::BitVector const& targetSet,
-                                                   BackwardTransitions const& backwardTransitions) const;
+                                                   BackwardTransitions const& backwardTransitions,
+                                                   boost::optional<storm::storage::Scheduler<ValueType>&> const& scheduler = boost::none) const;
             /*!
              * Computes the full set (P1 states and P2 states) of P1 attractors of the target set in this MDP game.
              * @note we assume here that all successors of actions are not necessarily in the restricted state space.
              */
             GameStates attractorsP1(GameStates const& targetSet,
-                                    BackwardTransitions const& backwardTransitions) const;
+                                    BackwardTransitions const& backwardTransitions,
+                                    boost::optional<storm::storage::Scheduler<ValueType>&> const& scheduler = boost::none) const;
             /*!
              * Compute the P2 attractors of the target set in this MDP game
              */

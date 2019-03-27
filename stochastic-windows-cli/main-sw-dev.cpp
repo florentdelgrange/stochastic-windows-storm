@@ -460,8 +460,10 @@ void windowExamples(){
     std::cout << "Bounded problem" << std::endl;
     std::cout << "BWmp=" << wmpGame->boundedProblem() << " | DBWmp=" << wmpGame->directBoundedProblem() << std::endl;
 
+    storm::storage::Scheduler<double> scheduler(mdp->getNumberOfStates());
     sw::game::WindowParityGame<double> wpGame(*mdp, "priorities", restrictedStateSpace, enabledActions);
-    std::cout << "BWpar=" << wpGame.boundedProblem() << " | DBWpar=" << wpGame.directBoundedProblem() << std::endl;
+    std::cout << "BWpar=" << wpGame.boundedProblem() << " | DBWpar=" << wpGame.directBoundedProblem(scheduler) << std::endl;
+    scheduler.printToStream(std::cout, mdp);
 
     // Bounded Window Objective
     std::cout << "Bounded Window Objectives: mean payoff (with game classification)" << std::endl;
@@ -479,8 +481,6 @@ void windowExamples(){
     for (uint_fast64_t state = 0; state < mdp->getNumberOfStates(); ++ state) {
         std::cout << "s" << state << "=" << result[state] << ", ";
     }
-    std::cout << "]" << std::endl;
-    std::cout << std::endl;
 }
 
 

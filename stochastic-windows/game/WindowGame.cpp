@@ -96,8 +96,21 @@ namespace sw {
         }
 
         template<typename ValueType>
-        storm::storage::BitVector WindowGame<ValueType>::directBoundedProblem() const {
-            return this->restrictedStateSpace & ~this->unbOpenWindow().p1States;
+        storm::storage::BitVector WindowGame<ValueType>::directBoundedProblem(boost::optional<storm::storage::Scheduler<ValueType>&> const& scheduler) const {
+            GameStates loosingRegion = this->unbOpenWindow();
+            storm::storage::BitVector safeStates = this->restrictedStateSpace & ~loosingRegion.p1States;
+            // if a scheduler is provided, fill in it according to the safe region computed
+            if (scheduler) {
+                storm::storage::BitVector safeActions = this->enabledActions & ~loosingRegion.p2States;
+                for (uint_fast64_t const& state: safeStates) {
+                    // set an arbitrary safe action as being the one chosen by the scheduler
+                    uint_fast64_t action = safeActions.getNextSetIndex(this->matrix.getRowGroupIndices()[state]);
+                    for (uint_fast64_t memoryState = 0; memoryState < scheduler->getNumberOfMemoryStates(); ++memoryState) {
+                        scheduler->setChoice(action, state, memoryState);
+                    }
+                }
+            }
+            return safeStates;
         }
 
         template<typename ValueType>

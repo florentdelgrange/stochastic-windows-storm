@@ -2,6 +2,7 @@
 // Created by Florent Delgrange on 2019-02-12.
 //
 
+#include <storm/storage/Scheduler.h>
 #include "MdpGame.h"
 
 namespace sw {
@@ -28,7 +29,8 @@ namespace sw {
 
         template <typename ValueType>
         storm::storage::BitVector MdpGame<ValueType>::attractorsP1(storm::storage::BitVector const& targetSet,
-                                                                   BackwardTransitions const& backwardTransitions) const {
+                                                                   BackwardTransitions const& backwardTransitions,
+                                                                   boost::optional<storm::storage::Scheduler<ValueType>&> const& scheduler) const {
             storm::storage::BitVector attractors = targetSet;
             storm::storage::BitVector actionVisited(this->enabledActions.size(), false);
             std::vector<uint_fast64_t> remainingActionSuccessors(this->enabledActions.size());
@@ -57,6 +59,12 @@ namespace sw {
                             // is also in the attractors and we don't have to check other of its actions
                             attractors.set(state, true);
                             stack.push_front(state);
+                            // if a scheduler is provided, set the current action as being its choice for every memory state
+                            if (scheduler) {
+                                for (uint_fast64_t memoryState = 0; memoryState < scheduler->getNumberOfMemoryStates(); ++memoryState) {
+                                    scheduler->setChoice(action, state, memoryState);
+                                }
+                            }
                         }
                     }
                 }
@@ -66,7 +74,8 @@ namespace sw {
 
         template <typename ValueType>
         GameStates MdpGame<ValueType>::attractorsP1(GameStates const &targetSet,
-                                                    BackwardTransitions const &backwardTransitions) const {
+                                                    BackwardTransitions const &backwardTransitions,
+                                                    boost::optional<storm::storage::Scheduler<ValueType>&> const& scheduler) const {
             GameStates attractors = targetSet;
             storm::storage::BitVector actionVisited(this->enabledActions.size(), false);
             std::vector<uint_fast64_t> remainingActionSuccessors(this->enabledActions.size());
@@ -111,6 +120,12 @@ namespace sw {
                             if (not attractors.p1States[state]) {
                                 attractors.p1States.set(state, true);
                                 stack.push_front(state);
+                                // if a scheduler is provided, set the current action as being its choice for every memory state
+                                if (scheduler) {
+                                    for (uint_fast64_t memoryState = 0; memoryState < scheduler->getNumberOfMemoryStates(); ++memoryState) {
+                                        scheduler->setChoice(action, state, memoryState);
+                                    }
+                                }
                             }
                         }
                     }

@@ -7,6 +7,7 @@
 #include <storm/storage/SparseMatrix.h>
 #include <stochastic-windows/game/MdpGame.h>
 #include <stochastic-windows/game/WeakParityGame.h>
+#include <storm/storage/Scheduler.h>
 
 #ifndef STORM_WINDOWGAME_H
 #define STORM_WINDOWGAME_H
@@ -72,10 +73,14 @@ namespace sw {
             std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates) const;
 
             /*!
-             * Computes the winning set of states for the (prefix-independent) Bounded Window Problem
+             * Computes the winning set of states for the (prefix-independent) Bounded Window problem.
              */
             storm::storage::BitVector boundedProblem() const;
-            storm::storage::BitVector directBoundedProblem() const;
+            /*!
+             * Computes the winning set of states for the Direct Bounded Window problem.
+             * @param scheduler (optional) if provided, fill it according to the optimal choices for the direct bounded window problem
+             */
+            storm::storage::BitVector directBoundedProblem(boost::optional<storm::storage::Scheduler<ValueType>&> const& scheduler = boost::none) const;
 
             virtual GameStates unbOpenWindow() const = 0;
 
