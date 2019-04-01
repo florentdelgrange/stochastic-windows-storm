@@ -212,6 +212,37 @@ void mecDecompositionPrintExamples() {
 
 };
 
+void directFixedMemoryExample(){
+
+    std::string prismModelPath = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples/dfwMemory.prism";
+    storm::storage::SymbolicModelDescription modelDescription = storm::parser::PrismParser::parse(prismModelPath);
+    storm::prism::Program program = modelDescription.preprocess().asPrismProgram();
+    storm::builder::BuilderOptions options = storm::builder::BuilderOptions(true, true);
+    std::shared_ptr<storm::models::sparse::Model<double>> model = storm::builder::ExplicitModelBuilder<double>(program, options).build();
+
+    std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = model->as<storm::models::sparse::Mdp<double>>();
+    mdp->printModelInformationToStream(std::cout);
+    std::cout << mdp->getTransitionMatrix() << std::endl;
+
+    storm::storage::BitVector restrictedStateSpace(mdp->getNumberOfStates(), true);
+    storm::storage::BitVector enabledActions(mdp->getNumberOfChoices(), true);
+    std::unique_ptr<sw::game::WindowGame<double>>
+    wmpGame = std::unique_ptr<sw::game::WindowGame<double>>(
+            new sw::game::WindowMeanPayoffGame<double>(*mdp, "weights", 3, restrictedStateSpace, enabledActions)
+    );
+    std::cout << "DFW scheduler: memory requirements" << std::endl;
+    sw::game::WinningSetAndScheduler<double> winningSetAndScheduler = wmpGame->produceSchedulerForDirectFW();
+    std::cout << winningSetAndScheduler.winningSet << std::endl;
+    winningSetAndScheduler.scheduler->printToStream(std::cout, mdp);
+
+    // Graphviz
+    storm::storage::SparseMatrix<double> matrix = mdp->getTransitionMatrix();
+    storm::models::sparse::StandardRewardModel<double> weights = model->getRewardModel("weights");
+    std::vector<double> weightVector = weights.getStateActionRewardVector();
+
+    sw::util::graphviz::GraphVizBuilder::mdpGraphWeightsExport(matrix, weightVector, "dfwMemoryExample");
+
+}
 
 void windowExamples(){
     std::string prismModelPath = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples/window_mp_par.prism";
@@ -531,6 +562,7 @@ int main(const int argc, const char** argv){
     // mecDecompositionPrintExamples();
     // graphVizExample();
     windowExamples();
+    directFixedMemoryExample();
     // predecessorListExample();
 
     return 0;

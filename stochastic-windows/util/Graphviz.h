@@ -93,6 +93,7 @@ namespace sw {
 
             class GraphVizBuilder {
             public:
+
                 /**
                  * Export the MDP (encoded as a sparse matrix) to a dot file depicting the MDP
                  * @param matrix
@@ -202,6 +203,16 @@ namespace sw {
 
                         write_graphviz_dp(dot_file, g, dp);
                     }
+                }
+
+                static void mdpGraphWeightsExport(storm::storage::SparseMatrix<double> const &matrix,
+                                                  std::vector<double> weightVector = std::vector<double>(),
+                                                  std::string graphName = "mdp",
+                                                  std::string outputDir = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples",
+                                                  std::vector<std::string> stateNames = std::vector<std::string>(),
+                                                  std::vector<std::string> actionNames = std::vector<std::string>(),
+                                                  bool xlabels = false) {
+                    mdpGraphExport(matrix, weightVector, std::vector<double>(), graphName, outputDir, stateNames, actionNames, xlabels);
                 }
 
                 static void unfoldedECsExport(

@@ -30,16 +30,16 @@ namespace sw {
         /*!
          * Retrieves a vector containing each good maximal end components.
          *
-         * @note A good EC (end component) w.r.t. a fixed window objective is an EC for which there exists a
-         *       sub-EC where there exists a strategy surely winning this fixed window objective from every of its
+         * @note A good EC (end component) w.r.t. a prefix-independent window objective is an EC for which there exists a
+         *       sub-EC where there exists a strategy surely winning this window objective from every of its
          *       state.
          */
         std::vector<std::reference_wrapper<const storm::storage::MaximalEndComponent>> getGoodMaximalEndComponents();
         /*!
          * Retrieves the set of safe states of the input model.
          *
-         * @note A state is said to be safe w.r.t. a fixed window objective if and only if there exists a strategy
-         *       surely winning this fixed window objective from this state.
+         * @note A state is said to be safe w.r.t. a prefix-independent window objective if and only if there exists a
+         *       strategy surely winning this window objective from this state.
          */
         storm::storage::BitVector const& getSafeStateSpace();
         /*!

@@ -20,12 +20,12 @@ namespace sw {
                     storm::storage::BitVector const &restrictedStateSpace,
                     storm::storage::BitVector const &enabledActions);
 
-            struct WinningSet {
-                GameStates player1; // winning set for the weak parity objective
-                GameStates player2; // co-winning set for the weak parity objective
+            struct WinningRegion {
+                GameStates winningSetP1; // winning set for the weak parity objective
+                GameStates winningSetP2; // co-winning set for the weak parity objective
             };
 
-            WinningSet weakParity() const;
+            WinningRegion weakParity() const;
 
             /*!
              * initialize the input BackwardTransitions structure for this MDP game

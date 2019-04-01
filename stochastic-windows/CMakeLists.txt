@@ -9,7 +9,7 @@ file(GLOB_RECURSE STOCHASTIC_WINDOWS_HEADERS ${PROJECT_SOURCE_DIR}/src/stochasti
 
 
 # Create stochastic-windows.
-add_library(stochastic-windows SHARED ${STOCHASTIC_WINDOWS_SOURCES} ${STOCHASTIC_WINDOWS_HEADERS} StochasticWindows.cpp StochasticWindows.h BndGoodWindowMP.h)
+add_library(stochastic-windows SHARED ${STOCHASTIC_WINDOWS_SOURCES} ${STOCHASTIC_WINDOWS_HEADERS})
 
 # Remove define symbol for shared libstorm.
 set_target_properties(stochastic-windows PROPERTIES DEFINE_SYMBOL "")

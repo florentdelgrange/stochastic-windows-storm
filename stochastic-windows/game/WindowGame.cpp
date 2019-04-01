@@ -1,3 +1,6 @@
+#include <memory>
+#include <storm/storage/memorystructure/MemoryStructureBuilder.h>
+
 //
 // Created by Florent Delgrange on 2019-01-25.
 //
@@ -54,7 +57,15 @@ namespace sw {
             STORM_LOG_ASSERT(l_max > 0, "no maximal window size (>0) set");
             BackwardTransitions backwardTransitions;
             this->initBackwardTransitions(backwardTransitions);
-            return directFW(backwardTransitions);
+            return directFW(backwardTransitions).winningSet;
+        }
+
+        template<typename ValueType>
+        WinningSetAndScheduler<ValueType> WindowGame<ValueType>::produceSchedulerForDirectFW() const {
+            STORM_LOG_ASSERT(l_max > 0, "no maximal window size (>0) set");
+            BackwardTransitions backwardTransitions;
+            this->initBackwardTransitions(backwardTransitions);
+            return directFW(backwardTransitions, true);
         }
 
         template<typename ValueType>
@@ -67,14 +78,18 @@ namespace sw {
 
 
         template<typename ValueType>
-        storm::storage::BitVector WindowGame<ValueType>::directFW(BackwardTransitions &backwardTransitions) const {
-            storm::storage::BitVector winGW = this->goodWin();
+        WinningSetAndScheduler<ValueType> WindowGame<ValueType>::directFW(BackwardTransitions &backwardTransitions,
+                                                                          bool produceScheduler) const {
+            storm::storage::BitVector winGW = this->goodWin().winningSet;
             if (winGW == this->restrictedStateSpace or winGW.empty()) {
-                return winGW;
-            }
-            else {
+                if (not produceScheduler or winGW.empty()) {
+                    return WinningSetAndScheduler<ValueType>(std::move(winGW));
+                } else {
+                    return this->goodWin(true);
+                }
+            } else {
                 std::unique_ptr<WindowGame<ValueType>> safeGame = this->restrictToSafePart(winGW, backwardTransitions);
-                return safeGame->directFW(backwardTransitions);
+                return safeGame->directFW(backwardTransitions, produceScheduler);
             }
         }
 
@@ -114,80 +129,127 @@ namespace sw {
         }
 
         template<typename ValueType>
-        storm::storage::BitVector WindowGame<ValueType>::goodWin() const {
+        WinningSetAndScheduler<ValueType> WindowGame<ValueType>::goodWin(bool produceScheduler) const {
             // default goodWin: empty set
-            return storm::storage::BitVector(this->restrictedStateSpace.size(), false);
+            return WinningSetAndScheduler<ValueType>(std::move(storm::storage::BitVector(this->restrictedStateSpace.size(), false)));
         }
 
         template<typename ValueType>
-        storm::storage::BitVector WindowMeanPayoffGame<ValueType>::goodWin() const {
+        WinningSetAndScheduler<ValueType> WindowMeanPayoffGame<ValueType>::goodWin(bool produceScheduler) const {
+            uint_fast64_t numberOfStates = this->restrictedStateSpace.getNumberOfSetBits();
             // C[l][s] is the best sum that can be ensured from state s in at most l steps
-            std::vector<std::vector<ValueType>> C(this->l_max, std::vector<ValueType>(this->restrictedStateSpace.getNumberOfSetBits()));
+            std::vector<std::vector<ValueType>> C(this->l_max, std::vector<ValueType>(numberOfStates));
             // To avoid C to have a size of l_max X number of states (but rather l_max X number of restricted states)
             std::vector<uint_fast64_t> oldToNewStateMapping(this->mdp.getNumberOfStates());
             std::vector<uint_fast64_t> const& stateActionIndices = this->matrix.getRowGroupIndices();
             std::vector<ValueType> const& weight = this->rewardModel.getStateActionRewardVector();
-            // to deduct the number of enabled actions of each state
-            std::vector<uint_fast64_t> const& numberOfEnabledActionsBeforeIndices = this->enabledActions.getNumberOfSetBitsBeforeIndices();
             // winning set
             storm::storage::BitVector winningSet(this->mdp.getNumberOfStates(), false);
+
+            std::unique_ptr<std::vector<std::vector<uint_fast64_t>>> bestActions;
+            if (produceScheduler) {
+                bestActions = std::make_unique<std::vector<std::vector<uint_fast64_t>>>(this->l_max, std::vector<uint_fast64_t>(numberOfStates));
+            }
 
             // Initialization of the matrix C
             uint_fast64_t s = 0;
             for (uint_fast64_t state: this->restrictedStateSpace) {
                 uint_fast64_t action = this->enabledActions.getNextSetIndex(stateActionIndices[state]);
-                C[0][s] = weight[action];
+                C[0][s] = -1 * storm::utility::infinity<ValueType>();
                 // iterate on enabled actions of state s
-                for (action = this->enabledActions.getNextSetIndex(action + 1);
+                for (action = this->enabledActions.getNextSetIndex(action);
                      action < stateActionIndices[state + 1];
                      action = this->enabledActions.getNextSetIndex(action + 1)) {
                     if (weight[action] > C[0][s]) {
                         C[0][s] = weight[action];
+                        if (produceScheduler) {
+                            (*bestActions)[0][s] = action;
+                        }
                     }
                 }
                 oldToNewStateMapping[state] = s;
                 ++ s;
             }
+            // given a number of steps i and an action a, retrieves the worst successor value of the successors s' of a in C[i - 1][s']
+            auto worstSuccessorValue = [&] (uint_fast64_t const& i, uint_fast64_t const& action) -> ValueType {
+                auto worstValue = storm::utility::infinity<ValueType>();
+                // We assume that all entries (successors) of the row corresponding to the current action are in
+                // the restricted state space
+                for (auto const &successorEntry : this->matrix.getRow(action)) {
+                    uint_fast64_t s_prime = oldToNewStateMapping[successorEntry.getColumn()];
+                    if (C[i - 1][s_prime] < worstValue) {
+                        worstValue = C[i - 1][s_prime];
+                    }
+                }
+                return worstValue;
+            };
+
             // Fill in C up to l_max
             for (uint_fast64_t i = 1; i < this->l_max; ++ i) {
                 for (uint_fast64_t state: this->restrictedStateSpace) {
                     s = oldToNewStateMapping[state];
-                    std::vector<ValueType> actionValues;
-                    uint_fast64_t numberOfEnabledActions;
-                    // if the considered state is the last of the enumeration of states or if there is no more enabled
-                    // action for states with greater indices than the current one.
-                    if (state == this->mdp.getNumberOfStates() - 1 or stateActionIndices[state + 1] >= numberOfEnabledActionsBeforeIndices.size()) {
-                        numberOfEnabledActions = this->enabledActions.getNumberOfSetBits() -
-                                                 numberOfEnabledActionsBeforeIndices[stateActionIndices[state]];
-                    }
-                    else {
-                        numberOfEnabledActions = numberOfEnabledActionsBeforeIndices[stateActionIndices[state + 1]] -
-                                                 numberOfEnabledActionsBeforeIndices[stateActionIndices[state]];
-                    }
-                    actionValues.reserve(numberOfEnabledActions);
+                    C[i][s] = -1 * storm::utility::infinity<ValueType>();
                     for (uint_fast64_t action = this->enabledActions.getNextSetIndex(stateActionIndices[state]);
                          action < stateActionIndices[state + 1];
                          action = this->enabledActions.getNextSetIndex(action + 1)) {
-                        std::vector<ValueType> successorValues;
-                        // We assume that all entries (successors) of the row corresponding to the current action are in
-                        // the restricted state space
-                        successorValues.reserve(this->matrix.getRow(action).getNumberOfEntries());
-                        for (auto const &successorEntry : this->matrix.getRow(action)) {
-                            uint_fast64_t s_prime = oldToNewStateMapping[successorEntry.getColumn()];
-                            successorValues.push_back(C[i - 1][s_prime]);
+                        auto actionValue = storm::utility::max<ValueType>(weight[action], weight[action] + worstSuccessorValue(i, action));
+                        if (actionValue > C[i][s]) {
+                            C[i][s] = actionValue;
+                            if (produceScheduler) {
+                                (*bestActions)[i][s] = action;
+                            }
                         }
-                        ValueType worstSuccessorValue = storm::utility::minimum(successorValues);
-                        actionValues.push_back(storm::utility::max<ValueType>(weight[action], weight[action] + worstSuccessorValue));
                     }
-                    C[i][s] = storm::utility::maximum(actionValues);
-
                     // Construct the winning set
                     if (i == this->l_max - 1 && C[i][s] >= 0) {
                         winningSet.set(state, true);
                     }
                 }
             }
-            return winningSet;
+            std::unique_ptr<storm::storage::Scheduler<ValueType>> scheduler;
+            if (produceScheduler) {
+                storm::storage::MemoryStructureBuilder<ValueType> memoryBuilder(this->l_max, this->mdp);
+                storm::storage::BitVector unsafeStates = ~this->restrictedStateSpace;
+                storm::Environment env;
+                auto precision = storm::utility::convertNumber<ValueType>(env.solver().minMax().getPrecision());
+                bool relative = env.solver().minMax().getRelativeTerminationCriterion();
+
+                for (uint_fast64_t l = 0; l < this->l_max - 1; ++ l) {
+                    // states that does not belong to the winning region are omitted
+                    memoryBuilder.setTransition(l, 0, unsafeStates);
+                    storm::storage::BitVector continueActions(this->mdp.getNumberOfChoices(), false);
+                    for (uint_fast64_t const& state: this->restrictedStateSpace) {
+                        s = oldToNewStateMapping[state];
+                        for (uint_fast64_t action = this->enabledActions.getNextSetIndex(stateActionIndices[state]);
+                             action < stateActionIndices[state + 1];
+                             action = this->enabledActions.getNextSetIndex(action + 1)) {
+                            ValueType actionValue = weight[action] + worstSuccessorValue(this->l_max - 1 - l, action);
+                            if (not storm::utility::vector::equalModuloPrecision<ValueType>(C[0][s], actionValue, precision, relative)) {
+                                continueActions.set(action, true);
+                            }
+                        }
+                    }
+                    // choosing an action that does not ensure to make the current sum positive
+                    memoryBuilder.setTransition(l, l + 1, this->restrictedStateSpace, continueActions);
+                    // reset: the sum becomes positive by playing the action in less than l_max steps
+                    memoryBuilder.setTransition(l, 0, this->restrictedStateSpace, ~continueActions);
+                }
+                // good reset = the current sum becomes positive within l_max steps;
+                // bad  reset = the current sum remains negative within l_max steps
+                memoryBuilder.setTransition(this->l_max - 1, 0, this->restrictedStateSpace);
+                storm::storage::MemoryStructure const& memory = memoryBuilder.build();
+                scheduler = std::unique_ptr<storm::storage::Scheduler<ValueType>>(
+                        new storm::storage::Scheduler<ValueType>(this->mdp.getNumberOfStates(), memory)
+                );
+                for (uint_fast64_t l = 0; l < this->l_max; ++ l) {
+                    for (uint_fast64_t const& state: this->restrictedStateSpace) {
+                        s = oldToNewStateMapping[state];
+                        scheduler->setChoice((*bestActions)[l][s], state, l);
+                    }
+                }
+            }
+            return produceScheduler ? WinningSetAndScheduler<ValueType>(std::move(winningSet), std::move(scheduler))
+                                    : WinningSetAndScheduler<ValueType>(std::move(winningSet));
         }
 
         template<typename ValueType>
@@ -236,7 +298,7 @@ namespace sw {
                 BackwardTransitions backwardTransitions;
                 weakParityGame.initBackwardTransitions(backwardTransitions);
 
-                GameStates weakcoParity = weakParityGame.weakParity().player2;
+                GameStates weakcoParity = weakParityGame.weakParity().winningSetP2;
                 GameStates attractorsWeakcoParity = weakParityGame.attractorsP2(weakcoParity, backwardTransitions);
                 L->p1States = L_pre->p1States | attractorsWeakcoParity.p1States;
                 L->p2States = L_pre->p2States | attractorsWeakcoParity.p2States;

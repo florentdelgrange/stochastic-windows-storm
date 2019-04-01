@@ -16,6 +16,14 @@ namespace sw {
     namespace game {
 
         template<typename ValueType>
+        struct WinningSetAndScheduler {
+            WinningSetAndScheduler(storm::storage::BitVector &&winningSet, std::unique_ptr<storm::storage::Scheduler<ValueType>>&& scheduler = nullptr)
+            : winningSet(std::move(winningSet)), scheduler(std::move(scheduler)) {}
+            storm::storage::BitVector winningSet;
+            std::unique_ptr<storm::storage::Scheduler<ValueType>> scheduler;
+        };
+
+        template<typename ValueType>
         class WindowGame: public MdpGame<ValueType> {
         public:
 
@@ -49,7 +57,7 @@ namespace sw {
              *
              * @return the winning set for the GoodWindow objective
              */
-            virtual storm::storage::BitVector goodWin() const;
+            virtual WinningSetAndScheduler<ValueType> goodWin(bool produceScheduler=false) const;
 
             /**
              * Computes the winning set of states from which there exists a strategy allowing to continually surely close
@@ -58,6 +66,8 @@ namespace sw {
              * @return the winning set for the DirectFixedWindow objective
              */
             storm::storage::BitVector directFW() const;
+
+            WinningSetAndScheduler<ValueType> produceSchedulerForDirectFW() const;
 
             /*!
              * Retrieves the considered Player 1 state space of this window game.
@@ -78,7 +88,8 @@ namespace sw {
             storm::storage::BitVector boundedProblem() const;
             /*!
              * Computes the winning set of states for the Direct Bounded Window problem.
-             * @param scheduler (optional) if provided, fill it according to the optimal choices for the direct bounded window problem
+             * @param scheduler (optional) if provided, fill it according to the optimal choices for the direct bounded window problem.
+             *                  this scheduler does not require memory.
              */
             storm::storage::BitVector directBoundedProblem(boost::optional<storm::storage::Scheduler<ValueType>&> const& scheduler = boost::none) const;
 
@@ -104,7 +115,7 @@ namespace sw {
             virtual std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates,
                     BackwardTransitions& backwardTransitions) const = 0;
 
-            storm::storage::BitVector directFW(BackwardTransitions &backwardTransitions) const;
+            WinningSetAndScheduler<ValueType> directFW(BackwardTransitions &backwardTransitions, bool produceScheduler=false) const;
         };
 
         template<typename ValueType>
@@ -142,7 +153,7 @@ namespace sw {
 
 
 
-            storm::storage::BitVector goodWin() const override;
+            WinningSetAndScheduler<ValueType> goodWin(bool produceScheduler=false) const override;
             GameStates unbOpenWindow() const override;
             std::unique_ptr<WindowGame<ValueType>> restrict(storm::storage::BitVector const &restrictedStateSpace) const override ;
 

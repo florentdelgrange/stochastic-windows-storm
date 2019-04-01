@@ -1,0 +1,24 @@
+mdp
+
+module dfwMemoryExample
+
+s: [0..6] init 0;
+
+[a] s=0 -> (s'=1);
+[b] s=0 -> (s'=4);
+[a] s=1 -> (s'=2);
+[a] s=2 -> (s'=3);
+[c] s=3 -> (s'=0);
+[d] s=4 -> (s'=5);
+[e] s=5 -> (s'=6);
+[d] s=6 -> (s'=0);
+endmodule
+
+rewards "weights"
+    [a] true: 3;
+    [b] true: 2;
+    [c] true: -10;
+    [d] true: 8;
+    [e] true: -11;
+endrewards
+

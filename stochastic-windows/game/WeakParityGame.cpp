@@ -18,13 +18,13 @@ namespace sw {
                   rewardModel(mdp.getRewardModel(rewardModelName)) {}
 
         template<typename ValueType>
-        typename WeakParityGame<ValueType>::WinningSet WeakParityGame<ValueType>::weakParity() const {
+        typename WeakParityGame<ValueType>::WinningRegion WeakParityGame<ValueType>::weakParity() const {
             // winning set initialization
-            WinningSet W;
-            W.player1.p1States = storm::storage::BitVector(this->restrictedStateSpace.size(), false);
-            W.player1.p2States = storm::storage::BitVector(this->enabledActions.size(), false);
-            W.player2.p1States = storm::storage::BitVector(this->restrictedStateSpace.size(), false);
-            W.player2.p2States = storm::storage::BitVector(this->enabledActions.size(), false);
+            WinningRegion W;
+            W.winningSetP1.p1States = storm::storage::BitVector(this->restrictedStateSpace.size(), false);
+            W.winningSetP1.p2States = storm::storage::BitVector(this->enabledActions.size(), false);
+            W.winningSetP2.p1States = storm::storage::BitVector(this->restrictedStateSpace.size(), false);
+            W.winningSetP2.p2States = storm::storage::BitVector(this->enabledActions.size(), false);
 
             // priorities handling
             std::vector<ValueType> const& priorities = this->rewardModel.getStateRewardVector();
@@ -59,13 +59,13 @@ namespace sw {
                 restrictedGame.initBackwardTransitions(backwardTransitions);
                 if (isEven(priority)) {
                     priorityAttractors = restrictedGame.attractorsP1(T, backwardTransitions);
-                    W.player1.p1States |= priorityAttractors.p1States;
-                    W.player1.p2States |= priorityAttractors.p2States;
+                    W.winningSetP1.p1States |= priorityAttractors.p1States;
+                    W.winningSetP1.p2States |= priorityAttractors.p2States;
                 }
                 else {
                     priorityAttractors = restrictedGame.attractorsP2(T, backwardTransitions);
-                    W.player2.p1States |= priorityAttractors.p1States;
-                    W.player2.p2States |= priorityAttractors.p2States;
+                    W.winningSetP2.p1States |= priorityAttractors.p1States;
+                    W.winningSetP2.p2States |= priorityAttractors.p2States;
                 }
                 currentStateSpace &= ~priorityAttractors.p1States;
                 currentActionSpace &= ~priorityAttractors.p2States;
