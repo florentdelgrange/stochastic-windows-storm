@@ -233,6 +233,7 @@ void directFixedMemoryExample(){
     std::cout << "DFW scheduler: memory requirements" << std::endl;
     sw::game::WinningSetAndScheduler<double> winningSetAndScheduler = wmpGame->produceSchedulerForDirectFW();
     std::cout << winningSetAndScheduler.winningSet << std::endl;
+    std::cout << winningSetAndScheduler.scheduler->getMemoryStructure()->toString() << std::endl;
     winningSetAndScheduler.scheduler->printToStream(std::cout, mdp);
 
     // Graphviz

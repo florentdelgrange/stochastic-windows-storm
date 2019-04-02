@@ -244,7 +244,7 @@ namespace sw {
                 for (uint_fast64_t l = 0; l < this->l_max; ++ l) {
                     for (uint_fast64_t const& state: this->restrictedStateSpace) {
                         s = oldToNewStateMapping[state];
-                        scheduler->setChoice((*bestActions)[l][s], state, l);
+                        scheduler->setChoice((*bestActions)[this->l_max - 1 - l][s], state, l);
                     }
                 }
             }
