@@ -142,7 +142,7 @@ namespace storm {
             }
             out << ":" << std::endl;
             STORM_LOG_WARN_COND(!(skipUniqueChoices && model == nullptr), "Can not skip unique choices if the model is not given.");
-            out << std::setw(widthOfStates) << "model state:" << "    " << (isMemorylessScheduler() ? "" : " memory:     ") << "choice(s)" << std::endl;
+            out << std::setw(widthOfStates) << "model state:" << "    " << (isMemorylessScheduler() ? "" : " memory:     ") << "choice(s)" << (isMemorylessScheduler() ? "" : "     update:     ") << std::endl;
                 for (uint_fast64_t state = 0; state < schedulerChoices.front().size(); ++state) {
                     // Check whether the state is skipped
                     if (skipUniqueChoices && model != nullptr && model->getTransitionMatrix().getRowGroupSize(state) == 1) {
@@ -185,7 +185,7 @@ namespace storm {
                                 if (memoryStructure) {
                                     SparseMatrix<ValueType> const& modelTransitions = model->getTransitionMatrix();
                                     uint_fast64_t transitionIndex = modelTransitions.getRow(choice.getDeterministicChoice()).begin() - modelTransitions.begin();
-                                    out << std::setw(12) << "-> m" << memoryStructure->getSuccessorMemoryState(memoryState, transitionIndex);
+                                    out << std::setw(16) << "m" << memoryStructure->getSuccessorMemoryState(memoryState, transitionIndex);
                                 }
                             } else {
                                 bool firstChoice = true;

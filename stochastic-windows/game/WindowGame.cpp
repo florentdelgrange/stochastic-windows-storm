@@ -223,7 +223,9 @@ namespace sw {
                         for (uint_fast64_t action = this->enabledActions.getNextSetIndex(stateActionIndices[state]);
                              action < stateActionIndices[state + 1];
                              action = this->enabledActions.getNextSetIndex(action + 1)) {
-                            ValueType actionValue = weight[action] + worstSuccessorValue(this->l_max - 1 - l, action);
+                            auto actionValue = storm::utility::max<ValueType>(
+                                    weight[action],
+                                    weight[action] + worstSuccessorValue(this->l_max - 1 - l, action));
                             if (not storm::utility::vector::equalModuloPrecision<ValueType>(C[0][s], actionValue, precision, relative)) {
                                 continueActions.set(action, true);
                             }
@@ -231,11 +233,11 @@ namespace sw {
                     }
                     // choosing an action that does not ensure to make the current sum positive
                     memoryBuilder.setTransition(l, l + 1, this->restrictedStateSpace, continueActions);
-                    // reset: the sum becomes positive by playing the action in less than l_max steps
+                    // good reset: the sum is maximal by playing the action in less than l_max steps
                     memoryBuilder.setTransition(l, 0, this->restrictedStateSpace, ~continueActions);
                 }
-                // good reset = the current sum becomes positive within l_max steps;
-                // bad  reset = the current sum remains negative within l_max steps
+                // good reset: the current sum becomes positive within l_max steps;
+                // bad  reset: the current sum remains negative within l_max steps
                 memoryBuilder.setTransition(this->l_max - 1, 0, this->restrictedStateSpace);
                 storm::storage::MemoryStructure const& memory = memoryBuilder.build();
                 scheduler = std::unique_ptr<storm::storage::Scheduler<ValueType>>(
