@@ -318,8 +318,14 @@ namespace sw {
             clock_t start = clock();
              */
 
+            storm::storage::StronglyConnectedComponentDecompositionOptions sccOptions;
+            sccOptions.dropNaiveSccs(false); sccOptions.onlyBottomSccs(false); sccOptions.computeSccDepths(false);
+            storm::storage::BitVector subSystem = this->restrictedStateSpace;
+            storm::storage::BitVector choices = this->enabledActions;
+            // sccOptions.subsystem(&subSystem); sccOptions.choices(&choices);
+            sccOptions.subsystem(&this->restrictedStateSpace); sccOptions.choices(&this->enabledActions);
             storm::storage::StronglyConnectedComponentDecomposition<ValueType>
-            stronglyConnectedComponentDecomposition(this->matrix, this->restrictedStateSpace, this->enabledActions);
+            stronglyConnectedComponentDecomposition(this->matrix, sccOptions);
 
             for (const auto &component: stronglyConnectedComponentDecomposition) {
                 storm::storage::BitVector sccStates(this->restrictedStateSpace.size(), false);
