@@ -89,8 +89,10 @@ namespace sw {
              * Generates (i) a memory structure for the original MDP representing this unfolding, i.e.,
              * the product of the original MDP and the memory structure generated retrieves this unfolding;
              * and (ii) the mapping of each state of this unfolding to a memory state of the memory structure.
+             *
+             * @param initialState initial state in the original MDP
              */
-            WindowMemory<ValueType> generateMemory();
+            WindowMemory<ValueType> generateMemory(uint_fast64_t initialState);
 
         protected:
 
