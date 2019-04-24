@@ -6,6 +6,8 @@
 #include <storm/models/sparse/Mdp.h>
 #include <storm/storage/SparseMatrix.h>
 #include <storm/utility/constants.h>
+#include <storm/storage/memorystructure/MemoryStructure.h>
+#include <storm/storage/memorystructure/MemoryStructureBuilder.h>
 
 #ifndef STORM_UNFOLDING_H
 #define STORM_UNFOLDING_H
@@ -18,6 +20,20 @@ namespace sw {
             uint_fast64_t state;
             ValueType currentValue;
             uint_fast64_t currentWindowSize;
+        };
+
+        template <typename ValueType>
+        struct WindowMemory {
+            /*!
+             * Memory structure recording informations refining the original MDP into the unfolding of this MDP
+             */
+            storm::storage::MemoryStructure memoryStructure;
+            /*!
+             * Mapping that links each state of the unfolding to a memory state of the memory structure above.
+             * The states of the unfolding are considered to be relative to the original MDP, i.e., of the form
+             * (s, v, l) where s is a state of the original MDP, v is the current value and l is the current window size.
+             */
+            std::vector<std::vector<std::unordered_map<ValueType, uint_fast64_t>>> unfoldingToMemoryStatesMapping;
         };
 
         template<typename ValueType>
@@ -45,7 +61,7 @@ namespace sw {
                                       ValueType currentSumOfWeights,
                                       uint_fast64_t currentWindowSize);
             /*!
-             * Get a vector containing the meaning of each state in the new matrix corresponding to the
+             * Gets a vector containing the meaning of each state in the new matrix corresponding to the
              * unfolding of the mdp, expressed as a tuple (s, v, l) where s (state) is the state in the original matrix,
              * v (value) is the current value (e.g., current sum of weights or current minimal priority seen) in the
              * unfolding and l (currentWindowSize) is the current window size in the unfolding.
@@ -53,20 +69,40 @@ namespace sw {
             std::vector<StateValueWindowSize<ValueType>> getNewStatesMeaning();
 
             /*!
-             * Get the index in the unfolding of the input initial state.
+             * Gets the index in the unfolding of the input initial state.
              *
              * @param originalInitialState index of an initial state in the original matrix
              * @return the index of this initial state in the unfolding if it exists, 0 otherwise
              */
             virtual uint_fast64_t getInitialState(uint_fast64_t originalInitialState) = 0;
 
+            /**
+             * Computes the maximal number of memory states required for a memory structure representing this unfolding
+             * for the original MDP.
+             */
+            uint_fast64_t getMaxNumberOfMemoryStatesRequired();
+
+            /**
+             * Generates (i) a memory structure for the original MDP representing this unfolding, i.e.,
+             * the product of the original MDP and the memory structure generated retrieves this unfolding;
+             * and (ii) the mapping of each state of this unfolding to a memory state of the memory structure.
+             * The states of the unfolding are considered to be relative to the original MDP, i.e., of the form
+             * (s, v, l) where s is a state of the original MDP, v is the current value and l is the current window size.
+             */
+            WindowMemory<ValueType> generateMemory();
+
         protected:
 
             /*!
              * Maximum window size
              */
-            uint_fast64_t l_max{};
+            uint_fast64_t l_max;
 
+            storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp;
+
+            /*!
+             * Matrix of the unfolding of the original MDP
+             */
             storm::storage::SparseMatrix<ValueType> matrix;
 
             /*!

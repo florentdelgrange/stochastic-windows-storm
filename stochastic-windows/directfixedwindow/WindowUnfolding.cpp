@@ -16,6 +16,7 @@ namespace sw {
                 uint_fast64_t const &l_max,
                 storm::storage::BitVector const& enabledActions)
                 : l_max(l_max),
+                  mdp(mdp),
                   originalMatrix(mdp.getTransitionMatrix()),
                   enabledActions(enabledActions),
                   rewardModel(mdp.getRewardModel(rewardModelName)) {
@@ -136,6 +137,41 @@ namespace sw {
         }
 
         template<typename ValueType>
+        uint_fast64_t WindowUnfolding<ValueType>::getMaxNumberOfMemoryStatesRequired() {
+            // current max number of memory states required for a memory structure
+            uint_fast64_t M = 0;
+            for (uint_fast64_t s = 0; s < this->originalMatrix.getRowGroupCount(); ++ s) {
+                // current number of memory states for s
+                uint_fast64_t memory = 0;
+                for (uint_fast64_t l = 0; l < this->l_max; ++ l) {
+                    memory += this->windowVector[s][l].size();
+                }
+                if (M < memory) {
+                    M = memory;
+                }
+            }
+            return M + 1; // the additional memory state is linked to the sink state in the unfolding
+        }
+
+        template <typename ValueType>
+        WindowMemory<ValueType> WindowUnfolding<ValueType>::generateMemory() {
+            uint_fast64_t M = this->getMaxNumberOfMemoryStatesRequired();
+            storm::storage::MemoryStructureBuilder<ValueType> memoryBuilder(M, this->mdp);
+            // initialize the mapping
+            std::vector<std::vector<std::unordered_map<ValueType, uint_fast64_t>>>
+            unfoldingToMemoryStatesMapping(this->mdp.getNumberOfStates());
+            for (uint_fast64_t state = 0; state < mdp.getNumberOfStates(); ++ state) {
+                unfoldingToMemoryStatesMapping[state] = std::vector<std::unordered_map<ValueType, uint_fast64_t>>(l_max);
+            }
+
+            std::vector<uint_fast64_t> currentMemoryIndices(M, 0);
+            for (uint_fast64_t unfoldingState = 1; unfoldingState < this->matrix.getRowGroupCount(); ++ unfoldingState) {
+                uint_fast64_t s = this->matrix.getRowGroupCount(), l = l_max;
+                ValueType x;
+            }
+        }
+
+        template<typename ValueType>
         uint_fast64_t WindowUnfoldingMeanPayoff<ValueType>::getInitialState(uint_fast64_t originalInitialState) {
             return this->getNewIndex(originalInitialState, this->initialStateValue(originalInitialState), 0);
         }
@@ -158,7 +194,7 @@ namespace sw {
                     this->newRowGroupEntries.size());
 
             for (uint_fast64_t state = 0; state < this->originalMatrix.getRowGroupCount(); ++state) {
-                for (uint_fast64_t l = 0; l < l_max; ++l) {
+                for (uint_fast64_t l = 0; l < l_max; ++ l) {
                     for (const auto &keyValue : this->windowVector[state][l]) {
                         unfoldingStates[keyValue.second].state = state;
                         unfoldingStates[keyValue.second].currentValue = keyValue.first;
