@@ -25,15 +25,13 @@ namespace sw {
         template <typename ValueType>
         struct WindowMemory {
             /*!
-             * Memory structure recording informations refining the original MDP into the unfolding of this MDP
+             * Memory structure recording information refining the original MDP into the unfolding of this MDP
              */
-            storm::storage::MemoryStructure memoryStructure;
+            std::unique_ptr<storm::storage::MemoryStructure> memoryStructure;
             /*!
              * Mapping that links each state of the unfolding to a memory state of the memory structure above.
-             * The states of the unfolding are considered to be relative to the original MDP, i.e., of the form
-             * (s, v, l) where s is a state of the original MDP, v is the current value and l is the current window size.
              */
-            std::vector<std::vector<std::unordered_map<ValueType, uint_fast64_t>>> unfoldingToMemoryStatesMapping;
+            std::vector<uint_fast64_t> unfoldingToMemoryStatesMapping;
         };
 
         template<typename ValueType>
@@ -69,6 +67,11 @@ namespace sw {
             std::vector<StateValueWindowSize<ValueType>> getNewStatesMeaning();
 
             /*!
+             * Retrieves a mapping between actions of the unfolding and the original MDP
+             */
+            std::vector<uint_fast64_t> newToOldActionsMapping(std::vector<StateValueWindowSize<ValueType>> const& newStatesMeaning);
+
+            /*!
              * Gets the index in the unfolding of the input initial state.
              *
              * @param originalInitialState index of an initial state in the original matrix
@@ -86,8 +89,6 @@ namespace sw {
              * Generates (i) a memory structure for the original MDP representing this unfolding, i.e.,
              * the product of the original MDP and the memory structure generated retrieves this unfolding;
              * and (ii) the mapping of each state of this unfolding to a memory state of the memory structure.
-             * The states of the unfolding are considered to be relative to the original MDP, i.e., of the form
-             * (s, v, l) where s is a state of the original MDP, v is the current value and l is the current window size.
              */
             WindowMemory<ValueType> generateMemory();
 

@@ -85,8 +85,7 @@ namespace sw {
                 unfoldFrom(state, initialStateValue(state), 0);
             }
             // this line allows to have the same number of columns and rowGroups in the sparse matrix
-            this->newRowGroupEntries[0][0].push_back(
-                    std::make_pair(newRowGroupEntries.size() - 1, storm::utility::zero<ValueType>()));
+            this->newRowGroupEntries[0][0].push_back(std::make_pair(newRowGroupEntries.size() - 1, storm::utility::zero<ValueType>()));
             // Build the new matrix w.r.t. the new row group entries computed during the unfolding
             uint_fast64_t newRow = 0;
             uint_fast64_t column;
@@ -155,20 +154,71 @@ namespace sw {
 
         template <typename ValueType>
         WindowMemory<ValueType> WindowUnfolding<ValueType>::generateMemory() {
-            uint_fast64_t M = this->getMaxNumberOfMemoryStatesRequired();
-            storm::storage::MemoryStructureBuilder<ValueType> memoryBuilder(M, this->mdp);
-            // initialize the mapping
-            std::vector<std::vector<std::unordered_map<ValueType, uint_fast64_t>>>
-            unfoldingToMemoryStatesMapping(this->mdp.getNumberOfStates());
-            for (uint_fast64_t state = 0; state < mdp.getNumberOfStates(); ++ state) {
-                unfoldingToMemoryStatesMapping[state] = std::vector<std::unordered_map<ValueType, uint_fast64_t>>(l_max);
+            uint_fast64_t M = this->getMaxNumberOfMemoryStatesRequired() - 1;
+            storm::storage::MemoryStructureBuilder<ValueType> memoryBuilder(M + 1, this->mdp);
+            WindowMemory<ValueType> windowMemory;
+            // the last state of the memory structure is the sink state corresponding to the windows staying open for l_max steps
+            windowMemory.unfoldingToMemoryStatesMapping = std::vector<uint_fast64_t>(this->matrix.getRowGroupCount(), M);
+
+            storm::storage::MemoryStructure::TransitionMatrix
+                // contains the memory transitions m -> m where -> depends of a subset of states of the original MDP
+                unfoldingStatesMemoryTransitions(M + 1, std::vector<boost::optional<storm::storage::BitVector>>(M + 1)),
+                // contains the memory transitions m -> m where -> depends of a subset of actions of the original MDP
+                unfoldingActionsMemoryTransitions(M + 1, std::vector<boost::optional<storm::storage::BitVector>>(M + 1));
+
+            // keeps track of the current memory of each state during the memory assignment
+            std::vector<uint_fast64_t> currentMemory(this->mdp.getNumberOfStates(), 0);
+            // mappings between the unfolding and the original MDP
+            std::vector<StateValueWindowSize<ValueType>> unfoldingStatesMeaning = this->getNewStatesMeaning();
+            std::vector<uint_fast64_t> unfoldingActionsMeaning = this->newToOldActionsMapping(unfoldingStatesMeaning);
+
+            // memory state assignment
+            std::function<uint_fast64_t(uint_fast64_t)> assignMemoryTo = [&](uint_fast64_t unfoldingState) -> uint_fast64_t {
+                if (unfoldingState != 0) {
+                    StateValueWindowSize<ValueType> s_x_l = unfoldingStatesMeaning[unfoldingState];
+                    if (windowMemory.unfoldingToMemoryStatesMapping[unfoldingState] != M) {
+                        windowMemory.unfoldingToMemoryStatesMapping[unfoldingState] = currentMemory[unfoldingState];
+                        uint_fast64_t memory = windowMemory.unfoldingToMemoryStatesMapping[unfoldingState];
+                        ++currentMemory[unfoldingState];
+                        for (uint_fast64_t unfoldingAction = this->matrix.getRowGroupIndices()[unfoldingState];
+                             unfoldingAction < this->matrix.getRowGroupIndices()[unfoldingState + 1];
+                             ++unfoldingAction) {
+                            for (const auto &entry : this->matrix.getRow(unfoldingAction)) {
+                                uint_fast64_t unfoldingSuccessor = entry.getColumn();
+                                uint_fast64_t next_memory = assignMemoryTo(unfoldingSuccessor);
+                                if (not unfoldingStatesMemoryTransitions[memory][next_memory]) {
+                                    unfoldingStatesMemoryTransitions[memory][next_memory] = storm::storage::BitVector(this->mdp.getNumberOfStates());
+                                }
+                                if (not unfoldingActionsMemoryTransitions[memory][next_memory]) {
+                                    unfoldingActionsMemoryTransitions[memory][next_memory] = storm::storage::BitVector(this->mdp.getNumberOfChoices());
+                                }
+                                unfoldingStatesMemoryTransitions[memory][next_memory]->set(unfoldingStatesMeaning[unfoldingState].state, true);
+                                unfoldingActionsMemoryTransitions[memory][next_memory]->set(unfoldingActionsMeaning[unfoldingAction], true);
+                            }
+                        }
+                    }
+                }
+                return windowMemory.unfoldingToMemoryStatesMapping[unfoldingState];
+            };
+
+            for (uint_fast64_t unfoldingState = 1; unfoldingState < this->matrix.getRowGroupCount(); ++ unfoldingState) {
+                assignMemoryTo(unfoldingState);
             }
 
-            std::vector<uint_fast64_t> currentMemoryIndices(M, 0);
-            for (uint_fast64_t unfoldingState = 1; unfoldingState < this->matrix.getRowGroupCount(); ++ unfoldingState) {
-                uint_fast64_t s = this->matrix.getRowGroupCount(), l = l_max;
-                ValueType x;
+            for (uint_fast64_t memory = 0; memory < M; ++ memory) {
+
+                for (uint_fast64_t next_memory = 0; next_memory < M + 1; ++ next_memory) {
+                    if (unfoldingActionsMemoryTransitions[memory][next_memory]) {
+                        memoryBuilder.setTransition(memory, next_memory, *unfoldingStatesMemoryTransitions[memory][next_memory], unfoldingActionsMemoryTransitions[memory][next_memory]);
+                    }
+                    else {
+                        memoryBuilder.setTransition(memory, next_memory, storm::storage::BitVector(this->mdp.getNumberOfStates(), true));
+                    }
+                }
             }
+            memoryBuilder.setTransition(M + 1, M + 1, storm::storage::BitVector(this->mdp.getNumberOfStates(), true));
+
+            return windowMemory;
         }
 
         template<typename ValueType>
@@ -203,6 +253,28 @@ namespace sw {
                 }
             }
             return unfoldingStates;
+        }
+
+        template <typename ValueType>
+        std::vector<uint_fast64_t> WindowUnfolding<ValueType>::newToOldActionsMapping(std::vector<StateValueWindowSize<ValueType>> const& newStatesMeaning) {
+
+            std::vector<uint_fast64_t> unfoldingActionsMeaning(this->matrix.getRowCount());
+            storm::storage::BitVector visitedOriginalStates(this->mdp.getNumberOfStates(), false);
+            for (uint_fast64_t unfoldingState = 1; unfoldingState < this->matrix.getRowGroupCount(); ++ unfoldingState) {
+                uint_fast64_t originalState = newStatesMeaning[unfoldingState].state;
+                if (not visitedOriginalStates[originalState]) {
+                    uint_fast64_t unfoldingAction = this->matrix.getRowGroupIndices()[unfoldingState];
+                    for (uint_fast64_t originalAction = this->enabledActions.getNextSetIndex(this->originalMatrix.getRowGroupIndices()[originalState]);
+                         originalAction < this->originalMatrix.getRowGroupIndices()[originalState];
+                         originalAction = this->enabledActions.getNextSetIndex(originalAction + 1)) {
+                        unfoldingActionsMeaning[unfoldingAction] = originalAction;
+                        ++ unfoldingAction;
+                    }
+                    visitedOriginalStates.set(originalState, true);
+                }
+            }
+
+            return unfoldingActionsMeaning;
         }
 
         template<typename ValueType>
