@@ -184,8 +184,23 @@ namespace storm {
                                 // memory update for deterministic choice
                                 if (memoryStructure) {
                                     SparseMatrix<ValueType> const& modelTransitions = model->getTransitionMatrix();
-                                    uint_fast64_t transitionIndex = modelTransitions.getRow(choice.getDeterministicChoice()).begin() - modelTransitions.begin();
-                                    out << std::setw(16) << "m" << memoryStructure->getSuccessorMemoryState(memoryState, transitionIndex);
+                                    std::vector<boost::optional<storm::storage::BitVector>> nextMemories(memoryStructure->getNumberOfStates());
+                                    out << std::setw(20);
+                                    for (auto entryIt = modelTransitions.getRow(choice.getDeterministicChoice()).begin();
+                                         entryIt < modelTransitions.getRow(choice.getDeterministicChoice()).end();
+                                         ++ entryIt) {
+                                        uint_fast64_t transitionIndex = entryIt - modelTransitions.begin();
+                                        uint_fast64_t nextMemoryState = memoryStructure->getSuccessorMemoryState(memoryState, transitionIndex);
+                                        if (not nextMemories[nextMemoryState]) {
+                                            nextMemories[nextMemoryState] = storm::storage::BitVector(model->getNumberOfStates(), false);
+                                        }
+                                        nextMemories[nextMemoryState]->set(entryIt->getColumn(), true);
+                                    }
+                                    for (uint_fast64_t m = 0; m < memoryStructure->getNumberOfStates(); ++ m) {
+                                        if (nextMemories[m]) {
+                                            out << *nextMemories[m] << ": " << "m" << m << std::setw(3);
+                                        }
+                                    }
                                 }
                             } else {
                                 bool firstChoice = true;

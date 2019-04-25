@@ -1,3 +1,5 @@
+#include <memory>
+
 #include <utility>
 
 //
@@ -16,7 +18,7 @@ namespace sw {
                 uint_fast64_t const &l_max,
                 storm::storage::BitVector const& enabledActions)
                 : l_max(l_max),
-                  mdp(mdp),
+                  originalModel(mdp),
                   originalMatrix(mdp.getTransitionMatrix()),
                   enabledActions(enabledActions),
                   rewardModel(mdp.getRewardModel(rewardModelName)) {
@@ -37,18 +39,18 @@ namespace sw {
                 storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                 std::string const& rewardModelName,
                 uint_fast64_t const &l_max)
-                : WindowUnfolding(mdp, rewardModelName, l_max,
-                        storm::storage::BitVector(mdp.getTransitionMatrix().getRowCount(), true)) {}
+                : WindowUnfolding<ValueType>(mdp, rewardModelName, l_max, storm::storage::BitVector(mdp.getNumberOfChoices(), true)) {}
+
 
         template<typename ValueType>
         WindowUnfoldingMeanPayoff<ValueType>::WindowUnfoldingMeanPayoff(
                 storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                 std::string const &rewardModelName, uint_fast64_t const &l_max,
-                storm::storage::BitVector const &initialStates,
+                storm::storage::BitVector const& initialStates,
                 storm::storage::BitVector const& enabledActions)
                 : WindowUnfolding<ValueType>(mdp, rewardModelName, l_max, enabledActions) {
             assert(initialStates.size() == mdp.getNumberOfStates());
-            WindowUnfolding<ValueType>::generateMatrix(initialStates);
+            this->generateMatrix(initialStates);
         }
 
         template<typename ValueType>
@@ -56,18 +58,20 @@ namespace sw {
                 storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                 std::string const &rewardModelName, uint_fast64_t const &l_max,
                 storm::storage::BitVector const &initialStates)
-                : WindowUnfoldingMeanPayoff<ValueType>(mdp, rewardModelName, l_max, initialStates,
-                        storm::storage::BitVector(mdp.getTransitionMatrix().getRowCount(), true)) {}
+                : WindowUnfolding<ValueType>(mdp, rewardModelName, l_max) {
+            assert(initialStates.size() == mdp.getNumberOfStates());
+            this->generateMatrix(initialStates);
+        }
 
         template<typename ValueType>
         WindowUnfoldingParity<ValueType>::WindowUnfoldingParity(
                 storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                 std::string const &rewardModelName, uint_fast64_t const &l_max,
-                storm::storage::BitVector const &initialStates,
+                storm::storage::BitVector const& initialStates,
                 storm::storage::BitVector const& enabledActions)
                 : WindowUnfolding<ValueType>(mdp, rewardModelName, l_max, enabledActions) {
             assert(initialStates.size() == mdp.getNumberOfStates());
-            WindowUnfolding<ValueType>::generateMatrix(initialStates);
+            this->generateMatrix(initialStates);
         }
 
         template<typename ValueType>
@@ -75,8 +79,10 @@ namespace sw {
                 storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
                 std::string const &rewardModelName, uint_fast64_t const &l_max,
                 storm::storage::BitVector const &initialStates)
-                : WindowUnfoldingParity<ValueType>(mdp, rewardModelName, l_max, initialStates,
-                        storm::storage::BitVector(mdp.getTransitionMatrix().getRowCount(), true)) {}
+                : WindowUnfolding<ValueType>(mdp, rewardModelName, l_max) {
+            assert(initialStates.size() == mdp.getNumberOfStates());
+            this->generateMatrix(initialStates);
+        }
 
         template<typename ValueType>
         void WindowUnfolding<ValueType>::generateMatrix(storm::storage::BitVector const &initialStates) {
@@ -135,37 +141,18 @@ namespace sw {
             }
         }
 
-        template<typename ValueType>
-        uint_fast64_t WindowUnfolding<ValueType>::getMaxNumberOfMemoryStatesRequired() {
-            // current max number of memory states required for a memory structure
-            uint_fast64_t M = 0;
-            for (uint_fast64_t s = 0; s < this->originalMatrix.getRowGroupCount(); ++ s) {
-                // current number of memory states for s
-                uint_fast64_t memory = 0;
-                for (uint_fast64_t l = 0; l < this->l_max; ++ l) {
-                    memory += this->windowVector[s][l].size();
-                }
-                if (M < memory) {
-                    M = memory;
-                }
-            }
-            return M + 1; // the additional memory state is linked to the sink state in the unfolding
-        }
-
         template <typename ValueType>
-        WindowMemory<ValueType> WindowUnfolding<ValueType>::generateMemory(uint_fast64_t initialState) {
-            uint_fast64_t M = this->getMaxNumberOfMemoryStatesRequired() - 1;
-            storm::storage::MemoryStructureBuilder<ValueType> memoryBuilder(M + 1, this->mdp);
+        WindowMemory<ValueType> WindowUnfolding<ValueType>::generateMemory(bool setLabels) {
+
             WindowMemory<ValueType> windowMemory;
-            // the last state of the memory structure is the sink state corresponding to the windows staying open for l_max steps
-            windowMemory.unfoldingToMemoryStatesMapping = std::vector<uint_fast64_t>(this->matrix.getRowGroupCount(), M);
+            windowMemory.unfoldingToMemoryStatesMapping = std::vector<uint_fast64_t>(this->matrix.getRowGroupCount());
             std::vector<std::unordered_map<ValueType, uint_fast64_t>> windowSizeValueMapping(this->l_max);
             for (uint_fast64_t l = 0; l < l_max; ++ l) {
                 windowSizeValueMapping[l] = std::unordered_map<ValueType, uint_fast64_t>();
             }
 
             // keeps track of the current memory of each state during the memory assignment
-            std::vector<uint_fast64_t> currentMemory(this->mdp.getNumberOfStates(), 0);
+            std::vector<uint_fast64_t> currentMemory(this->originalModel.getNumberOfStates(), 0);
             // mappings between the unfolding and the original MDP
             std::vector<StateValueWindowSize<ValueType>> unfoldingStatesMeaning = this->getNewStatesMeaning();
             std::vector<uint_fast64_t> unfoldingActionsMeaning = this->newToOldActionsMapping(unfoldingStatesMeaning);
@@ -177,14 +164,27 @@ namespace sw {
                 auto keyValue = windowSizeValueMapping[stateValueWindowSize.currentWindowSize].find(stateValueWindowSize.currentValue);
                 if (keyValue == windowSizeValueMapping[stateValueWindowSize.currentWindowSize].end()) {
                     windowSizeValueMapping[stateValueWindowSize.currentWindowSize][stateValueWindowSize.currentValue] = memory;
-                    // memory label is (w, l)
-                    std::ostringstream stream;
-                    stream << "(" << boost::lexical_cast<std::string>(stateValueWindowSize.currentValue) << ", "
-                           << boost::lexical_cast<std::string>(stateValueWindowSize.currentWindowSize) << ")";
-                    memoryBuilder.setLabel(memory, stream.str());
                     ++ memory;
                 }
-                windowMemory.unfoldingToMemoryStatesMapping[unfoldingState] = windowSizeValueMapping[stateValueWindowSize.currentWindowSize][stateValueWindowSize.currentValue];
+                windowMemory.unfoldingToMemoryStatesMapping[unfoldingState] =
+                        windowSizeValueMapping[stateValueWindowSize.currentWindowSize][stateValueWindowSize.currentValue];
+            }
+
+            uint_fast64_t M = memory;
+            storm::storage::MemoryStructureBuilder<ValueType> memoryBuilder(M + 1, this->originalModel);
+            // the last state of the memory structure is the sink state corresponding to the windows staying open for l_max steps
+            windowMemory.unfoldingToMemoryStatesMapping[0] = M;
+            if (setLabels){
+                memoryBuilder.setLabel(M, "⊥");
+                for (uint_fast64_t l = 0; l < this->l_max; ++ l) {
+                    for (const auto& keyValue : windowSizeValueMapping[l]) {
+                        // memory label is (current value, current window size)
+                        std::ostringstream stream;
+                        stream << "(" << boost::lexical_cast<std::string>(keyValue.first) << ", "
+                               << std::to_string(l) << ")";
+                        memoryBuilder.setLabel(keyValue.second, stream.str());
+                    }
+                }
             }
 
             storm::storage::MemoryStructure::TransitionMatrix
@@ -202,29 +202,37 @@ namespace sw {
                         uint_fast64_t unfoldingSuccessor = entry.getColumn();
                         uint_fast64_t next_memory = windowMemory.unfoldingToMemoryStatesMapping[unfoldingSuccessor];
                         if (not unfoldingStatesMemoryTransitions[memory][next_memory]) {
-                            unfoldingStatesMemoryTransitions[memory][next_memory] = storm::storage::BitVector(this->mdp.getNumberOfStates());
+                            unfoldingStatesMemoryTransitions[memory][next_memory] = storm::storage::BitVector(this->originalModel.getNumberOfStates());
+                            unfoldingActionsMemoryTransitions[memory][next_memory] = storm::storage::BitVector(this->originalModel.getNumberOfChoices());
                         }
-                        if (not unfoldingActionsMemoryTransitions[memory][next_memory]) {
-                            unfoldingActionsMemoryTransitions[memory][next_memory] = storm::storage::BitVector(this->mdp.getNumberOfChoices());
+                        if (unfoldingSuccessor) {
+                            unfoldingStatesMemoryTransitions[memory][next_memory]->set(unfoldingStatesMeaning[unfoldingSuccessor].state, true);
                         }
-                        unfoldingStatesMemoryTransitions[memory][next_memory]->set(unfoldingStatesMeaning[unfoldingSuccessor].state, true);
+                        else {
+                            unfoldingStatesMemoryTransitions[memory][next_memory]->fill();
+                        }
                         unfoldingActionsMemoryTransitions[memory][next_memory]->set(unfoldingActionsMeaning[unfoldingAction], true);
                     }
                 }
             }
 
             for (memory = 0; memory < M; ++ memory) {
-
                 for (uint_fast64_t next_memory = 0; next_memory < M + 1; ++ next_memory) {
                     if (unfoldingActionsMemoryTransitions[memory][next_memory]) {
-                        memoryBuilder.setTransition(memory, next_memory, *unfoldingStatesMemoryTransitions[memory][next_memory], unfoldingActionsMemoryTransitions[memory][next_memory]);
+                        memoryBuilder.setTransition(memory, next_memory,
+                                                    *unfoldingStatesMemoryTransitions[memory][next_memory],
+                                                    unfoldingActionsMemoryTransitions[memory][next_memory]);
                     }
                 }
             }
-            memoryBuilder.setTransition(M, M, storm::storage::BitVector(this->mdp.getNumberOfStates(), true));
-            memoryBuilder.setInitialMemoryState(windowMemory.unfoldingToMemoryStatesMapping[this->getInitialState(initialState)]);
+            memoryBuilder.setTransition(M, M, storm::storage::BitVector(this->originalModel.getNumberOfStates(), true));
+            // initial memory states
+            for (uint_fast64_t const& originalState : this->originalModel.getInitialStates()) {
+               memoryBuilder.setInitialMemoryState(originalState, windowMemory.unfoldingToMemoryStatesMapping[this->getInitialState(originalState)]);
+            }
             storm::storage::MemoryStructure memoryStructure = memoryBuilder.build();
-            windowMemory.memoryStructure = std::unique_ptr<storm::storage::MemoryStructure>(&memoryStructure);
+            // windowMemory.memoryStructure = std::unique_ptr<storm::storage::MemoryStructure>(&memoryStructure);
+            windowMemory.memoryStructure = std::make_unique<storm::storage::MemoryStructure>(std::move(memoryStructure));
 
             return windowMemory;
         }
@@ -251,7 +259,7 @@ namespace sw {
             std::vector<StateValueWindowSize<ValueType>> unfoldingStates(
                     this->newRowGroupEntries.size());
 
-            for (uint_fast64_t state = 0; state < this->originalMatrix.getRowGroupCount(); ++state) {
+            for (uint_fast64_t state = 0; state < this->originalMatrix.getRowGroupCount(); ++ state) {
                 for (uint_fast64_t l = 0; l < l_max; ++ l) {
                     for (const auto &keyValue : this->windowVector[state][l]) {
                         unfoldingStates[keyValue.second].state = state;
@@ -267,21 +275,17 @@ namespace sw {
         std::vector<uint_fast64_t> WindowUnfolding<ValueType>::newToOldActionsMapping(std::vector<StateValueWindowSize<ValueType>> const& newStatesMeaning) {
 
             std::vector<uint_fast64_t> unfoldingActionsMeaning(this->matrix.getRowCount());
-            storm::storage::BitVector visitedOriginalStates(this->mdp.getNumberOfStates(), false);
             for (uint_fast64_t unfoldingState = 1; unfoldingState < this->matrix.getRowGroupCount(); ++ unfoldingState) {
                 uint_fast64_t originalState = newStatesMeaning[unfoldingState].state;
-                if (not visitedOriginalStates[originalState]) {
-                    uint_fast64_t unfoldingAction = this->matrix.getRowGroupIndices()[unfoldingState];
-                    for (uint_fast64_t originalAction = this->enabledActions.getNextSetIndex(this->originalMatrix.getRowGroupIndices()[originalState]);
-                         originalAction < this->originalMatrix.getRowGroupIndices()[originalState];
-                         originalAction = this->enabledActions.getNextSetIndex(originalAction + 1)) {
-                        unfoldingActionsMeaning[unfoldingAction] = originalAction;
-                        ++ unfoldingAction;
-                    }
-                    visitedOriginalStates.set(originalState, true);
+                uint_fast64_t unfoldingAction = this->matrix.getRowGroupIndices()[unfoldingState];
+                for (uint_fast64_t originalAction = this->enabledActions.getNextSetIndex(this->originalMatrix.getRowGroupIndices()[originalState]);
+                     originalAction < this->originalMatrix.getRowGroupIndices()[originalState + 1];
+                     originalAction = this->enabledActions.getNextSetIndex(originalAction + 1)) {
+                    unfoldingActionsMeaning[unfoldingAction] = originalAction;
+                    ++ unfoldingAction;
                 }
+                assert(unfoldingAction == this->matrix.getRowGroupIndices()[unfoldingState + 1]);
             }
-
             return unfoldingActionsMeaning;
         }
 

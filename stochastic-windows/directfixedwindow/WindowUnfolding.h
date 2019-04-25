@@ -80,19 +80,11 @@ namespace sw {
             virtual uint_fast64_t getInitialState(uint_fast64_t originalInitialState) = 0;
 
             /**
-             * Computes the maximal number of memory states required for a memory structure representing this unfolding
-             * for the original MDP.
-             */
-            uint_fast64_t getMaxNumberOfMemoryStatesRequired();
-
-            /**
              * Generates (i) a memory structure for the original MDP representing this unfolding, i.e.,
              * the product of the original MDP and the memory structure generated retrieves this unfolding;
              * and (ii) the mapping of each state of this unfolding to a memory state of the memory structure.
-             *
-             * @param initialState initial state in the original MDP
              */
-            WindowMemory<ValueType> generateMemory(uint_fast64_t initialState);
+            WindowMemory<ValueType> generateMemory(bool setLabels=true);
 
         protected:
 
@@ -101,7 +93,10 @@ namespace sw {
              */
             uint_fast64_t l_max;
 
-            storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp;
+            /*!
+             * Original MDP
+             */
+            storm::models::sparse::Mdp <ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &originalModel;
 
             /*!
              * Matrix of the unfolding of the original MDP
@@ -113,7 +108,7 @@ namespace sw {
              */
             storm::storage::SparseMatrix<ValueType> const& originalMatrix;
 
-            storm::storage::BitVector const& enabledActions;
+            storm::storage::BitVector const enabledActions;
 
             /*!
              * This vector contains the index of each original state s in the unfolding regarding to

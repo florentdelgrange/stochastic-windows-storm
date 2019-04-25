@@ -106,7 +106,7 @@ void initializeSettings() {
     storm::utility::setLogLevel(l3pp::LogLevel::DEBUG);
 
     // storm::settings::mutableManager().printHelpForModule("minmax");
-    storm::settings::mutableManager().setFromString("--minmax:method vi");
+    // storm::settings::mutableManager().setFromString("--minmax:method vi");
     std::cout << "Equation solving method: " << minMaxMethodAsString() << std::endl;
 }
 
@@ -232,7 +232,7 @@ void directFixedMemoryExample(){
     );
     std::cout << "DFW scheduler: memory requirements" << std::endl;
     sw::game::WinningSetAndScheduler<double> winningSetAndScheduler = wmpGame->produceSchedulerForDirectFW();
-    std::cout << winningSetAndScheduler.winningSet << std::endl;
+    //std::cout << winningSetAndScheduler.winningSet << std::endl;
     std::cout << winningSetAndScheduler.scheduler->getMemoryStructure()->toString() << std::endl;
     winningSetAndScheduler.scheduler->printToStream(std::cout, mdp);
 
@@ -293,6 +293,7 @@ void windowExamples(){
     }
     std::cout << "]" << std::endl;
     std::cout << "result from s0 = " << sw::DirectFixedWindow::performMaxProb<double>(0, dfwMpObjective) << std::endl;
+    std::cout << "memory structure ?" << unfoldingDirectFixedMP->generateMemory().memoryStructure->toString() << std::endl;
     // DirectFixed Par
     sw::DirectFixedWindow::DirectFixedWindowParityObjective<double> dfwParObjective(*mdp, "priorities", 3);
     phiStates = storm::storage::BitVector(mdp->getNumberOfStates(), true);
@@ -513,6 +514,12 @@ void windowExamples(){
     for (uint_fast64_t state = 0; state < mdp->getNumberOfStates(); ++ state) {
         std::cout << "s" << state << "=" << result[state] << ", ";
     }
+    std::cout << "]" << std::endl;
+
+    std::cout << "DFW scheduler: memory requirements" << std::endl;
+    sw::game::WinningSetAndScheduler<double> winningSetAndScheduler = wmpGame->produceSchedulerForDirectFW();
+    std::cout << winningSetAndScheduler.scheduler->getMemoryStructure()->toString() << std::endl;
+    winningSetAndScheduler.scheduler->printToStream(std::cout, mdp);
 }
 
 
