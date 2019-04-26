@@ -195,24 +195,25 @@ namespace sw {
             // computes the memory structure
             for (uint_fast64_t unfoldingState = 1; unfoldingState < this->matrix.getRowGroupCount(); ++ unfoldingState) {
                 memory = windowMemory.unfoldingToMemoryStatesMapping[unfoldingState];
+                storm::storage::BitVector consideredActions(this->originalModel.getNumberOfChoices(), false);
                 for (uint_fast64_t unfoldingAction = this->matrix.getRowGroupIndices()[unfoldingState];
                      unfoldingAction < this->matrix.getRowGroupIndices()[unfoldingState + 1];
                      ++ unfoldingAction) {
                     for (const auto &entry : this->matrix.getRow(unfoldingAction)) {
                         uint_fast64_t unfoldingSuccessor = entry.getColumn();
                         uint_fast64_t next_memory = windowMemory.unfoldingToMemoryStatesMapping[unfoldingSuccessor];
-                        if (not unfoldingStatesMemoryTransitions[memory][next_memory]) {
+                        if (unfoldingSuccessor and not unfoldingStatesMemoryTransitions[memory][next_memory]) {
                             unfoldingStatesMemoryTransitions[memory][next_memory] = storm::storage::BitVector(this->originalModel.getNumberOfStates());
                             unfoldingActionsMemoryTransitions[memory][next_memory] = storm::storage::BitVector(this->originalModel.getNumberOfChoices());
                         }
                         if (unfoldingSuccessor) {
                             unfoldingStatesMemoryTransitions[memory][next_memory]->set(unfoldingStatesMeaning[unfoldingSuccessor].state, true);
+                            unfoldingActionsMemoryTransitions[memory][next_memory]->set(unfoldingActionsMeaning[unfoldingAction], true);
+                            consideredActions.set(unfoldingActionsMeaning[unfoldingAction], true);
                         }
-                        else {
-                            unfoldingStatesMemoryTransitions[memory][next_memory]->fill();
-                        }
-                        unfoldingActionsMemoryTransitions[memory][next_memory]->set(unfoldingActionsMeaning[unfoldingAction], true);
                     }
+                    unfoldingActionsMemoryTransitions[memory][M] = ~consideredActions;
+                    unfoldingStatesMemoryTransitions[memory][M] = storm::storage::BitVector(this->originalModel.getNumberOfStates(), true);
                 }
             }
 

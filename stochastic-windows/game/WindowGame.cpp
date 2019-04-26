@@ -234,11 +234,12 @@ namespace sw {
                     // choosing an action that does not ensure to make the current sum positive
                     memoryBuilder.setTransition(l, l + 1, this->restrictedStateSpace, continueActions);
                     // good reset: the sum is maximal by playing the action in less than l_max steps
-                    memoryBuilder.setTransition(l, 0, this->restrictedStateSpace, ~continueActions);
+                    // OR the arrival state and/or the action played does not belong to this game
+                    memoryBuilder.setTransition(l, 0, storm::storage::BitVector(this->mdp.getNumberOfStates(), true), ~continueActions);
                 }
                 // good reset: the current sum becomes positive within l_max steps;
                 // bad  reset: the current sum remains negative within l_max steps
-                memoryBuilder.setTransition(this->l_max - 1, 0, this->restrictedStateSpace);
+                memoryBuilder.setTransition(this->l_max - 1, 0, storm::storage::BitVector(this->mdp.getNumberOfStates(), true));
                 storm::storage::MemoryStructure const& memory = memoryBuilder.build();
                 scheduler = std::unique_ptr<storm::storage::Scheduler<ValueType>>(
                         new storm::storage::Scheduler<ValueType>(this->mdp.getNumberOfStates(), memory)
