@@ -195,7 +195,7 @@ namespace sw {
             // computes the memory structure
             for (uint_fast64_t unfoldingState = 1; unfoldingState < this->matrix.getRowGroupCount(); ++ unfoldingState) {
                 memory = windowMemory.unfoldingToMemoryStatesMapping[unfoldingState];
-                storm::storage::BitVector consideredActions(this->originalModel.getNumberOfChoices(), false);
+                storm::storage::BitVector consideredActions(this->originalModel.getNumberOfChoices());
                 for (uint_fast64_t unfoldingAction = this->matrix.getRowGroupIndices()[unfoldingState];
                      unfoldingAction < this->matrix.getRowGroupIndices()[unfoldingState + 1];
                      ++ unfoldingAction) {

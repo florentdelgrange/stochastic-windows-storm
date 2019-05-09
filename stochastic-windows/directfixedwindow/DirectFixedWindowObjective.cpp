@@ -46,34 +46,73 @@ namespace sw {
         }
 
         template<typename ValueType>
-        std::vector<ValueType> performMaxProb(storm::storage::BitVector const& phiStates,
+        sw::storage::ValuesAndScheduler<ValueType> performMaxProb(storm::storage::BitVector const& phiStates,
                 DirectFixedWindowObjective<ValueType> const& dfwObjective,
-                bool useMecBasedTechnique) {
+                bool produceScheduler) {
             std::vector<ValueType> result(dfwObjective.getMdp().getNumberOfStates(), 0);
             std::unique_ptr<WindowUnfolding<ValueType>> unfolding = dfwObjective.performUnfolding(phiStates);
             storm::storage::BitVector psiStates(unfolding->getMatrix().getRowGroupCount(), true);
-            psiStates.set(0, false); // 0 is the index of ⊥ in the unfolding, the state we want to avoid
-            std::vector<ValueType> resultInUnfolding =
-                    storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType>().computeGloballyProbabilities(
-                            storm::Environment(),
-                            storm::solver::SolveGoal<ValueType>(false), // we want to maximize the probability of staying in ¬⊥
-                            unfolding->getMatrix(),
-                            unfolding->getMatrix().transpose(true),
-                            psiStates,
-                            useMecBasedTechnique);
-            for (uint_fast64_t state: phiStates) {
-                result[state] = resultInUnfolding[unfolding->getInitialState(state)];
+            psiStates.set(0, false); // 0 is the index of the sink state ⊥ that we want to avoid in the unfolding
+            if (produceScheduler) {
+                storm::storage::SparseMatrix<ValueType> transposedMatrix = unfolding->getMatrix().transpose(true);
+                storm::storage::MaximalEndComponentDecomposition<ValueType> mecDecomposition(unfolding->getMatrix(), transposedMatrix, psiStates);
+                storm::storage::BitVector statesInPsiMecs(unfolding->getMatrix().getRowGroupCount());
+                for (auto const& mec : mecDecomposition) {
+                    for (auto const& stateActionsPair : mec) {
+                        statesInPsiMecs.set(stateActionsPair.first, true);
+                    }
+                }
+                storm::modelchecker::helper::MDPSparseModelCheckingHelperReturnType<ValueType>
+                resultInUnfolding = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType>().computeUntilProbabilities(
+                        storm::Environment(),
+                        storm::solver::SolveGoal<ValueType>(false),
+                        unfolding->getMatrix(),
+                        transposedMatrix,
+                        psiStates,
+                        statesInPsiMecs,
+                        false, // quantitative
+                        true); // produce scheduler
+                // result in the unfolding to result in the original MDP
+                for (uint_fast64_t state: phiStates) {
+                    result[state] = resultInUnfolding.values[unfolding->getInitialState(state)];
+                }
+                WindowMemory<ValueType> windowMemory = unfolding->generateMemory();
+                std::unique_ptr<storm::storage::Scheduler<ValueType>>
+                scheduler = std::unique_ptr<storm::storage::Scheduler<ValueType>>(
+                        new storm::storage::Scheduler<ValueType>(dfwObjective.getMdp().getNumberOfStates(), *windowMemory.memoryStructure)
+                );
+                std::vector<StateValueWindowSize<ValueType>> newStatesMeaning = unfolding->getNewStatesMeaning();
+                std::vector<uint_fast64_t> actionsMapping = unfolding->newToOldActionsMapping(newStatesMeaning);
+                for (uint_fast64_t unfoldingState = 1; unfolding->getMatrix().getRowGroupCount(); ++ unfoldingState) {
+                    uint_fast64_t state = newStatesMeaning[unfoldingState].state;
+                    uint_fast64_t memoryState = windowMemory.unfoldingToMemoryStatesMapping[unfoldingState];
+                    scheduler->setChoice(actionsMapping[resultInUnfolding.scheduler->getChoice(unfoldingState).getDeterministicChoice()], state, memoryState);
+                }
+                for (uint_fast64_t state = 0; state < dfwObjective.getMdp().getNumberOfStates(); ++ state) {
+                    for (uint_fast64_t memoryState = 0; scheduler->getNumberOfMemoryStates(); ++ memoryState) {
+                        if (not scheduler->getChoice(state, memoryState).isDefined()) {
+                            scheduler->setChoice(dfwObjective.getMdp().getTransitionMatrix().getRowGroupIndices()[state], state, memoryState);
+                        }
+                    }
+                }
+                return sw::storage::ValuesAndScheduler<ValueType>(std::move(result), std::move(scheduler));
             }
-            return result;
-        }
-
-        template<typename ValueType>
-        ValueType performMaxProb(uint_fast64_t state,
-                DirectFixedWindowObjective<ValueType> const& dfwObjective,
-                bool useMecBasedTechnique) {
-            storm::storage::BitVector phiStates(dfwObjective.getMdp().getNumberOfStates(), false);
-            phiStates.set(state, true);
-            return performMaxProb<ValueType>(phiStates, dfwObjective, useMecBasedTechnique)[state];
+            else {
+                std::vector<ValueType>
+                resultInUnfolding = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType>().computeGloballyProbabilities(
+                        storm::Environment(),
+                        storm::solver::SolveGoal<ValueType>(
+                                false), // we want to maximize the probability of staying in ¬⊥
+                        unfolding->getMatrix(),
+                        unfolding->getMatrix().transpose(true),
+                        psiStates,
+                        false, // quantitative
+                        true); // use MEC based technique
+                for (uint_fast64_t state: phiStates) {
+                    result[state] = resultInUnfolding[unfolding->getInitialState(state)];
+                }
+                return sw::storage::ValuesAndScheduler<ValueType>(std::move(result));
+            }
         }
 
         template class DirectFixedWindowObjective<double>;
@@ -82,10 +121,8 @@ namespace sw {
         template class DirectFixedWindowMeanPayoffObjective<storm::RationalNumber>;
         template class DirectFixedWindowParityObjective<double>;
 
-        template std::vector<double> performMaxProb<double>(storm::storage::BitVector const& phiStates, DirectFixedWindowObjective<double> const& dfwObjective, bool useMecBasedTechnique);
-        template std::vector<storm::RationalNumber> performMaxProb<storm::RationalNumber>(storm::storage::BitVector const& phiStates, DirectFixedWindowObjective<storm::RationalNumber> const& dfwObjective, bool useMecBasedTechnique);
-        template double performMaxProb<double>(uint_fast64_t state, DirectFixedWindowObjective<double> const& dfwObjective, bool useMecBasedTechnique);
-        template storm::RationalNumber performMaxProb<storm::RationalNumber>(uint_fast64_t state, DirectFixedWindowObjective<storm::RationalNumber> const& dfwObjective, bool useMecBasedTechnique);
+        template sw::storage::ValuesAndScheduler<double> performMaxProb<double>(storm::storage::BitVector const& phiStates, DirectFixedWindowObjective<double> const& dfwObjective, bool produceScheduler);
+        template sw::storage::ValuesAndScheduler<storm::RationalNumber> performMaxProb<storm::RationalNumber>(storm::storage::BitVector const& phiStates, DirectFixedWindowObjective<storm::RationalNumber> const& dfwObjective, bool produceScheduler);
 
     }
 }

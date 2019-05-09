@@ -12,11 +12,13 @@
 #include <storm/storage/BitVector.h>
 #include <storm/environment/solver/MinMaxSolverEnvironment.h>
 #include <stochastic-windows/WindowObjective.h>
+#include <storm/storage/MaximalEndComponentDecomposition.h>
 
 #ifndef STORM_DIRECTFIXEDWINDOWOBJECTIVE_H
 #define STORM_DIRECTFIXEDWINDOWOBJECTIVE_H
 
 namespace sw {
+
     namespace DirectFixedWindow {
 
         template<typename ValueType>
@@ -65,14 +67,10 @@ namespace sw {
         };
 
         template<typename ValueType>
-        std::vector<ValueType> performMaxProb(storm::storage::BitVector const &phiStates,
+        sw::storage::ValuesAndScheduler<ValueType> performMaxProb(storm::storage::BitVector const &phiStates,
                 DirectFixedWindowObjective<ValueType> const &dfwObjective,
-                bool useMecBasedTechnique = false);
+                bool produceScheduler = false);
 
-        template<typename ValueType>
-        ValueType performMaxProb(uint_fast64_t state,
-                DirectFixedWindowObjective<ValueType> const &dfwObjective,
-                bool useMecBasedTechnique = false);
     }
 }
 

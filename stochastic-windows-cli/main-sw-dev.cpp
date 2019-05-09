@@ -293,7 +293,6 @@ void windowExamples(){
     }
     std::cout << "]" << std::endl;
     std::cout << "result from s0 = " << sw::DirectFixedWindow::performMaxProb<double>(0, dfwMpObjective) << std::endl;
-    std::cout << "memory structure ?" << unfoldingDirectFixedMP->generateMemory().memoryStructure->toString() << std::endl;
     // DirectFixed Par
     sw::DirectFixedWindow::DirectFixedWindowParityObjective<double> dfwParObjective(*mdp, "priorities", 3);
     phiStates = storm::storage::BitVector(mdp->getNumberOfStates(), true);
@@ -520,6 +519,9 @@ void windowExamples(){
     sw::game::WinningSetAndScheduler<double> winningSetAndScheduler = wmpGame->produceSchedulerForDirectFW();
     std::cout << winningSetAndScheduler.scheduler->getMemoryStructure()->toString() << std::endl;
     winningSetAndScheduler.scheduler->printToStream(std::cout, mdp);
+    std::cout << std::endl;
+    std::cout << "DFWmp: memory structure? " << unfoldingDirectFixedMP->generateMemory().memoryStructure->toString() << std::endl;
+    std::cout << "DFWpar: memory structure? " << unfoldingDirectFixedPar->generateMemory().memoryStructure->toString() << std::endl;
 }
 
 

@@ -10,6 +10,18 @@
 
 namespace sw {
 
+    namespace storage {
+        template <typename ValueType>
+        struct ValuesAndScheduler {
+            ValuesAndScheduler(std::vector<ValueType> &&values, std::unique_ptr<storm::storage::Scheduler<ValueType>>&& scheduler = nullptr)
+            : values(std::move(values)), scheduler(std::move(scheduler)) {}
+            // The values computed for input states.
+            std::vector<ValueType> values;
+            // A scheduler, if it was computed.
+            std::unique_ptr<storm::storage::Scheduler<ValueType>> scheduler;
+        };
+    }
+
     template<typename ValueType>
     class WindowObjective {
     public:
