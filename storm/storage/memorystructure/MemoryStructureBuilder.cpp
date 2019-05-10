@@ -75,6 +75,28 @@ namespace storm {
         }
 
         template <typename ValueType, typename RewardModelType>
+        void MemoryStructureBuilder<ValueType, RewardModelType>::setTransition(uint_fast64_t const& startState, uint_fast64_t const& goalState, storm::storage::BitVector const& modelStates, uint_fast64_t const& modelChoice) {
+
+            auto const& modelTransitions = model.getTransitionMatrix();
+
+            STORM_LOG_THROW(startState < transitions.size(), storm::exceptions::InvalidOperationException, "Invalid index of start state: " << startState << ". There are only " << transitions.size() << " states in this memory structure.");
+            STORM_LOG_THROW(goalState < transitions.size(), storm::exceptions::InvalidOperationException, "Invalid index of goal state: " << startState << ". There are only " << transitions.size() << " states in this memory structure.");
+            STORM_LOG_THROW(modelStates.size() == modelTransitions.getRowGroupCount(), storm::exceptions::InvalidOperationException, "The modelStates have invalid size.");
+            STORM_LOG_THROW(modelChoice < modelTransitions.getRowCount(), storm::exceptions::InvalidOperationException, "The modelChoice index is to high.");
+
+            // translate the two indices to a model transition.
+
+            for (auto entryIt = modelTransitions.getRow(modelChoice).begin(); entryIt < modelTransitions.getRow(modelChoice).end(); ++entryIt) {
+                if (modelStates.get(entryIt->getColumn())) {
+                    if (not transitions[startState][goalState]) {
+                        transitions[startState][goalState] = storm::storage::BitVector(modelTransitions.getEntryCount(), false);
+                    }
+                    transitions[startState][goalState]->set(entryIt - modelTransitions.begin());
+                }
+            }
+        }
+
+        template <typename ValueType, typename RewardModelType>
         void MemoryStructureBuilder<ValueType, RewardModelType>::setLabel(uint_fast64_t const& state, std::string const& label) {
             STORM_LOG_THROW(state < transitions.size(), storm::exceptions::InvalidOperationException, "Can not add label to state with index " << state << ". There are only " << transitions.size() << " states in this memory structure.");
             if (!stateLabeling.containsLabel(label)) {
