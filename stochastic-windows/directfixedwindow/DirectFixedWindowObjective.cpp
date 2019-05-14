@@ -62,6 +62,8 @@ namespace sw {
                         statesInPsiMecs.set(stateActionsPair.first, true);
                     }
                 }
+                std::cout << mecDecomposition << std::endl;
+                std::cout << statesInPsiMecs << std::endl;
                 storm::modelchecker::helper::MDPSparseModelCheckingHelperReturnType<ValueType>
                 resultInUnfolding = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType>().computeUntilProbabilities(
                         storm::Environment(),
@@ -77,7 +79,6 @@ namespace sw {
                     result[state] = resultInUnfolding.values[unfolding->getInitialState(state)];
                 }
                 WindowMemory<ValueType> windowMemory = unfolding->generateMemory();
-                std::cout << "MEMORY" << windowMemory.memoryStructure->toString() << std::endl;
                 std::unique_ptr<storm::storage::Scheduler<ValueType>>
                 scheduler = std::unique_ptr<storm::storage::Scheduler<ValueType>>(
                         new storm::storage::Scheduler<ValueType>(dfwObjective.getMdp().getNumberOfStates(), *windowMemory.memoryStructure)
@@ -87,12 +88,14 @@ namespace sw {
                 for (uint_fast64_t unfoldingState = 1; unfoldingState < unfolding->getMatrix().getRowGroupCount(); ++ unfoldingState) {
                     uint_fast64_t state = newStatesMeaning[unfoldingState].state;
                     uint_fast64_t memoryState = windowMemory.unfoldingToMemoryStatesMapping[unfoldingState];
-                    scheduler->setChoice(actionsMapping[resultInUnfolding.scheduler->getChoice(unfoldingState).getDeterministicChoice()], state, memoryState);
+                    uint_fast64_t unfoldingRow = unfolding->getMatrix().getRowGroupIndices()[unfoldingState] + resultInUnfolding.scheduler->getChoice(unfoldingState).getDeterministicChoice();
+                    uint_fast64_t originalChoice = actionsMapping[unfoldingRow] - dfwObjective.getMdp().getTransitionMatrix().getRowGroupIndices()[state];
+                    scheduler->setChoice(originalChoice, state, memoryState);
                 }
                 for (uint_fast64_t state = 0; state < dfwObjective.getMdp().getNumberOfStates(); ++ state) {
                     for (uint_fast64_t memoryState = 0; memoryState < scheduler->getNumberOfMemoryStates(); ++ memoryState) {
                         if (not scheduler->getChoice(state, memoryState).isDefined()) {
-                            scheduler->setChoice(dfwObjective.getMdp().getTransitionMatrix().getRowGroupIndices()[state], state, memoryState);
+                            scheduler->setChoice(0, state, memoryState);
                         }
                     }
                 }
@@ -102,7 +105,7 @@ namespace sw {
                 std::vector<ValueType>
                 resultInUnfolding = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType>().computeGloballyProbabilities(
                         storm::Environment(),
-                        storm::solver::SolveGoal<ValueType>(false), // we want to maximize the probability of staying in ¬⊥
+                        storm::solver::OptimizationDirection::Minimize, // we want to maximize the probability of staying in ¬⊥
                         unfolding->getMatrix(),
                         unfolding->getMatrix().transpose(true),
                         psiStates,

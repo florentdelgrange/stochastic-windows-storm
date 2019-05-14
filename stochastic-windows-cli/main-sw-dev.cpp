@@ -105,8 +105,8 @@ void initializeSettings() {
     // DEBUG MODE
     storm::utility::setLogLevel(l3pp::LogLevel::DEBUG);
 
-    // storm::settings::mutableManager().printHelpForModule("minmax");
-    // storm::settings::mutableManager().setFromString("--minmax:method vi");
+    storm::settings::mutableManager().printHelpForModule("minmax");
+    storm::settings::mutableManager().setFromString("--minmax:method vi");
     std::cout << "Equation solving method: " << minMaxMethodAsString() << std::endl;
 }
 
@@ -120,7 +120,6 @@ void mecDecompositionPrintExamples() {
         std::shared_ptr<storm::models::sparse::Model<double>> model = storm::builder::ExplicitModelBuilder<double>(program, options).build();
 
         std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = model->as<storm::models::sparse::Mdp<double>>();
-
         mdp->printModelInformationToStream(std::cout);
         storm::models::sparse::StandardRewardModel<double> rewardModel = model->getRewardModel("energy");
 
@@ -248,10 +247,10 @@ void directFixedMemoryExample(){
 void windowExamples(){
     std::string prismModelPath = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples/window_mp_par.prism";
     //std::string prismModelPath = STORM_TEST_RESOURCES_DIR "/mdp/sw_simple_example.prism";
-    storm::storage::SymbolicModelDescription modelDescription = storm::parser::PrismParser::parse(prismModelPath);
-    storm::prism::Program program = modelDescription.preprocess().asPrismProgram();
+    storm::prism::Program program = storm::parser::PrismParser::parse(prismModelPath);
     storm::builder::BuilderOptions options = storm::builder::BuilderOptions(true, true);
     std::shared_ptr<storm::models::sparse::Model<double>> model = storm::builder::ExplicitModelBuilder<double>(program, options).build();
+    std::cout << model->hasChoiceOrigins() << std::endl;
 
     std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = model->as<storm::models::sparse::Mdp<double>>();
     storm::storage::MaximalEndComponentDecomposition<double> mecDecomposition(*mdp);
@@ -286,13 +285,13 @@ void windowExamples(){
     storm::storage::BitVector phiStates(mdp->getNumberOfStates(), false);
     phiStates.set(0, true); phiStates.set(5, true);
     std::unique_ptr<sw::DirectFixedWindow::WindowUnfolding<double>> unfoldingDirectFixedMP = dfwMpObjective.performUnfolding(phiStates);
-    std::vector<double> result = sw::DirectFixedWindow::performMaxProb<double>(phiStates, dfwMpObjective);
+    sw::storage::ValuesAndScheduler<double> result = sw::DirectFixedWindow::performMaxProb<double>(phiStates, dfwMpObjective, true);
     std::cout << "Pr(DFWmp) = [";
     for (auto state: phiStates) {
-        std::cout << "s" << state << "=" << result[state] << ", ";
+        std::cout << "s" << state << "=" << result.values[state] << ", ";
     }
     std::cout << "]" << std::endl;
-    std::cout << "result from s0 = " << sw::DirectFixedWindow::performMaxProb<double>(0, dfwMpObjective) << std::endl;
+    result.scheduler->printToStream(std::cout, mdp);
     // DirectFixed Par
     sw::DirectFixedWindow::DirectFixedWindowParityObjective<double> dfwParObjective(*mdp, "priorities", 3);
     phiStates = storm::storage::BitVector(mdp->getNumberOfStates(), true);
@@ -300,10 +299,11 @@ void windowExamples(){
     result = sw::DirectFixedWindow::performMaxProb<double>(phiStates, dfwParObjective);
     std::cout << "Pr(DFWpar) = [";
     for (auto state: phiStates) {
-        std::cout << "s" << state << "=" << result[state] << ", ";
+        std::cout << "s" << state << "=" << result.values[state] << ", ";
     }
     std::cout << "]" << std::endl;
-    std::cout << "Pr_s5(DFWpar) = " << sw::DirectFixedWindow::performMaxProb<double>(5, dfwParObjective) << std::endl;
+    phiStates.clear(); phiStates.set(5);
+    std::cout << "Pr_s5(DFWpar) = " << sw::DirectFixedWindow::performMaxProb<double>(phiStates, dfwParObjective).values[5] << std::endl;
     std::cout << std::endl;
 
     // Window Mean Payoff game
@@ -348,26 +348,26 @@ void windowExamples(){
     // Fixed Window Objective
     std::cout << "Fixed Window Objectives: mean payoff (with game classification)" << std::endl;
     sw::FixedWindow::FixedWindowMeanPayoffObjective<double> fixedWindowMPObjectiveGame(*mdp, "weights", 3);
-    result = sw::FixedWindow::performMaxProb(fixedWindowMPObjectiveGame);
+    std::vector<double> fwResult = sw::FixedWindow::performMaxProb(fixedWindowMPObjectiveGame);
     std::cout << "Pr(FWmp) = [";
     for (uint_fast64_t state = 0; state < mdp->getNumberOfStates(); ++ state) {
-        std::cout << "s" << state << "=" << result[state] << ", ";
+        std::cout << "s" << state << "=" << fwResult[state] << ", ";
     }
     std::cout << "]" << std::endl;
     std::cout << "Fixed Window Objectives: mean payoff (with unfolding based classification)" << std::endl;
     sw::FixedWindow::FixedWindowMeanPayoffObjective<double> fixedWindowMPObjectiveUnfolding(*mdp, "weights", 3, false);
-    result = sw::FixedWindow::performMaxProb(fixedWindowMPObjectiveUnfolding);
+     fwResult = sw::FixedWindow::performMaxProb(fixedWindowMPObjectiveUnfolding);
     std::cout << "Pr(FWmp) = [";
     for (uint_fast64_t state = 0; state < mdp->getNumberOfStates(); ++ state) {
-        std::cout << "s" << state << "=" << result[state] << ", ";
+        std::cout << "s" << state << "=" << fwResult[state] << ", ";
     }
     std::cout << "]" << std::endl;
     std::cout << "Fixed Window Objectives: parity" << std::endl;
     sw::FixedWindow::FixedWindowParityObjective<double> fixedWindowParityObjective(*mdp, "priorities", 3);
-    result = sw::FixedWindow::performMaxProb(fixedWindowParityObjective);
+    fwResult = sw::FixedWindow::performMaxProb(fixedWindowParityObjective);
     std::cout << "Pr(FWpar) = [";
     for (uint_fast64_t state = 0; state < mdp->getNumberOfStates(); ++ state) {
-        std::cout << "s" << state << "=" << result[state] << ", ";
+        std::cout << "s" << state << "=" << fwResult[state] << ", ";
     }
     std::cout << "]" << std::endl;
     std::cout << std::endl;
@@ -500,28 +500,29 @@ void windowExamples(){
     // Bounded Window Objective
     std::cout << "Bounded Window Objectives: mean payoff (with game classification)" << std::endl;
     sw::BoundedWindow::BoundedWindowMeanPayoffObjective<double> boundedWindowMPObjectiveGame(*mdp, "weights");
-    result = sw::BoundedWindow::performMaxProb(boundedWindowMPObjectiveGame);
+    fwResult = sw::BoundedWindow::performMaxProb(boundedWindowMPObjectiveGame);
     std::cout << "Pr(BWmp) = [";
     for (uint_fast64_t state = 0; state < mdp->getNumberOfStates(); ++ state) {
-        std::cout << "s" << state << "=" << result[state] << ", ";
+        std::cout << "s" << state << "=" << fwResult[state] << ", ";
     }
     std::cout << "]" << std::endl;
     std::cout << "Bounded Window Objectives: parity" << std::endl;
     sw::BoundedWindow::BoundedWindowParityObjective<double> boundedWindowParityObjective(*mdp, "priorities");
-    result = sw::BoundedWindow::performMaxProb(boundedWindowParityObjective);
+    fwResult = sw::BoundedWindow::performMaxProb(boundedWindowParityObjective);
     std::cout << "Pr(BWpar) = [";
     for (uint_fast64_t state = 0; state < mdp->getNumberOfStates(); ++ state) {
-        std::cout << "s" << state << "=" << result[state] << ", ";
+        std::cout << "s" << state << "=" << fwResult[state] << ", ";
     }
     std::cout << "]" << std::endl;
 
-    std::cout << "DFW scheduler: memory requirements" << std::endl;
+    std::cout << "DFW scheduler: memory requirements (game version)" << std::endl;
     sw::game::WinningSetAndScheduler<double> winningSetAndScheduler = wmpGame->produceSchedulerForDirectFW();
     std::cout << winningSetAndScheduler.scheduler->getMemoryStructure()->toString() << std::endl;
     winningSetAndScheduler.scheduler->printToStream(std::cout, mdp);
     std::cout << std::endl;
-    std::cout << "DFWmp: memory structure? " << unfoldingDirectFixedMP->generateMemory().memoryStructure->toString() << std::endl;
-    std::cout << "DFWpar: memory structure? " << unfoldingDirectFixedPar->generateMemory().memoryStructure->toString() << std::endl;
+
+    // std::cout << "DFWmp: memory structure? " << unfoldingDirectFixedMP->generateMemory().memoryStructure->toString() << std::endl;
+    // std::cout << "DFWpar: memory structure? " << unfoldingDirectFixedPar->generateMemory().memoryStructure->toString() << std::endl;
 }
 
 

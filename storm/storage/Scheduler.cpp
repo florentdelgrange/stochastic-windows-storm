@@ -178,16 +178,19 @@ namespace storm {
                             if (choice.isDeterministic()) {
                                 if (choiceOriginsGiven) {
                                     out << model->getChoiceOrigins()->getChoiceInfo(model->getTransitionMatrix().getRowGroupIndices()[state] + choice.getDeterministicChoice());
+                                } else if (model != nullptr){
+                                    out << model->getTransitionMatrix().getRowGroupIndices()[state] + choice.getDeterministicChoice();
                                 } else {
                                     out << choice.getDeterministicChoice();
                                 }
                                 // memory update for deterministic choice
-                                if (memoryStructure) {
+                                if (memoryStructure and model != nullptr) {
                                     SparseMatrix<ValueType> const& modelTransitions = model->getTransitionMatrix();
                                     std::vector<boost::optional<storm::storage::BitVector>> nextMemories(memoryStructure->getNumberOfStates());
                                     out << std::setw(20);
-                                    for (auto entryIt = modelTransitions.getRow(choice.getDeterministicChoice()).begin();
-                                         entryIt < modelTransitions.getRow(choice.getDeterministicChoice()).end();
+                                    uint_fast64_t row = model->getTransitionMatrix().getRowGroupIndices()[state] + choice.getDeterministicChoice();
+                                    for (auto entryIt = modelTransitions.getRow(row).begin();
+                                         entryIt < modelTransitions.getRow(row).end();
                                          ++ entryIt) {
                                         uint_fast64_t transitionIndex = entryIt - modelTransitions.begin();
                                         uint_fast64_t nextMemoryState = memoryStructure->getSuccessorMemoryState(memoryState, transitionIndex);
