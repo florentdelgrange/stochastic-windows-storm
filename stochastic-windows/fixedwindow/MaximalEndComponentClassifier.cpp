@@ -61,7 +61,6 @@ namespace sw {
                     schedulersVector[k] = std::move(gameResult.scheduler);
                 }
             }
-
             if (produceScheduler) {
                 // Memory transitions
                 storm::storage::MemoryStructure::TransitionMatrix memoryUpdates(mecDecompositionGame.getMaximumWindowSize(), std::vector<boost::optional<storm::storage::BitVector>>(mecDecompositionGame.getMaximumWindowSize()));
@@ -94,6 +93,22 @@ namespace sw {
                 this->mecScheduler = std::unique_ptr<storm::storage::Scheduler<ValueType>>(
                         new storm::storage::Scheduler<ValueType>(mdp.getNumberOfStates(), std::move(memoryStructure))
                 );
+                // reach the safe state space from the good state space
+                storm::storage::SparseMatrix<ValueType> backwardTransitions = mdp.getTransitionMatrix().transpose(true);
+                for (uint_fast64_t k = 0; k < mecDecompositionGame.size(); ++ k) {
+                    if (this->goodMECs[k]) {
+                        storm::utility::graph::computeSchedulerProb1E(mecDecompositionGame.getGame(k).getStateSpace(), // good states has a probability one of reaching safe states in the same MEC
+                                                                      mdp.getTransitionMatrix(), backwardTransitions, // transitions
+                                                                      mecDecompositionGame.getGame(k).getStateSpace(), // phi
+                                                                      mecDecompositionGame.getGame(k).getStateSpace() & ~this->safeStateSpace, // psi
+                                                                      *this->mecScheduler); // update scheduler
+                    }
+                }
+                for (uint_fast64_t const& state : this->safeStateSpace) {
+                    for (uint_fast64_t l = 0; l < mecDecompositionGame.getMaximumWindowSize(); ++ l) {
+                        this->mecScheduler->setChoice(schedulersVector[mecDecompositionGame.getMecIndex(state)]->getChoice(state, l), state, l);
+                    }
+                }
             }
         }
 

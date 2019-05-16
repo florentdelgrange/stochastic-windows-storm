@@ -36,8 +36,7 @@ namespace sw {
                     uint_fast64_t const &l_max);
 
             /*!
-             * Get the index of the MEC containing the input state. Note that 0 is a special value indicating that the
-             * input state does not belong to any MEC
+             * Get the index of the MEC containing the input state.
              */
             uint_fast64_t getMecIndex(uint_fast64_t state);
 

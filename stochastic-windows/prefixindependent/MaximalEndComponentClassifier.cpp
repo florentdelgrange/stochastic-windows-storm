@@ -19,7 +19,7 @@ namespace sw {
 
         template <typename ValueType>
         std::vector<std::reference_wrapper<const storm::storage::MaximalEndComponent>>
-        MaximalEndComponentClassifier<ValueType>::getGoodMaximalEndComponents() {
+        MaximalEndComponentClassifier<ValueType>::getGoodMaximalEndComponents() const {
 
             std::vector<std::reference_wrapper<const storm::storage::MaximalEndComponent>> goodMaximalEndComponents;
             goodMaximalEndComponents.reserve(this->goodMECs.getNumberOfSetBits());
@@ -30,12 +30,12 @@ namespace sw {
         }
 
         template <typename ValueType>
-        storm::storage::BitVector const& MaximalEndComponentClassifier<ValueType>::getSafeStateSpace() {
+        storm::storage::BitVector const& MaximalEndComponentClassifier<ValueType>::getSafeStateSpace() const {
             return this->safeStateSpace;
         }
 
         template <typename ValueType>
-        storm::storage::BitVector const& MaximalEndComponentClassifier<ValueType>::getGoodStateSpace() {
+        storm::storage::BitVector const& MaximalEndComponentClassifier<ValueType>::getGoodStateSpace() const {
             return this->goodStateSpace;
         }
 

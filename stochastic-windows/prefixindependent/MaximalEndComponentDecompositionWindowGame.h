@@ -38,6 +38,11 @@ namespace sw {
              */
             sw::game::WindowGame<ValueType> const& getGame(uint_fast64_t mec) const;
 
+            /*!
+             * Get the index of the MEC containing the input state.
+             */
+            uint_fast64_t getMecIndex(uint_fast64_t state) const;
+
             uint_fast64_t getMaximumWindowSize() const;
 
         protected:
@@ -52,6 +57,7 @@ namespace sw {
 
             std::vector<std::unique_ptr<sw::game::WindowGame<ValueType>>> windowGames;
             uint_fast64_t l_max;
+            std::vector<uint_fast64_t> mecIndices;
 
         };
 

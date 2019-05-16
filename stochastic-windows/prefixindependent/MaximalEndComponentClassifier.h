@@ -35,18 +35,18 @@ namespace sw {
          *       sub-EC where there exists a strategy surely winning this window objective from every of its
          *       state.
          */
-        std::vector<std::reference_wrapper<const storm::storage::MaximalEndComponent>> getGoodMaximalEndComponents();
+        std::vector<std::reference_wrapper<const storm::storage::MaximalEndComponent>> getGoodMaximalEndComponents() const;
         /*!
          * Retrieves the set of safe states of the input model.
          *
          * @note A state is said to be safe w.r.t. a prefix-independent window objective if and only if there exists a
          *       strategy surely winning this window objective from this state.
          */
-        storm::storage::BitVector const& getSafeStateSpace();
+        storm::storage::BitVector const& getSafeStateSpace() const;
         /*!
          * Retrieves the set of good states of the input model (i.e., the union of the state space of each good MEC).
          */
-        storm::storage::BitVector const& getGoodStateSpace();
+        storm::storage::BitVector const& getGoodStateSpace() const;
         /*!
          * Retrieves if yes or not a scheduler is initialized to play inside each MEC
          */

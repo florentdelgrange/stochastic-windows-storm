@@ -11,7 +11,9 @@ namespace sw {
         MaximalEndComponentDecompositionWindowGame<ValueType>::MaximalEndComponentDecompositionWindowGame(
                 storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
                 std::string const &rewardModelName, uint_fast64_t const &l_max)
-                : storm::storage::MaximalEndComponentDecomposition<ValueType>(mdp), l_max(l_max) {
+                : storm::storage::MaximalEndComponentDecomposition<ValueType>(mdp),
+                  mecIndices(mdp.getNumberOfStates()),
+                  l_max(l_max) {
             this->windowGames.reserve(this->size());
         }
 
@@ -39,8 +41,14 @@ namespace sw {
             this->generateWindowGames(mdp, rewardModelName, 0);
         }
 
+        template <typename ValueType>
+        uint_fast64_t sw::storage::MaximalEndComponentDecompositionWindowGame<ValueType>::getMecIndex(uint_fast64_t state) const {
+            STORM_LOG_ASSERT(mecIndices[state] == 0, "The state " << state << " does not belong to any MEC.");
+            return mecIndices[state] - 1;
+        }
+
         template<typename ValueType>
-        uint_fast64_t MaximalEndComponentDecompositionWindowMeanPayoffGame<ValueType>::getMaximumWindowSize() const {
+        uint_fast64_t MaximalEndComponentDecompositionWindowGame<ValueType>::getMaximumWindowSize() const {
             return this->l_max;
         }
 
@@ -50,12 +58,14 @@ namespace sw {
                 std::string const& rewardModelName,
                 uint_fast64_t const& l_max) {
 
+            uint_fast64_t k = 0;
             for (storm::storage::MaximalEndComponent const &mec: *this) {
                 storm::storage::BitVector restrictedStateSpace(mdp.getNumberOfStates(), false);
                 storm::storage::BitVector enabledActions(mdp.getNumberOfChoices(), false);
-
+                ++ k;
                 for (auto state: mec.getStateSet()){
                     restrictedStateSpace.set(state, true);
+                    this->mecIndices[state] = k;
                     for (auto action: mec.getChoicesForState(state)) {
                         enabledActions.set(action, true);
                     }
@@ -84,12 +94,14 @@ namespace sw {
                 std::string const& rewardModelName,
                 uint_fast64_t const& l_max) {
 
+            uint_fast64_t k = 0;
             for (storm::storage::MaximalEndComponent const &mec: *this) {
                 storm::storage::BitVector restrictedStateSpace(mdp.getNumberOfStates(), false);
                 storm::storage::BitVector enabledActions(mdp.getNumberOfChoices(), false);
-
+                ++ k;
                 for (auto state: mec.getStateSet()){
                     restrictedStateSpace.set(state, true);
+                    this->mecIndices[state] = k;
                     for (auto action: mec.getChoicesForState(state)) {
                         enabledActions.set(action, true);
                     }
