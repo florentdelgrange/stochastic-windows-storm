@@ -23,7 +23,8 @@ namespace sw {
 
         MaximalEndComponentClassifier(
                 storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
-                storm::storage::MaximalEndComponentDecomposition<ValueType> const& maximalEndComponentDecomposition);
+                storm::storage::MaximalEndComponentDecomposition<ValueType> const& maximalEndComponentDecomposition,
+                bool produceScheduler = false);
 
         virtual ~MaximalEndComponentClassifier() = default;
 
@@ -46,6 +47,15 @@ namespace sw {
          * Retrieves the set of good states of the input model (i.e., the union of the state space of each good MEC).
          */
         storm::storage::BitVector const& getGoodStateSpace();
+        /*!
+         * Retrieves if yes or not a scheduler is initialized to play inside each MEC
+         */
+        bool hasMaximalEndComponentScheduler() const;
+        /*!
+         * Retrieves a scheduler allowing to have a probability one to satisfy a window objective inside each MEC
+         * if hasMecScheduler is true.
+         */
+         storm::storage::Scheduler<ValueType> const& getMaximalEndComponentScheduler() const;
 
         protected:
 
@@ -53,6 +63,7 @@ namespace sw {
             storm::storage::BitVector safeStateSpace;
             storm::storage::BitVector goodStateSpace;
             storm::storage::BitVector goodMECs;
+            std::unique_ptr<storm::storage::Scheduler<ValueType>> mecScheduler;
 
         };
 

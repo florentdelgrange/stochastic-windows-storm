@@ -120,7 +120,7 @@ namespace sw {
                 for (uint_fast64_t const& state: safeStates) {
                     // set an arbitrary safe action as being the one chosen by the scheduler
                     uint_fast64_t action = safeActions.getNextSetIndex(this->matrix.getRowGroupIndices()[state]);
-                    for (uint_fast64_t memoryState = 0; memoryState < scheduler->getNumberOfMemoryStates(); ++memoryState) {
+                    for (uint_fast64_t memoryState = 0; memoryState < scheduler->getNumberOfMemoryStates(); ++ memoryState) {
                         scheduler->setChoice(action - this->matrix.getRowGroupIndices()[state], state, memoryState);
                     }
                 }

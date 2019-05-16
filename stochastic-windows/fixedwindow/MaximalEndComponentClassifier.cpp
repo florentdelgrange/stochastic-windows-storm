@@ -10,8 +10,9 @@ namespace sw {
         template <typename ValueType>
         MaximalEndComponentClassifier<ValueType>::MaximalEndComponentClassifier(
                 storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
-                sw::storage::MaximalEndComponentDecompositionUnfolding<ValueType> const& mecDecompositionUnfolding)
-                : sw::util::MaximalEndComponentClassifier<ValueType>(mdp, mecDecompositionUnfolding) {
+                sw::storage::MaximalEndComponentDecompositionUnfolding<ValueType> const& mecDecompositionUnfolding,
+                bool produceScheduler)
+                : sw::util::MaximalEndComponentClassifier<ValueType>(mdp, mecDecompositionUnfolding, produceScheduler) {
 
             // For each unfolded EC, we start by computing the safe states w.r.t. the sink state
             for (uint_fast64_t k = 0; k < mecDecompositionUnfolding.size(); ++ k) {
@@ -41,19 +42,58 @@ namespace sw {
         template <typename ValueType>
         MaximalEndComponentClassifier<ValueType>::MaximalEndComponentClassifier(
                 storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
-                sw::storage::MaximalEndComponentDecompositionWindowGame<ValueType> const& mecDecompositionGame)
-                : sw::util::MaximalEndComponentClassifier<ValueType>(mdp, mecDecompositionGame) {
+                sw::storage::MaximalEndComponentDecompositionWindowGame<ValueType> const& mecDecompositionGame,
+                bool produceScheduler)
+                : sw::util::MaximalEndComponentClassifier<ValueType>(mdp, mecDecompositionGame, produceScheduler) {
 
+            std::vector<std::unique_ptr<storm::storage::Scheduler<ValueType>>> schedulersVector(mecDecompositionGame.size());
             for (uint_fast64_t k = 0; k < mecDecompositionGame.size(); ++ k) {
                 sw::game::WindowGame<ValueType> const& mecGame = mecDecompositionGame.getGame(k);
-                storm::storage::BitVector winningSet = mecGame.directFW();
+                sw::game::WinningSetAndScheduler<ValueType>
+                gameResult = produceScheduler ? mecGame.produceSchedulerForDirectFW()
+                                              : sw::game::WinningSetAndScheduler<ValueType>(mecGame.directFW());
                 // If the winning set in the current MEC game is not empty, then the MEC is classified as good.
-                if (not winningSet.empty()) {
+                if (not gameResult.winningSet.empty()) {
                     this->goodMECs.set(k, true);
                     // logical OR
                     this->goodStateSpace |= mecGame.getStateSpace();
-                    this->safeStateSpace |= winningSet;
+                    this->safeStateSpace |= gameResult.winningSet;
+                    schedulersVector[k] = std::move(gameResult.scheduler);
                 }
+            }
+
+            if (produceScheduler) {
+                // Memory transitions
+                storm::storage::MemoryStructure::TransitionMatrix memoryUpdates(mecDecompositionGame.getMaximumWindowSize(), std::vector<boost::optional<storm::storage::BitVector>>(mecDecompositionGame.getMaximumWindowSize()));
+                for (uint_fast64_t memory = 0; memory < mecDecompositionGame.getMaximumWindowSize(); ++ memory) {
+                    for (uint_fast64_t next_memory = 1; next_memory < mecDecompositionGame.getMaximumWindowSize(); ++ next_memory) {
+                        memoryUpdates[memory][next_memory] = storm::storage::BitVector(mdp.getNumberOfTransitions());
+                        for (uint_fast64_t k = 0; k < mecDecompositionGame.size(); ++ k) {
+                            if (schedulersVector[k]) {
+                                *memoryUpdates[memory][next_memory] |= *schedulersVector[k]->getMemoryStructure()->getTransitionMatrix()[memory][next_memory];
+                            }
+                        }
+                    }
+                    memoryUpdates[memory][0] = storm::storage::BitVector(mdp.getNumberOfTransitions(), true);
+                    for (uint_fast64_t k = 0; k < mecDecompositionGame.size(); ++ k) {
+                        if (schedulersVector[k]) {
+                            *memoryUpdates[memory][0] &= *schedulersVector[k]->getMemoryStructure()->getTransitionMatrix()[memory][0];
+                        }
+                    }
+                }
+                // state labels
+                storm::models::sparse::StateLabeling stateLabeling(mecDecompositionGame.getMaximumWindowSize());
+                // Initial memory states
+                std::vector<uint_fast64_t> initialMemoryStates(mdp.getInitialStates().getNumberOfSetBits(), 0);
+                auto initMemStateIt = initialMemoryStates.begin();
+                for (auto const& initState : mdp.getInitialStates()) {
+                    *initMemStateIt = 0;
+                    ++ initMemStateIt;
+                }
+                storm::storage::MemoryStructure memoryStructure(std::move(memoryUpdates), std::move(stateLabeling), std::move(initialMemoryStates));
+                this->mecScheduler = std::unique_ptr<storm::storage::Scheduler<ValueType>>(
+                        new storm::storage::Scheduler<ValueType>(mdp.getNumberOfStates(), std::move(memoryStructure))
+                );
             }
         }
 

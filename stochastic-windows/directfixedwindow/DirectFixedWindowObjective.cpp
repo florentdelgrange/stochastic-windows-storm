@@ -46,24 +46,26 @@ namespace sw {
         }
 
         template<typename ValueType>
-        sw::storage::ValuesAndScheduler<ValueType> performMaxProb(storm::storage::BitVector const& phiStates,
+        sw::storage::ValuesAndScheduler<ValueType> performMaxProb(
+                storm::storage::BitVector const& phiStates,
                 DirectFixedWindowObjective<ValueType> const& dfwObjective,
                 bool produceScheduler) {
             std::vector<ValueType> result(dfwObjective.getMdp().getNumberOfStates(), 0);
             std::unique_ptr<WindowUnfolding<ValueType>> unfolding = dfwObjective.performUnfolding(phiStates);
             storm::storage::BitVector psiStates(unfolding->getMatrix().getRowGroupCount(), true);
             psiStates.set(0, false); // 0 is the index of the sink state ⊥ that we want to avoid in the unfolding
+
             if (produceScheduler) {
                 storm::storage::SparseMatrix<ValueType> transposedMatrix = unfolding->getMatrix().transpose(true);
                 storm::storage::MaximalEndComponentDecomposition<ValueType> mecDecomposition(unfolding->getMatrix(), transposedMatrix, psiStates);
                 storm::storage::BitVector statesInPsiMecs(unfolding->getMatrix().getRowGroupCount());
+
                 for (auto const& mec : mecDecomposition) {
                     for (auto const& stateActionsPair : mec) {
                         statesInPsiMecs.set(stateActionsPair.first, true);
                     }
                 }
-                std::cout << mecDecomposition << std::endl;
-                std::cout << statesInPsiMecs << std::endl;
+
                 storm::modelchecker::helper::MDPSparseModelCheckingHelperReturnType<ValueType>
                 resultInUnfolding = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType>().computeUntilProbabilities(
                         storm::Environment(),
@@ -100,12 +102,11 @@ namespace sw {
                     }
                 }
                 return sw::storage::ValuesAndScheduler<ValueType>(std::move(result), std::move(scheduler));
-            }
-            else {
+            } else {
                 std::vector<ValueType>
                 resultInUnfolding = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType>().computeGloballyProbabilities(
                         storm::Environment(),
-                        storm::solver::OptimizationDirection::Minimize, // we want to maximize the probability of staying in ¬⊥
+                        storm::solver::OptimizationDirection::Minimize, // we want to minimize the probability of staying in ¬⊥
                         unfolding->getMatrix(),
                         unfolding->getMatrix().transpose(true),
                         psiStates,

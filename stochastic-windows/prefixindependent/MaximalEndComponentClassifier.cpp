@@ -10,7 +10,8 @@ namespace sw {
         template<typename ValueType>
         MaximalEndComponentClassifier<ValueType>::MaximalEndComponentClassifier(
                 storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
-                storm::storage::MaximalEndComponentDecomposition<ValueType> const& maximalEndComponentDecomposition)
+                storm::storage::MaximalEndComponentDecomposition<ValueType> const& maximalEndComponentDecomposition,
+                bool produceScheduler)
                 : maximalEndComponentDecomposition(maximalEndComponentDecomposition),
                   safeStateSpace(mdp.getNumberOfStates(), false),
                   goodStateSpace(mdp.getNumberOfStates(), false),
@@ -36,6 +37,16 @@ namespace sw {
         template <typename ValueType>
         storm::storage::BitVector const& MaximalEndComponentClassifier<ValueType>::getGoodStateSpace() {
             return this->goodStateSpace;
+        }
+
+        template<typename ValueType>
+        const storm::storage::Scheduler<ValueType> &MaximalEndComponentClassifier<ValueType>::getMaximalEndComponentScheduler() const {
+            return *this->mecScheduler;
+        }
+
+        template<typename ValueType>
+        bool MaximalEndComponentClassifier<ValueType>::hasMaximalEndComponentScheduler() const {
+            return this->mecScheduler != nullptr;
         }
 
         template class MaximalEndComponentClassifier<double>;

@@ -11,7 +11,7 @@ namespace sw {
         MaximalEndComponentDecompositionWindowGame<ValueType>::MaximalEndComponentDecompositionWindowGame(
                 storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
                 std::string const &rewardModelName, uint_fast64_t const &l_max)
-                : storm::storage::MaximalEndComponentDecomposition<ValueType>(mdp) {
+                : storm::storage::MaximalEndComponentDecomposition<ValueType>(mdp), l_max(l_max) {
             this->windowGames.reserve(this->size());
         }
 
@@ -37,6 +37,11 @@ namespace sw {
                 std::string const &rewardModelName)
                 : MaximalEndComponentDecompositionWindowGame<ValueType>::MaximalEndComponentDecompositionWindowGame(mdp, rewardModelName, 0) {
             this->generateWindowGames(mdp, rewardModelName, 0);
+        }
+
+        template<typename ValueType>
+        uint_fast64_t MaximalEndComponentDecompositionWindowMeanPayoffGame<ValueType>::getMaximumWindowSize() const {
+            return this->l_max;
         }
 
         template<typename ValueType>

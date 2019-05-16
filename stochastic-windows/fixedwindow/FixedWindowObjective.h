@@ -72,10 +72,7 @@ namespace sw {
         };
 
         template<typename ValueType>
-        std::vector<ValueType> performMaxProb(FixedWindowObjective<ValueType> const &fwObjective);
-
-        template<typename ValueType>
-        ValueType performMaxProb(uint_fast64_t state, FixedWindowObjective<ValueType> const &fwObjective);
+        sw::storage::ValuesAndScheduler<ValueType> performMaxProb(FixedWindowObjective<ValueType> const &fwObjective, bool produceScheduler = false);
 
     }
 }

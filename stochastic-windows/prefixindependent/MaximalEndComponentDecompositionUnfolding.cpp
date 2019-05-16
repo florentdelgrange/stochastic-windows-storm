@@ -10,7 +10,8 @@ sw::storage::MaximalEndComponentDecompositionUnfolding<ValueType>::MaximalEndCom
         std::string const &rewardModelName,
         uint_fast64_t const &l_max)
         : storm::storage::MaximalEndComponentDecomposition<ValueType>(mdp),
-          mecIndices(mdp.getNumberOfStates()) {
+          l_max(l_max);
+          mecIndices(mdp.getNumberOfStates()){
     this->unfoldedECs.reserve(this->size());
 }
 
@@ -30,6 +31,11 @@ sw::storage::MaximalEndComponentDecompositionUnfoldingParity<ValueType>::Maximal
         uint_fast64_t const& l_max)
         : MaximalEndComponentDecompositionUnfolding<ValueType>(mdp, rewardModelName, l_max) {
     MaximalEndComponentDecompositionUnfolding<ValueType>::performMECsUnfolding(mdp, rewardModelName, l_max);
+}
+
+template<typename ValueType>
+uint_fast64_t sw::storage::MaximalEndComponentDecompositionUnfolding<ValueType>::getMaximumWindowSize() const {
+    return this->l_max;
 }
 
 template <typename ValueType>
@@ -62,6 +68,7 @@ void sw::storage::MaximalEndComponentDecompositionUnfoldingMeanPayoff<ValueType>
     std::unique_ptr<sw::DirectFixedWindow::WindowUnfolding<ValueType>> window_ptr(
             new sw::DirectFixedWindow::WindowUnfoldingMeanPayoff<ValueType>(
                     mdp, rewardModelName, l_max, initialStates, enabledActions));
+    window_ptr->
     this->unfoldedECs.push_back(std::move(window_ptr));
 }
 

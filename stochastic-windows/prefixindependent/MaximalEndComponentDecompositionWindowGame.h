@@ -38,6 +38,8 @@ namespace sw {
              */
             sw::game::WindowGame<ValueType> const& getGame(uint_fast64_t mec) const;
 
+            uint_fast64_t getMaximumWindowSize() const;
+
         protected:
 
             /*!
@@ -49,6 +51,7 @@ namespace sw {
                     uint_fast64_t const &l_max) = 0;
 
             std::vector<std::unique_ptr<sw::game::WindowGame<ValueType>>> windowGames;
+            uint_fast64_t l_max;
 
         };
 

@@ -67,6 +67,11 @@ namespace sw {
              */
             storm::storage::BitVector directFW() const;
 
+            /*!
+             *
+             * Computes the winning set of states from which there exists a strategy allowing to continually surely close
+             * all windows in l_max steps or less as well as the related strategy.
+             */
             WinningSetAndScheduler<ValueType> produceSchedulerForDirectFW() const;
 
             /*!
@@ -88,7 +93,7 @@ namespace sw {
             storm::storage::BitVector boundedProblem() const;
             /*!
              * Computes the winning set of states for the Direct Bounded Window problem.
-             * @param scheduler (optional) if provided, fill it according to the optimal choices for the direct bounded window problem.
+             * @param scheduler (optional) if provided, fills in it according to the optimal choices for the direct bounded window problem.
              *                  this scheduler does not require memory.
              */
             storm::storage::BitVector directBoundedProblem(boost::optional<storm::storage::Scheduler<ValueType>&> const& scheduler = boost::none) const;
@@ -124,7 +129,7 @@ namespace sw {
 
             /**
              * Consider the MDP as a game for window mean-payoff objectives.
-             * Linked window algorithms' implementations for the particular case of MDPs as games of the ones from
+             * Related window algorithms' implementations for the particular case of MDPs as games are the ones from
              * Chatterjee K., Doyen L., Randour M., Raskin JF. (2013) Looking at Mean-Payoff and Total-Payoff through Windows.
              * In: Van Hung D., Ogawa M. (eds) Automated Technology for Verification and Analysis. Lecture Notes in Computer Science, vol 8172. Springer, Cham
              * arXiv:1302.4248v3

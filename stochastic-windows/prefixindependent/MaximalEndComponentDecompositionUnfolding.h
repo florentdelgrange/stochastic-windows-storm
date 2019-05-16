@@ -93,11 +93,13 @@ namespace sw {
              */
             uint_fast64_t getInitialState(uint_fast64_t k, uint_fast64_t initialState);
             uint_fast64_t getInitialState(uint_fast64_t k, uint_fast64_t initialState) const;
+            uint_fast64_t getMaximumWindowSize() const;
 
 
        protected:
 
             std::vector<std::unique_ptr<sw::DirectFixedWindow::WindowUnfolding<ValueType>>> unfoldedECs;
+            uint_fast64_t l_max;
 
             /*!
              * Vector containing the index of the MEC of each state.
