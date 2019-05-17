@@ -14,27 +14,56 @@ namespace sw {
                 bool produceScheduler)
                 : sw::util::MaximalEndComponentClassifier<ValueType>(mdp, mecDecompositionUnfolding, produceScheduler) {
 
-            // For each unfolded EC, we start by computing the safe states w.r.t. the sink state
+            sw::DirectFixedWindow::WindowUnfolding<ValueType> const& windowUnfolding = mecDecompositionUnfolding.getUnfolding();
+            storm::storage::BitVector allStates(windowUnfolding.getMatrix().getRowGroupCount(), true);
+            // the state 0 of the unfolding of the EC is the sink state we want to avoid;
+            storm::storage::BitVector sinkState(windowUnfolding.getMatrix().getRowGroupCount(), false);
+            sinkState.set(0, true);
+            // compute the set of safe states w.r.t. the sink state
+            storm::storage::SparseMatrix<ValueType> unfoldingBackwardTransitions = windowUnfolding.getMatrix().transpose(true);
+            storm::storage::BitVector unfoldingWinningSet = storm::utility::graph::performProb0E(
+                    windowUnfolding.getMatrix(), windowUnfolding.getMatrix().getRowGroupIndices(),
+                    unfoldingBackwardTransitions, allStates, sinkState);
+            std::vector<boost::optional<storm::storage::BitVector>> mecStates(mecDecompositionUnfolding.size());
             for (uint_fast64_t k = 0; k < mecDecompositionUnfolding.size(); ++ k) {
-                storm::storage::SparseMatrix<ValueType> const& unfoldedECMatrix = mecDecompositionUnfolding.getUnfoldedMatrix(k);
-                storm::storage::BitVector allStates(unfoldedECMatrix.getRowGroupCount(), true);
-                // the state 0 of the unfolding of the EC is the sink state we want to avoid;
-                storm::storage::BitVector sinkState(unfoldedECMatrix.getRowGroupCount(), false);
-                sinkState.set(0, true);
-                // we compute the set of states for which there exists a strategy satisfying a a probability zero of reaching this sink state.
-                // If it is the case for some state, then this strategy allows to always avoid the sink state.
-                storm::storage::BitVector unfoldingWinningSet = storm::utility::graph::performProb0E(
-                        unfoldedECMatrix,unfoldedECMatrix.getRowGroupIndices(), unfoldedECMatrix.transpose(true), allStates, sinkState);
-                // If the winning set in the unfolding of the current MEC is not empty, then the MEC is classified as good.
-                if (not unfoldingWinningSet.empty()) {
-                    this->goodMECs.set(k, true);
-                    for (uint_fast64_t state : mecDecompositionUnfolding[k].getStateSet()) {
-                        this->goodStateSpace.set(state, true);
-                        uint_fast64_t initialState = mecDecompositionUnfolding.getInitialState(k, state);
-                        if (unfoldingWinningSet[initialState]) {
-                            this->safeStateSpace.set(state, true);
-                        }
+                // We compute the set of states for which there exists a strategy satisfying a probability zero of reaching this sink state.
+                // This set of states is the safe state space.
+                mecStates[k] = storm::storage::BitVector(mdp.getNumberOfStates());
+                // translate states belonging to the kth MEC to initial states belonging to the kth MEC in the unfolding
+                storm::storage::BitVector initialCurrentMECStates(windowUnfolding.getMatrix().getRowGroupCount());
+                for (uint_fast64_t const& state : mecDecompositionUnfolding[k].getStateSet()) {
+                    mecStates[k]->set(state, true);
+                    uint_fast64_t initialState = windowUnfolding.getInitialState(state);
+                    if (unfoldingWinningSet[initialState]) {
+                        this->safeStateSpace.set(state, true);
                     }
+                    initialCurrentMECStates.set(initialState, true);
+                }
+                if (not (unfoldingWinningSet & initialCurrentMECStates).empty()) {
+                    this->goodMECs.set(k, true);
+                    this->goodStateSpace |= *mecStates[k];
+                }
+            }
+            if (produceScheduler) {
+                sw::DirectFixedWindow::WindowMemory<ValueType> windowMemory = windowUnfolding.generateMemory();
+                this->mecScheduler = std::unique_ptr<storm::storage::Scheduler<ValueType>>(
+                        new storm::storage::Scheduler<ValueType>(mdp.getNumberOfStates(), *windowMemory.memoryStructure)
+                );
+                storm::storage::SparseMatrix<ValueType> backwardTransitions = mdp.getTransitionMatrix().transpose(true);
+                for (uint_fast64_t const& k : this->goodMECs) {
+                    storm::utility::graph::computeSchedulerProb1E(*mecStates[k], // good states has a probability one of reaching safe states belonging to the same MEC
+                                                                  mdp.getTransitionMatrix(), backwardTransitions, // transitions
+                                                                  *mecStates[k], // phi
+                                                                  *mecStates[k] & this->safeStateSpace, // psi
+                                                                  *this->mecScheduler); // update scheduler
+                }
+                storm::storage::Scheduler<ValueType> unfoldingScheduler(windowUnfolding.getMatrix().getRowGroupCount());
+                storm::utility::graph::computeSchedulerProb0E(unfoldingWinningSet, windowUnfolding.getMatrix(), unfoldingScheduler);
+                std::vector<sw::DirectFixedWindow::StateValueWindowSize<ValueType>> unfoldingStatesMeaning = windowUnfolding.getNewStatesMeaning();
+                for (uint_fast64_t unfoldingState = 1; unfoldingState < windowUnfolding.getMatrix().getRowGroupCount(); ++ unfoldingState) {
+                    uint_fast64_t state = unfoldingStatesMeaning[unfoldingState].state;
+                    uint_fast64_t memory = windowMemory.unfoldingToMemoryStatesMapping[unfoldingState];
+                    this->mecScheduler->setChoice(unfoldingScheduler.getChoice(unfoldingState), state, memory);
                 }
             }
         }
@@ -95,14 +124,12 @@ namespace sw {
                 );
                 // reach the safe state space from the good state space
                 storm::storage::SparseMatrix<ValueType> backwardTransitions = mdp.getTransitionMatrix().transpose(true);
-                for (uint_fast64_t k = 0; k < mecDecompositionGame.size(); ++ k) {
-                    if (this->goodMECs[k]) {
-                        storm::utility::graph::computeSchedulerProb1E(mecDecompositionGame.getGame(k).getStateSpace(), // good states has a probability one of reaching safe states in the same MEC
-                                                                      mdp.getTransitionMatrix(), backwardTransitions, // transitions
-                                                                      mecDecompositionGame.getGame(k).getStateSpace(), // phi
-                                                                      mecDecompositionGame.getGame(k).getStateSpace() & ~this->safeStateSpace, // psi
-                                                                      *this->mecScheduler); // update scheduler
-                    }
+                for (uint_fast64_t const& k : this->goodMECs) {
+                    storm::utility::graph::computeSchedulerProb1E(mecDecompositionGame.getGame(k).getStateSpace(), // good states has a probability one of reaching safe states in the same MEC
+                                                                  mdp.getTransitionMatrix(), backwardTransitions, // transitions
+                                                                  mecDecompositionGame.getGame(k).getStateSpace(), // phi
+                                                                  mecDecompositionGame.getGame(k).getStateSpace() & this->safeStateSpace, // psi
+                                                                  *this->mecScheduler); // update scheduler
                 }
                 for (uint_fast64_t const& state : this->safeStateSpace) {
                     for (uint_fast64_t l = 0; l < mecDecompositionGame.getMaximumWindowSize(); ++ l) {

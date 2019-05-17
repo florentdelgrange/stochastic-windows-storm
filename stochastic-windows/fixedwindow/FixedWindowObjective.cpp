@@ -71,10 +71,6 @@ namespace sw {
                         goodStateSpace,
                         false, // quantitative
                         true); // produce scheduler
-                std::unique_ptr<storm::storage::Scheduler<ValueType>>
-                        scheduler = std::unique_ptr<storm::storage::Scheduler<ValueType>>(
-                            new storm::storage::Scheduler<ValueType>(fwObjective.getMdp().getNumberOfStates(), *windowMemory.memoryStructure)
-                        );
             } else {
                 storm::modelchecker::helper::MDPSparseModelCheckingHelperReturnType<ValueType>
                 result = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType>().computeUntilProbabilities(

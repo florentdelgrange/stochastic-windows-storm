@@ -116,20 +116,17 @@ namespace sw {
         }
 
         template<typename ValueType>
-        ValueType WindowUnfoldingMeanPayoff<ValueType>::initialStateValue(uint_fast64_t initialState) {
+        ValueType WindowUnfoldingMeanPayoff<ValueType>::initialStateValue(uint_fast64_t initialState) const {
             return storm::utility::zero<ValueType>();
         }
 
         template<typename ValueType>
-        ValueType WindowUnfoldingParity<ValueType>::initialStateValue(uint_fast64_t initialState) {
+        ValueType WindowUnfoldingParity<ValueType>::initialStateValue(uint_fast64_t initialState) const {
             return this->rewardModel.getStateReward(initialState);
         }
 
         template<typename ValueType>
-        uint_fast64_t WindowUnfolding<ValueType>::getNewIndex(
-                uint_fast64_t state,
-                ValueType value,
-                uint_fast64_t currentWindowSize) {
+        uint_fast64_t WindowUnfolding<ValueType>::getNewIndex(uint_fast64_t state, ValueType value, uint_fast64_t currentWindowSize) const {
 
             auto keyValue = this->windowVector[state][currentWindowSize].find(value);
             if (keyValue == this->windowVector[state][currentWindowSize].end()) {
@@ -142,7 +139,7 @@ namespace sw {
         }
 
         template <typename ValueType>
-        WindowMemory<ValueType> WindowUnfolding<ValueType>::generateMemory(bool setLabels) {
+        WindowMemory<ValueType> WindowUnfolding<ValueType>::generateMemory(bool setLabels) const {
 
             WindowMemory<ValueType> windowMemory;
             windowMemory.unfoldingToMemoryStatesMapping = std::vector<uint_fast64_t>(this->matrix.getRowGroupCount());
@@ -246,23 +243,23 @@ namespace sw {
         }
 
         template<typename ValueType>
-        uint_fast64_t WindowUnfoldingMeanPayoff<ValueType>::getInitialState(uint_fast64_t originalInitialState) {
+        uint_fast64_t WindowUnfoldingMeanPayoff<ValueType>::getInitialState(uint_fast64_t originalInitialState) const {
             return this->getNewIndex(originalInitialState, this->initialStateValue(originalInitialState), 0);
         }
 
         template<typename ValueType>
-        uint_fast64_t WindowUnfoldingParity<ValueType>::getInitialState(uint_fast64_t originalInitialState) {
+        uint_fast64_t WindowUnfoldingParity<ValueType>::getInitialState(uint_fast64_t originalInitialState) const {
             return this->getNewIndex(originalInitialState, this->initialStateValue(originalInitialState), 0);
         }
 
         template<typename ValueType>
-        storm::storage::SparseMatrix<ValueType> &WindowUnfolding<ValueType>::getMatrix() {
+        storm::storage::SparseMatrix<ValueType> const& WindowUnfolding<ValueType>::getMatrix() const {
             return this->matrix;
         }
 
         template<typename ValueType>
         std::vector<StateValueWindowSize<ValueType>>
-        WindowUnfolding<ValueType>::getNewStatesMeaning() {
+        WindowUnfolding<ValueType>::getNewStatesMeaning() const {
 
             std::vector<StateValueWindowSize<ValueType>> unfoldingStates(
                     this->newRowGroupEntries.size());
@@ -280,7 +277,7 @@ namespace sw {
         }
 
         template <typename ValueType>
-        std::vector<uint_fast64_t> WindowUnfolding<ValueType>::newToOldActionsMapping(std::vector<StateValueWindowSize<ValueType>> const& newStatesMeaning) {
+        std::vector<uint_fast64_t> WindowUnfolding<ValueType>::newToOldActionsMapping(std::vector<StateValueWindowSize<ValueType>> const& newStatesMeaning) const {
 
             std::vector<uint_fast64_t> unfoldingActionsMeaning(this->matrix.getRowCount());
             for (uint_fast64_t unfoldingState = 1; unfoldingState < this->matrix.getRowGroupCount(); ++ unfoldingState) {

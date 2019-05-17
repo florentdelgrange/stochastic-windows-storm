@@ -13,7 +13,6 @@
 #include "storm-parsers/parser/PrismParser.h"
 #include <iostream>
 #include <stochastic-windows/prefixindependent/MaximalEndComponentDecompositionUnfolding.h>
-#include <stochastic-windows/fixedwindow/MeanPayoff.h>
 #include <stochastic-windows/directfixedwindow/DirectFixedWindowObjective.h>
 #include <stochastic-windows/game/WindowGame.h>
 #include <stochastic-windows/game/PredecessorsSquaredLinkedList.h>
@@ -266,19 +265,9 @@ void windowExamples(){
     // Mean Payoff
     sw::storage::MaximalEndComponentDecompositionUnfoldingMeanPayoff<double> unfoldingMp(*mdp, "weights", 3);
     std::cout << "unfolded matrices Mean Payoff: " << endl;
-    for (uint_fast64_t k = 0; k < mecDecomposition.size(); ++ k) {
-        unfoldingMp.printToStream(std::cout, k);
-        std::shared_ptr<storm::models::sparse::Mdp<double>> new_mdp = unfoldingMp.unfoldingAsMDP(k);
-        new_mdp->printModelInformationToStream(std::cout);
-    }
     // Parity
     sw::storage::MaximalEndComponentDecompositionUnfoldingParity<double> unfoldingPar(*mdp, "priorities", 3);
     std::cout << "unfolded matrices Parity: " << endl;
-    for (uint_fast64_t k = 0; k < mecDecomposition.size(); ++ k) {
-        unfoldingPar.printToStream(std::cout, k);
-        std::shared_ptr<storm::models::sparse::Mdp<double>> new_mdp = unfoldingPar.unfoldingAsMDP(k);
-        new_mdp->printModelInformationToStream(std::cout);
-    }
 
     // DirectFixed MP
     sw::DirectFixedWindow::DirectFixedWindowMeanPayoffObjective<double> dfwMpObjective(*mdp, "weights", 3);
@@ -348,10 +337,10 @@ void windowExamples(){
     // Fixed Window Objective
     std::cout << "Fixed Window Objectives: mean payoff (with game classification)" << std::endl;
     sw::FixedWindow::FixedWindowMeanPayoffObjective<double> fixedWindowMPObjectiveGame(*mdp, "weights", 3);
-    std::vector<double> fwResult = sw::FixedWindow::performMaxProb(fixedWindowMPObjectiveGame);
+    sw::storage::ValuesAndScheduler<double> fwResult = sw::FixedWindow::performMaxProb(fixedWindowMPObjectiveGame);
     std::cout << "Pr(FWmp) = [";
     for (uint_fast64_t state = 0; state < mdp->getNumberOfStates(); ++ state) {
-        std::cout << "s" << state << "=" << fwResult[state] << ", ";
+        std::cout << "s" << state << "=" << fwResult.values[state] << ", ";
     }
     std::cout << "]" << std::endl;
     std::cout << "Fixed Window Objectives: mean payoff (with unfolding based classification)" << std::endl;
@@ -359,7 +348,7 @@ void windowExamples(){
      fwResult = sw::FixedWindow::performMaxProb(fixedWindowMPObjectiveUnfolding);
     std::cout << "Pr(FWmp) = [";
     for (uint_fast64_t state = 0; state < mdp->getNumberOfStates(); ++ state) {
-        std::cout << "s" << state << "=" << fwResult[state] << ", ";
+        std::cout << "s" << state << "=" << fwResult.values[state] << ", ";
     }
     std::cout << "]" << std::endl;
     std::cout << "Fixed Window Objectives: parity" << std::endl;
@@ -367,7 +356,7 @@ void windowExamples(){
     fwResult = sw::FixedWindow::performMaxProb(fixedWindowParityObjective);
     std::cout << "Pr(FWpar) = [";
     for (uint_fast64_t state = 0; state < mdp->getNumberOfStates(); ++ state) {
-        std::cout << "s" << state << "=" << fwResult[state] << ", ";
+        std::cout << "s" << state << "=" << fwResult.values[state] << ", ";
     }
     std::cout << "]" << std::endl;
     std::cout << std::endl;
@@ -503,7 +492,7 @@ void windowExamples(){
     fwResult = sw::BoundedWindow::performMaxProb(boundedWindowMPObjectiveGame);
     std::cout << "Pr(BWmp) = [";
     for (uint_fast64_t state = 0; state < mdp->getNumberOfStates(); ++ state) {
-        std::cout << "s" << state << "=" << fwResult[state] << ", ";
+        std::cout << "s" << state << "=" << fwResult.values[state] << ", ";
     }
     std::cout << "]" << std::endl;
     std::cout << "Bounded Window Objectives: parity" << std::endl;
@@ -511,7 +500,7 @@ void windowExamples(){
     fwResult = sw::BoundedWindow::performMaxProb(boundedWindowParityObjective);
     std::cout << "Pr(BWpar) = [";
     for (uint_fast64_t state = 0; state < mdp->getNumberOfStates(); ++ state) {
-        std::cout << "s" << state << "=" << fwResult[state] << ", ";
+        std::cout << "s" << state << "=" << fwResult.values[state] << ", ";
     }
     std::cout << "]" << std::endl;
 

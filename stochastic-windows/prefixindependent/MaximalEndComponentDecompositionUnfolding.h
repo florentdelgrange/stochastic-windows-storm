@@ -41,63 +41,16 @@ namespace sw {
             uint_fast64_t getMecIndex(uint_fast64_t state);
 
             /*!
-             * Get the index k of the MEC containing the input state as well as the index of the state
-             * (state, currentSumOfWeights, currentWindowLength) in the kth matrix, being the matrix representing the
-             * unfolding of the kth MEC.
-             *
-             * @param state state in the original matrix
-             * @param currentSumOfWeights value of the current sum of weights in the window
-             * @param currentWindowSize current window size
+             * get the unfolding of the maximal end components of the input MDP
              */
-            std::pair<uint_fast64_t, uint_fast64_t> getNewIndex(uint_fast64_t state,
-                                                                ValueType currentSumOfWeights,
-                                                                uint_fast64_t currentWindowSize);
+            sw::DirectFixedWindow::WindowUnfolding<ValueType> const& getUnfolding() const;
 
-            /*!
-             * Retrieves the matrix representing the unfolding of the kth MEC of the original MDP.
-             */
-            storm::storage::SparseMatrix<ValueType> const& getUnfoldedMatrix(uint_fast64_t mec);
-            storm::storage::SparseMatrix<ValueType> const& getUnfoldedMatrix(uint_fast64_t mec) const;
-
-            /*!
-             * Retrieves a vector containing, for each MEC k, the meaning of each state in the new matrix corresponding to the
-             * unfolding of the MEC k, expressed as a tuple (s, w, l) where s (state) is the state in the original matrix,
-             * w (currentSumOfWeights) is the current sum of weights in the unfolding and l (currentWindowLength) is
-             * the current window length in the unfolding.
-             *
-             * @param k the index of the MEC containing the state for which the meaning is explained.
-             */
-            std::vector<sw::DirectFixedWindow::StateValueWindowSize<ValueType>> getNewStatesMeaning(uint_fast64_t k);
-
-            /*!
-             * Builds the refined sub-MDP of the kth MEC corresponding to the unfolding of the kth MEC for the bound l_max.
-             * Note that the MDP built has no label.
-             * @param k the index of the MEC for which the unfolding has been built
-             * @return the MDP of the unfolding of the kth MEC
-             */
-            std::shared_ptr<storm::models::sparse::Mdp<ValueType>> unfoldingAsMDP(uint_fast64_t k);
-
-            /*!
-             * Prints the unfolding of the given mec to the given output stream.
-             * @param out The output stream
-             * @param k The index of the unfolded MEC
-             */
-            void printToStream(std::ostream& out, uint_fast64_t k);
-
-            /**
-             * Retrieves the index in the kth unfolding of the input initial state.
-             * @param k index of the MEC containing the state representing the input initial state
-             * @param initialState
-             * @return the index of the input initial state in the unfolding if it exists, 0 else
-             */
-            uint_fast64_t getInitialState(uint_fast64_t k, uint_fast64_t initialState);
-            uint_fast64_t getInitialState(uint_fast64_t k, uint_fast64_t initialState) const;
             uint_fast64_t getMaximumWindowSize() const;
 
 
        protected:
 
-            std::vector<std::unique_ptr<sw::DirectFixedWindow::WindowUnfolding<ValueType>>> unfoldedECs;
+            std::unique_ptr<sw::DirectFixedWindow::WindowUnfolding<ValueType>> unfoldedECs;
             uint_fast64_t l_max;
 
             /*!
@@ -111,8 +64,8 @@ namespace sw {
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max);
 
-            virtual void unfoldEC(
-                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
+            virtual void unfold(
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max,
                     storm::storage::BitVector const &initialStates,
@@ -131,8 +84,8 @@ namespace sw {
 
         protected:
 
-            void unfoldEC(
-                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
+            void unfold(
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max,
                     storm::storage::BitVector const &initialStates,
@@ -150,8 +103,8 @@ namespace sw {
 
         protected:
 
-            void unfoldEC(
-                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
+            void unfold(
+                    storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
                     std::string const &rewardModelName,
                     uint_fast64_t const &l_max,
                     storm::storage::BitVector const &initialStates,

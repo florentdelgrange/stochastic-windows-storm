@@ -216,46 +216,20 @@ namespace sw {
                 }
 
                 static void unfoldedECsExport(
-                        storm::storage::SparseMatrix<double> &originalMatrix,
-                        sw::storage::MaximalEndComponentDecompositionUnfolding<double> &unfoldedECs,
-                        std::string graphName = "mdp",
-                        std::string outputDir = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples") {
+                    storm::storage::SparseMatrix<double> &originalMatrix,
+                    sw::storage::MaximalEndComponentDecompositionUnfolding<double> &unfoldedECs,
+                    std::string graphName = "mdp",
+                    std::string outputDir = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples") {
 
-                    for (uint_fast64_t k = 0; k < unfoldedECs.size(); ++ k) {
-                        storm::storage::MaximalEndComponent mec = unfoldedECs.getBlock(k);
-                        std::vector<uint_fast64_t> const& groups = unfoldedECs.getUnfoldedMatrix(k).getRowGroupIndices();
-                        std::vector<sw::DirectFixedWindow::StateValueWindowSize<double>>
-                            newStatesMeaning = unfoldedECs.getNewStatesMeaning(k);
-                        std::vector<std::string> stateNames = std::vector<std::string>(newStatesMeaning.size());
-                        std::vector<std::string> actionNames = std::vector<std::string>(unfoldedECs.getUnfoldedMatrix(k).getRowCount());
-                        // the state with index 0 in the unfolding is the sink state
-                        stateNames[0] = "⊥";
-                        actionNames[0] = "⊥";
-                        for (uint_fast64_t i = 1; i < newStatesMeaning.size(); ++ i) {
-                            std::ostringstream stream;
-                            uint_fast64_t state = newStatesMeaning[i].state;
-                            stream << "(s" << state << ", " <<
-                                newStatesMeaning[i].currentValue << ", " <<
-                                newStatesMeaning[i].currentWindowSize << ")";
-                            stateNames[i] = stream.str();
-                            uint_fast64_t action = groups[i];
-                            for (uint_fast64_t enabledAction: mec.getChoicesForState(state)) {
-                                // std::ostringstream stream;
-                                // stream << action << " (a" << enabledAction << ")";
-                                actionNames[action] = boost::lexical_cast<std::string>(enabledAction);
-                                ++ action;
-                            }
-                        }
-                        std::ostringstream stream;
-                        stream << graphName << "_ECUnfolding_" << k;
-                        mdpGraphExport(unfoldedECs.getUnfoldedMatrix(k), std::vector<double>(), std::vector<double>(),
-                                stream.str(), outputDir, stateNames, actionNames);
-                    }
+                    sw::DirectFixedWindow::WindowUnfolding<double> const& windowUnfolding = unfoldedECs.getUnfolding();
+                    std::ostringstream stream;
+                    stream << graphName << "_MaximalEndComponentsUnfolding";
+                    mdpUnfoldingExport(originalMatrix, windowUnfolding, stream.str(), outputDir);
                 }
 
                 static void mdpUnfoldingExport(
                     storm::storage::SparseMatrix<double> &originalMatrix,
-                    sw::DirectFixedWindow::WindowUnfolding<double> &windowUnfolding,
+                    sw::DirectFixedWindow::WindowUnfolding<double> const& windowUnfolding,
                     std::string graphName = "mdp",
                     std::string outputDir = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples") {
 
@@ -265,6 +239,7 @@ namespace sw {
                             newStatesMeaning = windowUnfolding.getNewStatesMeaning();
                     std::vector<std::string> stateNames = std::vector<std::string>(newStatesMeaning.size());
                     std::vector<std::string> actionNames = std::vector<std::string>(windowUnfolding.getMatrix().getRowCount());
+                    std::vector<uint_fast64_t> actionsMeaning = windowUnfolding.newToOldActionsMapping(newStatesMeaning);
                     // the state with index 0 in the unfolding is the sink state
                     stateNames[0] = "⊥";
                     actionNames[0] = "⊥";
@@ -275,12 +250,8 @@ namespace sw {
                                newStatesMeaning[i].currentValue << ", " <<
                                newStatesMeaning[i].currentWindowSize << ")";
                         stateNames[i] = stream.str();
-                        uint_fast64_t action = groups[i];
-                        for (uint_fast64_t enabledAction = originalGroups[state]; enabledAction < originalGroups[state+1]; ++ enabledAction) {
-                            // std::ostringstream stream;
-                            // stream << action << " (a" << enabledAction << ")";
-                            actionNames[action] = boost::lexical_cast<std::string>(enabledAction);
-                            ++ action;
+                        for (uint_fast64_t action = groups[i]; action < groups[i + 1]; ++ action) {
+                            actionNames[action] = boost::lexical_cast<std::string>(actionsMeaning[action]);
                         }
                     }
                     std::ostringstream stream;
