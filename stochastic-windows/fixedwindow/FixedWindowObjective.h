@@ -33,6 +33,7 @@ namespace sw {
              * @return a BitVector representing the good state space
              */
             virtual storm::storage::BitVector getGoodStateSpace() const = 0;
+            virtual sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler() const = 0;
 
         protected:
 
@@ -51,6 +52,7 @@ namespace sw {
                     bool windowGameBasedClassification = true);
 
             storm::storage::BitVector getGoodStateSpace() const override ;
+            sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler() const override;
 
         private:
 
@@ -68,6 +70,7 @@ namespace sw {
                     uint_fast64_t const& l_max);
 
             storm::storage::BitVector getGoodStateSpace() const override ;
+            sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler() const override;
 
         };
 

@@ -11,6 +11,7 @@
 namespace sw {
 
     namespace storage {
+
         template <typename ValueType>
         struct ValuesAndScheduler {
             ValuesAndScheduler(std::vector<ValueType> &&values, std::unique_ptr<storm::storage::Scheduler<ValueType>>&& scheduler = nullptr)
@@ -20,6 +21,15 @@ namespace sw {
             // A scheduler, if it was computed.
             std::unique_ptr<storm::storage::Scheduler<ValueType>> scheduler;
         };
+
+        template <typename ValueType>
+        struct GoodStateSpaceAndScheduler {
+            GoodStateSpaceAndScheduler(storm::storage::BitVector &&goodStateSpace, storm::storage::Scheduler<ValueType>&& scheduler)
+            : goodStateSpace(std::move(goodStateSpace)), scheduler(std::move(scheduler)) {}
+            storm::storage::BitVector goodStateSpace;
+            storm::storage::Scheduler<ValueType> scheduler;
+        };
+
     }
 
     template<typename ValueType>

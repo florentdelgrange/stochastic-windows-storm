@@ -43,7 +43,7 @@ namespace sw {
 
         template <typename ValueType>
         uint_fast64_t sw::storage::MaximalEndComponentDecompositionWindowGame<ValueType>::getMecIndex(uint_fast64_t state) const {
-            STORM_LOG_ASSERT(mecIndices[state] == 0, "The state " << state << " does not belong to any MEC.");
+            STORM_LOG_ASSERT(mecIndices[state] != 0, "The state " << state << " does not belong to any MEC.");
             return mecIndices[state] - 1;
         }
 

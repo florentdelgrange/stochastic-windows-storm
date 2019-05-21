@@ -210,36 +210,92 @@ void mecDecompositionPrintExamples() {
 
 };
 
-void directFixedMemoryExample(){
+void schedulersExamples(){
 
-    std::string prismModelPath = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples/dfwMemory.prism";
-    storm::storage::SymbolicModelDescription modelDescription = storm::parser::PrismParser::parse(prismModelPath);
-    storm::prism::Program program = modelDescription.preprocess().asPrismProgram();
-    storm::builder::BuilderOptions options = storm::builder::BuilderOptions(true, true);
-    std::shared_ptr<storm::models::sparse::Model<double>> model = storm::builder::ExplicitModelBuilder<double>(program, options).build();
+    {
+        std::string prismModelPath = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples/dfwMemory.prism";
+        storm::storage::SymbolicModelDescription modelDescription = storm::parser::PrismParser::parse(prismModelPath);
+        storm::prism::Program program = modelDescription.preprocess().asPrismProgram();
+        storm::builder::BuilderOptions options = storm::builder::BuilderOptions(true, true);
+        std::shared_ptr<storm::models::sparse::Model<double>> model = storm::builder::ExplicitModelBuilder<double>(
+                program, options).build();
 
-    std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = model->as<storm::models::sparse::Mdp<double>>();
-    mdp->printModelInformationToStream(std::cout);
-    std::cout << mdp->getTransitionMatrix() << std::endl;
+        std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = model->as<storm::models::sparse::Mdp<double>>();
+        mdp->printModelInformationToStream(std::cout);
+        std::cout << mdp->getTransitionMatrix() << std::endl;
 
-    storm::storage::BitVector restrictedStateSpace(mdp->getNumberOfStates(), true);
-    storm::storage::BitVector enabledActions(mdp->getNumberOfChoices(), true);
-    std::unique_ptr<sw::game::WindowGame<double>>
-    wmpGame = std::unique_ptr<sw::game::WindowGame<double>>(
-            new sw::game::WindowMeanPayoffGame<double>(*mdp, "weights", 3, restrictedStateSpace, enabledActions)
-    );
-    std::cout << "DFW scheduler: memory requirements" << std::endl;
-    sw::game::WinningSetAndScheduler<double> winningSetAndScheduler = wmpGame->produceSchedulerForDirectFW();
-    //std::cout << winningSetAndScheduler.winningSet << std::endl;
-    std::cout << winningSetAndScheduler.scheduler->getMemoryStructure()->toString() << std::endl;
-    winningSetAndScheduler.scheduler->printToStream(std::cout, mdp);
+        storm::storage::BitVector restrictedStateSpace(mdp->getNumberOfStates(), true);
+        storm::storage::BitVector enabledActions(mdp->getNumberOfChoices(), true);
+        std::unique_ptr<sw::game::WindowGame<double>>
+                wmpGame = std::unique_ptr<sw::game::WindowGame<double>>(
+                new sw::game::WindowMeanPayoffGame<double>(*mdp, "weights", 3, restrictedStateSpace, enabledActions)
+        );
+        std::cout << "DFW scheduler: memory requirements" << std::endl;
+        sw::game::WinningSetAndScheduler<double> winningSetAndScheduler = wmpGame->produceSchedulerForDirectFW();
+        //std::cout << winningSetAndScheduler.winningSet << std::endl;
+        std::cout << winningSetAndScheduler.scheduler->getMemoryStructure()->toString() << std::endl;
+        winningSetAndScheduler.scheduler->printToStream(std::cout, mdp);
 
-    // Graphviz
-    storm::storage::SparseMatrix<double> matrix = mdp->getTransitionMatrix();
-    storm::models::sparse::StandardRewardModel<double> weights = model->getRewardModel("weights");
-    std::vector<double> weightVector = weights.getStateActionRewardVector();
+        // Graphviz
+        storm::storage::SparseMatrix<double> matrix = mdp->getTransitionMatrix();
+        storm::models::sparse::StandardRewardModel<double> weights = model->getRewardModel("weights");
+        std::vector<double> weightVector = weights.getStateActionRewardVector();
 
-    sw::util::graphviz::GraphVizBuilder::mdpGraphWeightsExport(matrix, weightVector, "dfwMemoryExample");
+        sw::util::graphviz::GraphVizBuilder::mdpGraphWeightsExport(matrix, weightVector, "dfwMemoryExample");
+    }
+
+    // schedulers
+    {
+        std::string prismModelPath = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples/window_mp_par.prism";
+        //std::string prismModelPath = STORM_TEST_RESOURCES_DIR "/mdp/sw_simple_example.prism";
+        storm::prism::Program program = storm::parser::PrismParser::parse(prismModelPath);
+        storm::builder::BuilderOptions options = storm::builder::BuilderOptions(true, true);
+        std::shared_ptr<storm::models::sparse::Model<double>> model = storm::builder::ExplicitModelBuilder<double>(
+                program, options).build();
+        std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = model->as<storm::models::sparse::Mdp<double>>();
+        storm::storage::BitVector phiStates(mdp->getNumberOfStates(), false);
+        phiStates.set(0, true); phiStates.set(5, true);
+        sw::DirectFixedWindow::DirectFixedWindowParityObjective<double> dfwParObjective(*mdp, "priorities", 3);
+        sw::DirectFixedWindow::DirectFixedWindowMeanPayoffObjective<double> dfwMpObjective(*mdp, "weights", 3);
+        std::unique_ptr<sw::DirectFixedWindow::WindowUnfolding<double>> unfoldingDirectFixedMP = dfwMpObjective.performUnfolding(
+                phiStates);
+        std::unique_ptr<sw::DirectFixedWindow::WindowUnfolding<double>> unfoldingDirectFixedPar = dfwParObjective.performUnfolding(
+                phiStates);
+        std::cout << "DFWmp: memory structure? " << unfoldingDirectFixedMP->generateMemory().memoryStructure->toString()
+                  << std::endl;
+        std::cout << "DFWpar: memory structure? "
+                  << unfoldingDirectFixedPar->generateMemory().memoryStructure->toString() << std::endl;
+        std::cout << "DFW scheduler: memory requirements (game version)" << std::endl;
+        storm::storage::BitVector restrictedStateSpace(mdp->getNumberOfStates(), true);
+        storm::storage::BitVector enabledActions(mdp->getNumberOfChoices(), true);
+        std::unique_ptr<sw::game::WindowGame<double>>
+                wmpGame = std::unique_ptr<sw::game::WindowGame<double>>(new sw::game::WindowMeanPayoffGame<double>(*mdp, "weights", 3, restrictedStateSpace, enabledActions));
+        sw::game::WinningSetAndScheduler<double> winningSetAndScheduler = wmpGame->produceSchedulerForDirectFW();
+        std::cout << winningSetAndScheduler.scheduler->getMemoryStructure()->toString() << std::endl;
+        winningSetAndScheduler.scheduler->printToStream(std::cout, mdp);
+        std::cout << std::endl;
+        std::cout << "DFW mp scheduler (with unfolding)" << std::endl;
+        sw::storage::ValuesAndScheduler<double> resultDFWmp = sw::DirectFixedWindow::performMaxProb<double>(phiStates,
+                                                                                                            dfwMpObjective,
+                                                                                                            true);
+        resultDFWmp.scheduler->printToStream(std::cout, mdp);
+        std::cout << std::endl;
+        std::cout << "FW schedulers" << std::endl;
+        sw::storage::MaximalEndComponentDecompositionWindowMeanPayoffGame<double> mecGameMP(*mdp, "weights", 3);
+        sw::storage::MaximalEndComponentDecompositionUnfoldingMeanPayoff<double> mecUnfoldingMP(*mdp, "weights", 3);
+        {
+            std::cout << "Mean payoff game based classification" << std::endl;
+            sw::FixedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, mecGameMP, true);
+            classifier.getMaximalEndComponentScheduler().printToStream(std::cout, mdp);
+        }
+        {
+            std::cout << "Mean payoff unfolding based classification" << std::endl;
+            sw::FixedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, mecUnfoldingMP, true);
+            std::cout << classifier.getMaximalEndComponentScheduler().getMemoryStructure()->toString() << std::endl;
+            classifier.getMaximalEndComponentScheduler().printToStream(std::cout, mdp);
+        }
+        // fwResult = sw::FixedWindow::performMaxProb(fixedWindowMPObjectiveGame, true);
+    }
 
 }
 
@@ -274,18 +330,17 @@ void windowExamples(){
     storm::storage::BitVector phiStates(mdp->getNumberOfStates(), false);
     phiStates.set(0, true); phiStates.set(5, true);
     std::unique_ptr<sw::DirectFixedWindow::WindowUnfolding<double>> unfoldingDirectFixedMP = dfwMpObjective.performUnfolding(phiStates);
-    sw::storage::ValuesAndScheduler<double> result = sw::DirectFixedWindow::performMaxProb<double>(phiStates, dfwMpObjective, true);
+    sw::storage::ValuesAndScheduler<double> resultDFWmp = sw::DirectFixedWindow::performMaxProb<double>(phiStates, dfwMpObjective, true);
     std::cout << "Pr(DFWmp) = [";
     for (auto state: phiStates) {
-        std::cout << "s" << state << "=" << result.values[state] << ", ";
+        std::cout << "s" << state << "=" << resultDFWmp.values[state] << ", ";
     }
     std::cout << "]" << std::endl;
-    result.scheduler->printToStream(std::cout, mdp);
     // DirectFixed Par
     sw::DirectFixedWindow::DirectFixedWindowParityObjective<double> dfwParObjective(*mdp, "priorities", 3);
     phiStates = storm::storage::BitVector(mdp->getNumberOfStates(), true);
     std::unique_ptr<sw::DirectFixedWindow::WindowUnfolding<double>> unfoldingDirectFixedPar = dfwParObjective.performUnfolding(phiStates);
-    result = sw::DirectFixedWindow::performMaxProb<double>(phiStates, dfwParObjective);
+    sw::storage::ValuesAndScheduler<double> result = sw::DirectFixedWindow::performMaxProb<double>(phiStates, dfwParObjective);
     std::cout << "Pr(DFWpar) = [";
     for (auto state: phiStates) {
         std::cout << "s" << state << "=" << result.values[state] << ", ";
@@ -504,14 +559,6 @@ void windowExamples(){
     }
     std::cout << "]" << std::endl;
 
-    std::cout << "DFW scheduler: memory requirements (game version)" << std::endl;
-    sw::game::WinningSetAndScheduler<double> winningSetAndScheduler = wmpGame->produceSchedulerForDirectFW();
-    std::cout << winningSetAndScheduler.scheduler->getMemoryStructure()->toString() << std::endl;
-    winningSetAndScheduler.scheduler->printToStream(std::cout, mdp);
-    std::cout << std::endl;
-
-    // std::cout << "DFWmp: memory structure? " << unfoldingDirectFixedMP->generateMemory().memoryStructure->toString() << std::endl;
-    // std::cout << "DFWpar: memory structure? " << unfoldingDirectFixedPar->generateMemory().memoryStructure->toString() << std::endl;
 }
 
 
@@ -561,8 +608,8 @@ int main(const int argc, const char** argv){
 
     // mecDecompositionPrintExamples();
     // graphVizExample();
-    windowExamples();
-    directFixedMemoryExample();
+    // windowExamples();
+    schedulersExamples();
     // predecessorListExample();
 
     return 0;

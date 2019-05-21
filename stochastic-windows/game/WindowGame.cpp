@@ -82,6 +82,9 @@ namespace sw {
                                                                           bool produceScheduler) const {
             storm::storage::BitVector winGW = this->goodWin().winningSet;
             if (winGW == this->restrictedStateSpace or winGW.empty()) {
+                // TODO remove below lines
+                bool winningSetEmpty = winGW.empty();
+                std::cout << winGW << std::endl;
                 if (not produceScheduler or winGW.empty()) {
                     return WinningSetAndScheduler<ValueType>(std::move(winGW));
                 } else {
@@ -170,7 +173,7 @@ namespace sw {
                 oldToNewStateMapping[state] = s;
                 ++ s;
             }
-            // given a number of steps i and an action a, retrieves the worst successor value of the successors s' of a in C[i - 1][s']
+            // given a number of steps i and an action a, retrieves the worst successor value of a in C[i - 1]
             auto worstSuccessorValue = [&] (uint_fast64_t const& i, uint_fast64_t const& action) -> ValueType {
                 auto worstValue = storm::utility::infinity<ValueType>();
                 // We assume that all entries (successors) of the row corresponding to the current action are in

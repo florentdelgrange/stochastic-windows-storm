@@ -49,6 +49,26 @@ namespace sw {
             return std::move(mecClassifier->getGoodStateSpace());
         }
 
+        template<typename ValueType>
+        storage::GoodStateSpaceAndScheduler<ValueType>
+        FixedWindowMeanPayoffObjective<ValueType>::produceGoodScheduler() const {
+            std::unique_ptr<MaximalEndComponentClassifier<ValueType>> mecClassifier;
+            if (this->windowGameClassification) {
+                sw::storage::MaximalEndComponentDecompositionWindowMeanPayoffGame<ValueType>
+                        mecGames(this->mdp, this->rewardModelName, this->l_max);
+                mecClassifier = std::unique_ptr<MaximalEndComponentClassifier<ValueType>>(
+                        new MaximalEndComponentClassifier<ValueType>(this->mdp, mecGames, true));
+            } else {
+                sw::storage::MaximalEndComponentDecompositionUnfoldingMeanPayoff<ValueType>
+                        unfoldedMECs(this->mdp, this->rewardModelName, this->l_max);
+                mecClassifier = std::unique_ptr<MaximalEndComponentClassifier<ValueType>>(
+                        new MaximalEndComponentClassifier<ValueType>(this->mdp, unfoldedMECs, true));
+            }
+            storm::storage::BitVector goodStateSpace = mecClassifier->getGoodStateSpace();
+            storm::storage::Scheduler<ValueType> scheduler = mecClassifier->getMaximalEndComponentScheduler();
+            return storage::GoodStateSpaceAndScheduler<ValueType>(std::move(goodStateSpace), std::move(scheduler));
+        }
+
         template <typename ValueType>
         storm::storage::BitVector FixedWindowParityObjective<ValueType>::getGoodStateSpace() const {
             sw::storage::MaximalEndComponentDecompositionUnfoldingParity<ValueType>
@@ -58,9 +78,20 @@ namespace sw {
         }
 
         template<typename ValueType>
+        storage::GoodStateSpaceAndScheduler<ValueType>
+        FixedWindowParityObjective<ValueType>::produceGoodScheduler() const {
+            sw::storage::MaximalEndComponentDecompositionUnfoldingParity<ValueType>
+                    unfoldedMECs(this->mdp, this->rewardModelName, this->l_max);
+            MaximalEndComponentClassifier<ValueType> mecClassifier(this->mdp, unfoldedMECs);
+            storm::storage::BitVector goodStateSpace = mecClassifier.getGoodStateSpace();
+            storm::storage::Scheduler<ValueType> scheduler = mecClassifier.getMaximalEndComponentScheduler();
+            return storage::GoodStateSpaceAndScheduler<ValueType>(std::move(goodStateSpace), std::move(scheduler));
+        }
+
+        template<typename ValueType>
         sw::storage::ValuesAndScheduler<ValueType> performMaxProb(FixedWindowObjective<ValueType> const& fwObjective, bool produceScheduler) {
-            storm::storage::BitVector goodStateSpace = fwObjective.getGoodStateSpace();
             if (produceScheduler) {
+                storage::GoodStateSpaceAndScheduler<ValueType> goodStateSpaceAndScheduler = fwObjective.produceGoodScheduler();
                 storm::modelchecker::helper::MDPSparseModelCheckingHelperReturnType<ValueType>
                 result = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType>().computeUntilProbabilities(
                         storm::Environment(),
@@ -68,10 +99,12 @@ namespace sw {
                         fwObjective.getMdp().getTransitionMatrix(),
                         fwObjective.getMdp().getTransitionMatrix().transpose(true),
                         storm::storage::BitVector(fwObjective.getMdp().getNumberOfStates(), true),
-                        goodStateSpace,
+                        goodStateSpaceAndScheduler.goodStateSpace,
                         false, // quantitative
                         true); // produce scheduler
+
             } else {
+                storm::storage::BitVector goodStateSpace = fwObjective.getGoodStateSpace();
                 storm::modelchecker::helper::MDPSparseModelCheckingHelperReturnType<ValueType>
                 result = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType>().computeUntilProbabilities(
                         storm::Environment(),
