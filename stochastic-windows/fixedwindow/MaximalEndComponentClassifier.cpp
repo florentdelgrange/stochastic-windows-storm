@@ -109,7 +109,7 @@ namespace sw {
                 storm::storage::Scheduler<ValueType> unfoldingScheduler(windowUnfolding.getMatrix().getRowGroupCount());
                 storm::utility::graph::computeSchedulerProb0E(unfoldingWinningSet, windowUnfolding.getMatrix(), unfoldingScheduler);
                 std::vector<sw::DirectFixedWindow::StateValueWindowSize<ValueType>> unfoldingStatesMeaning = windowUnfolding.getNewStatesMeaning();
-                for (uint_fast64_t unfoldingState = 1; unfoldingState < windowUnfolding.getMatrix().getRowGroupCount(); ++ unfoldingState) {
+                for (uint_fast64_t const& unfoldingState : unfoldingWinningSet) {
                     uint_fast64_t state = unfoldingStatesMeaning[unfoldingState].state;
                     uint_fast64_t memory = windowMemory.unfoldingToMemoryStatesMapping[unfoldingState] + 1;
                     this->mecScheduler->setChoice(unfoldingScheduler.getChoice(unfoldingState), state, memory);

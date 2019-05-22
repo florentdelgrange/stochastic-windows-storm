@@ -82,9 +82,6 @@ namespace sw {
                                                                           bool produceScheduler) const {
             storm::storage::BitVector winGW = this->goodWin().winningSet;
             if (winGW == this->restrictedStateSpace or winGW.empty()) {
-                // TODO remove below lines
-                bool winningSetEmpty = winGW.empty();
-                std::cout << winGW << std::endl;
                 if (not produceScheduler or winGW.empty()) {
                     return WinningSetAndScheduler<ValueType>(std::move(winGW));
                 } else {

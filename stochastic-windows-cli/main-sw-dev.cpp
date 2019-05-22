@@ -283,6 +283,7 @@ void schedulersExamples(){
         std::cout << "FW schedulers" << std::endl;
         sw::storage::MaximalEndComponentDecompositionWindowMeanPayoffGame<double> mecGameMP(*mdp, "weights", 3);
         sw::storage::MaximalEndComponentDecompositionUnfoldingMeanPayoff<double> mecUnfoldingMP(*mdp, "weights", 3);
+        sw::storage::MaximalEndComponentDecompositionUnfoldingParity<double> mecUnfoldingPar(*mdp, "priorities", 3);
         {
             std::cout << "Mean payoff game based classification" << std::endl;
             sw::FixedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, mecGameMP, true);
@@ -291,6 +292,12 @@ void schedulersExamples(){
         {
             std::cout << "Mean payoff unfolding based classification" << std::endl;
             sw::FixedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, mecUnfoldingMP, true);
+            std::cout << classifier.getMaximalEndComponentScheduler().getMemoryStructure()->toString() << std::endl;
+            classifier.getMaximalEndComponentScheduler().printToStream(std::cout, mdp);
+        }
+        {
+            std::cout << "Parity unfolding based classification" << std::endl;
+            sw::FixedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, mecUnfoldingPar, true);
             std::cout << classifier.getMaximalEndComponentScheduler().getMemoryStructure()->toString() << std::endl;
             classifier.getMaximalEndComponentScheduler().printToStream(std::cout, mdp);
         }

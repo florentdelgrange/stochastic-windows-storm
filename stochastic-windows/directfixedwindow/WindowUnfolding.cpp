@@ -295,6 +295,11 @@ namespace sw {
         }
 
         template<typename ValueType>
+        storm::storage::BitVector const &WindowUnfolding<ValueType>::getOriginalEnabledActions() const {
+            return this->enabledActions;
+        }
+
+        template<typename ValueType>
         uint_fast64_t WindowUnfoldingMeanPayoff<ValueType>::unfoldFrom(
                 uint_fast64_t const &state,
                 ValueType const &value,

@@ -189,9 +189,7 @@ namespace storm {
                                     std::vector<boost::optional<storm::storage::BitVector>> nextMemories(memoryStructure->getNumberOfStates());
                                     out << std::setw(20);
                                     uint_fast64_t row = model->getTransitionMatrix().getRowGroupIndices()[state] + choice.getDeterministicChoice();
-                                    for (auto entryIt = modelTransitions.getRow(row).begin();
-                                         entryIt < modelTransitions.getRow(row).end();
-                                         ++ entryIt) {
+                                    for (auto entryIt = modelTransitions.getRow(row).begin(); entryIt < modelTransitions.getRow(row).end(); ++ entryIt) {
                                         uint_fast64_t transitionIndex = entryIt - modelTransitions.begin();
                                         uint_fast64_t nextMemoryState = memoryStructure->getSuccessorMemoryState(memoryState, transitionIndex);
                                         if (not nextMemories[nextMemoryState]) {
@@ -201,7 +199,7 @@ namespace storm {
                                     }
                                     for (uint_fast64_t m = 0; m < memoryStructure->getNumberOfStates(); ++ m) {
                                         if (nextMemories[m]) {
-                                            out << *nextMemories[m] << ": " << "m" << m << std::setw(3);
+                                            out << *nextMemories[m] << ": " << "m" << m << "   ";
                                         }
                                     }
                                 }

@@ -84,6 +84,11 @@ namespace sw {
              */
             WindowMemory<ValueType> generateMemory(bool setLabels=true) const;
 
+            /*!
+             * Retrieves the set of actions in the original MDP considered for this unfolding
+             */
+            storm::storage::BitVector const& getOriginalEnabledActions() const;
+
         protected:
 
             /*!
