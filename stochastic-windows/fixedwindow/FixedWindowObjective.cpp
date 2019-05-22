@@ -82,7 +82,7 @@ namespace sw {
         FixedWindowParityObjective<ValueType>::produceGoodScheduler() const {
             sw::storage::MaximalEndComponentDecompositionUnfoldingParity<ValueType>
                     unfoldedMECs(this->mdp, this->rewardModelName, this->l_max);
-            MaximalEndComponentClassifier<ValueType> mecClassifier(this->mdp, unfoldedMECs);
+            MaximalEndComponentClassifier<ValueType> mecClassifier(this->mdp, unfoldedMECs, true);
             storm::storage::BitVector goodStateSpace = mecClassifier.getGoodStateSpace();
             storm::storage::Scheduler<ValueType> scheduler = mecClassifier.getMaximalEndComponentScheduler();
             return storage::GoodStateSpaceAndScheduler<ValueType>(std::move(goodStateSpace), std::move(scheduler));
@@ -92,6 +92,10 @@ namespace sw {
         sw::storage::ValuesAndScheduler<ValueType> performMaxProb(FixedWindowObjective<ValueType> const& fwObjective, bool produceScheduler) {
             if (produceScheduler) {
                 storage::GoodStateSpaceAndScheduler<ValueType> goodStateSpaceAndScheduler = fwObjective.produceGoodScheduler();
+                std::unique_ptr<storm::storage::Scheduler<ValueType>>
+                scheduler = std::unique_ptr<storm::storage::Scheduler<ValueType>>(
+                        new storm::storage::Scheduler<ValueType>(fwObjective.getMdp().getNumberOfStates(), goodStateSpaceAndScheduler.scheduler.getMemoryStructure())
+                );
                 storm::modelchecker::helper::MDPSparseModelCheckingHelperReturnType<ValueType>
                 result = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType>().computeUntilProbabilities(
                         storm::Environment(),
@@ -102,7 +106,16 @@ namespace sw {
                         goodStateSpaceAndScheduler.goodStateSpace,
                         false, // quantitative
                         true); // produce scheduler
-
+                for (uint_fast64_t state = 0; state < fwObjective.getMdp().getNumberOfStates(); ++ state) {
+                    for (uint_fast64_t memory = 0; memory < scheduler->getNumberOfMemoryStates(); ++ memory) {
+                        if (goodStateSpaceAndScheduler.goodStateSpace[state]) {
+                            scheduler->setChoice(goodStateSpaceAndScheduler.scheduler.getChoice(state, memory), state, memory);
+                        } else {
+                            scheduler->setChoice(result.scheduler->getChoice(state), state, memory);
+                        }
+                    }
+                }
+                return sw::storage::ValuesAndScheduler<ValueType>(std::move(result.values), std::move(scheduler));
             } else {
                 storm::storage::BitVector goodStateSpace = fwObjective.getGoodStateSpace();
                 storm::modelchecker::helper::MDPSparseModelCheckingHelperReturnType<ValueType>

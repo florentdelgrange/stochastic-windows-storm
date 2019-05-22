@@ -105,7 +105,7 @@ void initializeSettings() {
     storm::utility::setLogLevel(l3pp::LogLevel::DEBUG);
 
     storm::settings::mutableManager().printHelpForModule("minmax");
-    storm::settings::mutableManager().setFromString("--minmax:method vi");
+    storm::settings::mutableManager().setFromString("--minmax:method pi");
     std::cout << "Equation solving method: " << minMaxMethodAsString() << std::endl;
 }
 
@@ -287,21 +287,42 @@ void schedulersExamples(){
         {
             std::cout << "Mean payoff game based classification" << std::endl;
             sw::FixedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, mecGameMP, true);
-            classifier.getMaximalEndComponentScheduler().printToStream(std::cout, mdp);
+            sw::FixedWindow::FixedWindowMeanPayoffObjective<double> fixedWindowObjective(*mdp, "weights", 3);
+            sw::storage::ValuesAndScheduler<double> result = sw::FixedWindow::performMaxProb(fixedWindowObjective, true);
+            std::cout << "[  ";
+            for (double const& value : result.values) {
+                std::cout << value << "  ";
+            }
+            std::cout << "]" << std::endl;
+            result.scheduler->printToStream(std::cout);
+            result.scheduler->printToStream(std::cout, mdp);
         }
         {
             std::cout << "Mean payoff unfolding based classification" << std::endl;
             sw::FixedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, mecUnfoldingMP, true);
             std::cout << classifier.getMaximalEndComponentScheduler().getMemoryStructure()->toString() << std::endl;
-            classifier.getMaximalEndComponentScheduler().printToStream(std::cout, mdp);
+            sw::FixedWindow::FixedWindowMeanPayoffObjective<double> fixedWindowObjective(*mdp, "weights", 3, false);
+            sw::storage::ValuesAndScheduler<double> result = sw::FixedWindow::performMaxProb(fixedWindowObjective, true);
+            std::cout << "[  ";
+            for (double const& value : result.values) {
+                std::cout << value << "  ";
+            }
+            std::cout << "]" << std::endl;
+            result.scheduler->printToStream(std::cout, mdp);
         }
         {
             std::cout << "Parity unfolding based classification" << std::endl;
             sw::FixedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, mecUnfoldingPar, true);
             std::cout << classifier.getMaximalEndComponentScheduler().getMemoryStructure()->toString() << std::endl;
-            classifier.getMaximalEndComponentScheduler().printToStream(std::cout, mdp);
+            sw::FixedWindow::FixedWindowParityObjective<double> fixedWindowObjective(*mdp, "priorities", 3);
+            sw::storage::ValuesAndScheduler<double> result = sw::FixedWindow::performMaxProb(fixedWindowObjective, true);
+            std::cout << "[  ";
+            for (double const& value : result.values) {
+                std::cout << value << "  ";
+            }
+            std::cout << "]" << std::endl;
+            result.scheduler->printToStream(std::cout, mdp);
         }
-        // fwResult = sw::FixedWindow::performMaxProb(fixedWindowMPObjectiveGame, true);
     }
 
 }
@@ -615,7 +636,7 @@ int main(const int argc, const char** argv){
 
     // mecDecompositionPrintExamples();
     // graphVizExample();
-    // windowExamples();
+    //windowExamples();
     schedulersExamples();
     // predecessorListExample();
 
