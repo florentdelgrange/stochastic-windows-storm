@@ -13,9 +13,12 @@
 #include <stochastic-windows/boundedwindow/MaximalEndComponentClassifier.cpp>
 #include <storm/modelchecker/prctl/helper/SparseMdpPrctlHelper.h>
 #include <storm/environment/Environment.h>
+#include <stochastic-windows/fixedwindow/MaximalEndComponentClassifier.h>
 
 namespace sw {
     namespace BoundedWindow {
+
+        enum ClassificationMethod { MemorylessWindowGame, WindowGameWithBound, Unfolding };
 
         template<typename ValueType>
         class BoundedWindowObjective: public WindowObjective<ValueType> {
@@ -23,7 +26,8 @@ namespace sw {
 
             BoundedWindowObjective(
                     storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
-                    std::string const& rewardModelName);
+                    std::string const& rewardModelName,
+                    ClassificationMethod classificationMethod = MemorylessWindowGame);
 
             /*!
              * Performs the MEC decomposition and classification of the input MDP and retrieves the good state space
@@ -31,6 +35,14 @@ namespace sw {
              * @return a BitVector representing the good state space
              */
             virtual storm::storage::BitVector getGoodStateSpace() const = 0;
+            virtual sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler() const = 0;
+            /*!
+             * get the window size l_max such that winning for FixedWindow(l_max) coincides with winning for BoundedWindow(l_max)
+             */
+            virtual uint_fast64_t getUniformBound() const = 0;
+
+        protected:
+            ClassificationMethod classificationMethod;
 
         };
 
@@ -40,10 +52,12 @@ namespace sw {
 
             BoundedWindowMeanPayoffObjective(
                     storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
-                    std::string const& rewardModelName);
+                    std::string const& rewardModelName,
+                    ClassificationMethod classificationMethod = MemorylessWindowGame);
 
             storm::storage::BitVector getGoodStateSpace() const override ;
-
+            sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler() const override;
+            uint_fast64_t getUniformBound() const override;
         };
 
         template<typename ValueType>
@@ -52,17 +66,17 @@ namespace sw {
 
             BoundedWindowParityObjective(
                     storm::models::sparse::Mdp<ValueType,storm::models::sparse::StandardRewardModel<ValueType>> const& mdp,
-                    std::string const& rewardModelName);
+                    std::string const& rewardModelName,
+                    ClassificationMethod classificationMethod = MemorylessWindowGame);
 
             storm::storage::BitVector getGoodStateSpace() const override ;
-
+            sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler() const override;
+            uint_fast64_t getUniformBound() const override;
         };
 
         template<typename ValueType>
-        std::vector<ValueType> performMaxProb(BoundedWindowObjective<ValueType> const &bwObjective);
-
-        template<typename ValueType>
-        ValueType performMaxProb(uint_fast64_t state, BoundedWindowObjective<ValueType> const &bwObjective);
+        sw::storage::ValuesAndScheduler<ValueType> performMaxProb(BoundedWindowObjective<ValueType> const &bwObjective,
+                                                                  bool produceScheduler = false);
 
     }
 

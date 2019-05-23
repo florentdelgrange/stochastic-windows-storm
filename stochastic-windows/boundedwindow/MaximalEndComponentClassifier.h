@@ -30,7 +30,8 @@ namespace sw {
              */
             MaximalEndComponentClassifier(
                     storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
-                    sw::storage::MaximalEndComponentDecompositionWindowGame<ValueType> const& mecDecompositionGame);
+                    sw::storage::MaximalEndComponentDecompositionWindowGame<ValueType> const& mecDecompositionGame,
+                    bool produceScheduler = false);
 
         };
 

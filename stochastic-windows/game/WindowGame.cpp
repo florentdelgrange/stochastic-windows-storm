@@ -117,7 +117,7 @@ namespace sw {
             // if a scheduler is provided, fill in it according to the safe region computed
             if (scheduler) {
                 storm::storage::BitVector safeActions = this->enabledActions & ~loosingRegion.p2States;
-                for (uint_fast64_t const& state: safeStates) {
+                for (uint_fast64_t const& state : safeStates) {
                     // set an arbitrary safe action as being the one chosen by the scheduler
                     uint_fast64_t action = safeActions.getNextSetIndex(this->matrix.getRowGroupIndices()[state]);
                     for (uint_fast64_t memoryState = 0; memoryState < scheduler->getNumberOfMemoryStates(); ++ memoryState) {

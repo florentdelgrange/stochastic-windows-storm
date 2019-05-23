@@ -1,6 +1,7 @@
 //
 // Created by Florent Delgrange on 25/10/2018.
 //
+#include <time.h>
 
 #include "storm-config.h"
 #include "storm-parsers/parser/AutoParser.h"
@@ -275,9 +276,12 @@ void schedulersExamples(){
         winningSetAndScheduler.scheduler->printToStream(std::cout, mdp);
         std::cout << std::endl;
         std::cout << "DFW mp scheduler (with unfolding)" << std::endl;
-        sw::storage::ValuesAndScheduler<double> resultDFWmp = sw::DirectFixedWindow::performMaxProb<double>(phiStates,
-                                                                                                            dfwMpObjective,
-                                                                                                            true);
+        sw::storage::ValuesAndScheduler<double> resultDFWmp = sw::DirectFixedWindow::performMaxProb<double>(phiStates, dfwMpObjective, true);
+        std::cout << "[  ";
+        for (double const& value : resultDFWmp.values) {
+            std::cout << value << "  ";
+        }
+        std::cout << "]" << std::endl;
         resultDFWmp.scheduler->printToStream(std::cout, mdp);
         std::cout << std::endl;
         std::cout << "FW schedulers" << std::endl;
@@ -294,7 +298,6 @@ void schedulersExamples(){
                 std::cout << value << "  ";
             }
             std::cout << "]" << std::endl;
-            result.scheduler->printToStream(std::cout);
             result.scheduler->printToStream(std::cout, mdp);
         }
         {
@@ -323,6 +326,99 @@ void schedulersExamples(){
             std::cout << "]" << std::endl;
             result.scheduler->printToStream(std::cout, mdp);
         }
+        std::cout << "BW schedulers" << std::endl;
+        sw::storage::MaximalEndComponentDecompositionWindowMeanPayoffGame<double> bwMPGames(*mdp, "weights");
+        sw::storage::MaximalEndComponentDecompositionWindowParityGame<double> bwParGames(*mdp, "priorities");
+        {
+            std::cout << "Bounded Window Mean Payoff game based classification (memoryless)" << std::endl;
+            clock_t start = clock();
+            sw::BoundedWindow::BoundedWindowMeanPayoffObjective<double> boundedWindowObjective(*mdp, "weights");
+            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true);
+
+            clock_t stop = clock();
+            double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
+            printf("(time: %.5f)\n", elapsed);
+
+            std::cout << "[  ";
+            for (double const& value : result.values) {
+                std::cout << value << "  ";
+            }
+            std::cout << "]" << std::endl;
+            result.scheduler->printToStream(std::cout, mdp);
+        }
+        {
+            clock_t start = clock();
+            std::cout << "Bounded Window Parity game based classification (memoryless)" << std::endl;
+            sw::BoundedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, bwParGames, true);
+            sw::BoundedWindow::BoundedWindowParityObjective<double> boundedWindowObjective(*mdp, "priorities");
+            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true);
+
+            clock_t stop = clock();
+            double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
+            printf("(time: %.5f)\n", elapsed);
+
+            std::cout << "[  ";
+            for (double const& value : result.values) {
+                std::cout << value << "  ";
+            }
+            std::cout << "]" << std::endl;
+            result.scheduler->printToStream(std::cout, mdp);
+        }
+        {
+            clock_t start = clock();
+            std::cout << "Bounded Window Mean Payoff game based classification (with uniform bound)" << std::endl;
+            sw::BoundedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, bwMPGames, true);
+            sw::BoundedWindow::BoundedWindowMeanPayoffObjective<double>
+            boundedWindowObjective(*mdp, "weights", sw::BoundedWindow::ClassificationMethod::WindowGameWithBound);
+            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true);
+
+            clock_t stop = clock();
+            double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
+            printf("(time: %.5f)\n", elapsed);
+
+            std::cout << "[  ";
+            for (double const& value : result.values) {
+                std::cout << value << "  ";
+            }
+            std::cout << "]" << std::endl;
+        }
+        {
+            clock_t start = clock();
+            std::cout << "Bounded Window Parity game based classification (with uniform bound) = unfolding based classification" << std::endl;
+            sw::BoundedWindow::BoundedWindowParityObjective<double>
+            boundedWindowObjective(*mdp, "priorities", sw::BoundedWindow::ClassificationMethod::WindowGameWithBound);
+            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true);
+
+            clock_t stop = clock();
+            double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
+            printf("(time: %.5f)\n", elapsed);
+
+            std::cout << "[  ";
+            for (double const& value : result.values) {
+                std::cout << value << "  ";
+            }
+            std::cout << "]" << std::endl;
+        }
+        /*
+        {
+            clock_t start = clock();
+            std::cout << "Bounded Window Mean Payoff unfolding based classification" << std::endl;
+            sw::BoundedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, bwMPGames, true);
+            sw::BoundedWindow::BoundedWindowMeanPayoffObjective<double>
+            boundedWindowObjective(*mdp, "weights", sw::BoundedWindow::ClassificationMethod::Unfolding);
+            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true);
+
+            clock_t stop = clock();
+            double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
+            printf("(time: %.5f)\n", elapsed);
+
+            std::cout << "[  ";
+            for (double const& value : result.values) {
+                std::cout << value << "  ";
+            }
+            std::cout << "]" << std::endl;
+        }
+         */
     }
 
 }
@@ -636,7 +732,7 @@ int main(const int argc, const char** argv){
 
     // mecDecompositionPrintExamples();
     // graphVizExample();
-    //windowExamples();
+    windowExamples();
     schedulersExamples();
     // predecessorListExample();
 
