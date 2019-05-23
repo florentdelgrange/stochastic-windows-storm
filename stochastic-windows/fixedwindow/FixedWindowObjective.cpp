@@ -101,11 +101,35 @@ namespace sw {
                         storm::Environment(),
                         storm::solver::OptimizationDirection::Maximize, // we want to maximize the probability of reaching good states
                         fwObjective.getMdp().getTransitionMatrix(),
-                        fwObjective.getMdp().getTransitionMatrix().transpose(true),
+                        fwObjective.getMdp().getBackwardTransitions(),
                         storm::storage::BitVector(fwObjective.getMdp().getNumberOfStates(), true),
                         goodStateSpaceAndScheduler.goodStateSpace,
                         false, // quantitative
                         true); // produce scheduler
+                /*
+                storm::storage::SparseMatrix<ValueType> transposedMatrix = fwObjective.getMdp().getTransitionMatrix().transpose(true);
+                storm::storage::MaximalEndComponentDecomposition<ValueType> badMECs(fwObjective.getMdp().getTransitionMatrix(),
+                                                                                    transposedMatrix,
+                                                                                    ~goodStateSpaceAndScheduler.goodStateSpace);
+                storm::storage::BitVector badStateSpace(fwObjective.getMdp().getNumberOfStates());
+
+                for (auto const& mec : badMECs) {
+                    for (auto const& stateActionsPair : mec) {
+                        badStateSpace.set(stateActionsPair.first, true);
+                    }
+                }
+
+                storm::modelchecker::helper::MDPSparseModelCheckingHelperReturnType<ValueType>
+                        result = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType>().computeUntilProbabilities(
+                        storm::Environment(),
+                        storm::solver::OptimizationDirection::Minimize, // we minimize the probability of reaching bad MECs
+                        fwObjective.getMdp().getTransitionMatrix(),
+                        transposedMatrix,
+                        storm::storage::BitVector(fwObjective.getMdp().getNumberOfStates(), true),
+                        badStateSpace,
+                        false, // quantitative
+                        true); // produce scheduler
+                */
                 for (uint_fast64_t state = 0; state < fwObjective.getMdp().getNumberOfStates(); ++ state) {
                     for (uint_fast64_t memory = 0; memory < scheduler->getNumberOfMemoryStates(); ++ memory) {
                         if (goodStateSpaceAndScheduler.goodStateSpace[state]) {
@@ -115,19 +139,22 @@ namespace sw {
                         }
                     }
                 }
+
                 return sw::storage::ValuesAndScheduler<ValueType>(std::move(result.values), std::move(scheduler));
+
             } else {
                 storm::storage::BitVector goodStateSpace = fwObjective.getGoodStateSpace();
                 storm::modelchecker::helper::MDPSparseModelCheckingHelperReturnType<ValueType>
                 result = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType>().computeUntilProbabilities(
                         storm::Environment(),
-                        storm::solver::OptimizationDirection::Maximize, // we want to maximize the probability of reaching good states
+                        storm::solver::OptimizationDirection::Maximize, // we maximize the probability of reaching good MECs
                         fwObjective.getMdp().getTransitionMatrix(),
-                        fwObjective.getMdp().getTransitionMatrix().transpose(true),
+                        fwObjective.getMdp().getBackwardTransitions(),
                         storm::storage::BitVector(fwObjective.getMdp().getNumberOfStates(), true),
                         goodStateSpace,
                         false, // quantitative
                         false); // do not produce scheduler
+
                 return sw::storage::ValuesAndScheduler<ValueType>(std::move(result.values));
             }
         }
