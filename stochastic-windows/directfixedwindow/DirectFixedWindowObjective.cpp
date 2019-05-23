@@ -77,7 +77,7 @@ namespace sw {
                         false, // quantitative
                         true); // produce scheduler
                 // result in the unfolding to result in the original MDP
-                for (uint_fast64_t state: phiStates) {
+                for (uint_fast64_t const& state : phiStates) {
                     result[state] = resultInUnfolding.values[unfolding->getInitialState(state)];
                 }
                 WindowMemory<ValueType> windowMemory = unfolding->generateMemory();
@@ -106,13 +106,12 @@ namespace sw {
                 std::vector<ValueType>
                 resultInUnfolding = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType>().computeGloballyProbabilities(
                         storm::Environment(),
-                        storm::solver::OptimizationDirection::Minimize, // we want to minimize the probability of staying in ¬⊥
+                        storm::solver::OptimizationDirection::Maximize, // we want to maximize the probability of staying in ¬⊥
                         unfolding->getMatrix(),
                         unfolding->getMatrix().transpose(true),
                         psiStates,
-                        false, // quantitative
-                        true); // use MEC based technique
-                for (uint_fast64_t state: phiStates) {
+                        false); // quantitative
+                for (uint_fast64_t const& state : phiStates) {
                     result[state] = resultInUnfolding[unfolding->getInitialState(state)];
                 }
                 return sw::storage::ValuesAndScheduler<ValueType>(std::move(result));
