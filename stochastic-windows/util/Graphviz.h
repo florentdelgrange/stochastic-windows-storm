@@ -2,8 +2,8 @@
 // Created by Florent Delgrange on 2018-11-20.
 //
 
-#include "storm/models/sparse/Mdp.h"
-#include "storm/storage/SparseMatrix.h"
+#include <storm/models/sparse/Mdp.h>
+#include <storm/storage/SparseMatrix.h>
 #include <boost/graph/adj_list_serialize.hpp>
 #include <boost/property_map/function_property_map.hpp>
 #include <boost/property_map/transform_value_property_map.hpp>
@@ -14,6 +14,7 @@
 #include <stochastic-windows/prefixindependent/MaximalEndComponentDecompositionUnfolding.h>
 #include <stochastic-windows/directfixedwindow/WindowUnfolding.h>
 #include <storm/utility/constants.h>
+#include <stochastic-windows/util/SchedulerProduct.h>
 
 #ifndef STORM_GRAPHVIZ_H
 #define STORM_GRAPHVIZ_H
@@ -37,10 +38,10 @@ namespace sw {
                 }
                 static inline std::ostream& operator<<(std::ostream& os, Action const& a) {
                     if (a.weight == 0) {
-                        return os << "a" << a.id;
+                        return os << a.id;
                     }
                     else {
-                        return os << "a" << a.id << ", " << a.weight;
+                        return os << a.id << ", " << a.weight;
                     }
                 }
 
@@ -158,7 +159,7 @@ namespace sw {
                         for (uint_fast64_t row = groups[state]; row < groups[state + 1]; ++row) {
                             Graph::vertex_descriptor a;
                             if (actionNames[row] == "")
-                                a = add_vertex(Nodes::Action{std::to_string(row), weightVector[row], row}, g);
+                                a = add_vertex(Nodes::Action{'a' + std::to_string(row), weightVector[row], row}, g);
                             else
                                 a = add_vertex(Nodes::Action{actionNames[row], weightVector[row], row}, g);
                             add_edge(s, a, Transitions::Choice{}, g);
@@ -251,7 +252,9 @@ namespace sw {
                                newStatesMeaning[i].currentWindowSize << ")";
                         stateNames[i] = stream.str();
                         for (uint_fast64_t action = groups[i]; action < groups[i + 1]; ++ action) {
-                            actionNames[action] = boost::lexical_cast<std::string>(actionsMeaning[action]);
+                            std::ostringstream streamAction;
+                            streamAction << "a" << actionsMeaning[action];
+                            actionNames[action] = streamAction.str();
                         }
                     }
                     std::ostringstream stream;
@@ -259,6 +262,61 @@ namespace sw {
                     mdpGraphExport(windowUnfolding.getMatrix(), std::vector<double>(), std::vector<double>(),
                                    stream.str(), outputDir, stateNames, actionNames);
                 }
+
+                static void schedulerExport(
+                        storm::models::sparse::Mdp<double> mdp,
+                        storm::storage::Scheduler<double> const& scheduler,
+                        std::string graphName = "mdp",
+                        std::string outputDir = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples") {
+
+                    storm::models::sparse::StateLabeling &stateLabeling = mdp.getStateLabeling();
+
+                    for (uint_fast64_t state = 0; state < mdp.getNumberOfStates(); ++ state) {
+                        if (stateLabeling.getLabelsOfState(state).empty()) {
+                            std::ostringstream stream;
+                            stream << "s" << state;
+                            std::string label = stream.str();
+                            if (not stateLabeling.containsLabel(label)) {
+                                stateLabeling.addLabel(label);
+                            }
+                            stateLabeling.addLabelToState(label, state);
+                        }
+                    }
+
+                    sw::storage::SchedulerProduct<double> product(mdp, scheduler);
+                    std::shared_ptr<storm::models::sparse::Model<double>> model = product.build();
+
+                    std::vector<std::string> stateNames = std::vector<std::string>(model->getNumberOfStates());
+                    std::vector<std::string> actionNames = std::vector<std::string>(model->getNumberOfChoices());
+
+                    for (uint_fast64_t state = 0; state < model->getNumberOfStates(); ++ state) {
+                        std::ostringstream stream;
+                        uint_fast64_t i = model->getStateLabeling().getLabelsOfState(state).size();
+                        for (std::string const& label : model->getStateLabeling().getLabelsOfState(state)) {
+                            -- i;
+                            stream << label << (i ? ", " : "");
+                        }
+                        stateNames[state] = stream.str();
+                    }
+
+                    for (uint_fast64_t action = 0; action < model->getNumberOfChoices(); ++ action) {
+                        std::ostringstream stream;
+                        if (model->hasChoiceLabeling()) {
+                            uint_fast64_t i = model->getChoiceLabeling().getLabelsOfChoice(action).size();
+                            for (std::string const& label : model->getChoiceLabeling().getLabelsOfChoice(action)) {
+                                -- i;
+                                stream << label << (i ? ", " : "");
+                            }
+                            actionNames[action] = stream.str();
+                        }
+                    }
+
+                    std::ostringstream stream;
+                    stream << graphName << "_scheduler_product";
+                    mdpGraphExport(model->getTransitionMatrix(), std::vector<double>(), std::vector<double>(),
+                                   stream.str(), outputDir, stateNames, actionNames);
+                }
+
             };
         }
     }

@@ -91,13 +91,17 @@ namespace sw {
              * Computes the winning set of states for the (prefix-independent) Bounded Window problem.
              */
             storm::storage::BitVector boundedProblem() const;
+
             /*!
              * Computes the winning set of states for the Direct Bounded Window problem.
              * @param scheduler (optional) if provided, fills in it according to the optimal choices for the direct bounded window problem.
-             *                  this scheduler does not require memory.
+             *                  This scheduler is memoryless.
              */
             storm::storage::BitVector directBoundedProblem(boost::optional<storm::storage::Scheduler<ValueType>&> const& scheduler = boost::none) const;
 
+            /*!
+             * Computes the set of states from which there does not exist a bound to win the direct fixed window objective
+             */
             virtual GameStates unbOpenWindow() const = 0;
 
             virtual std::unique_ptr<WindowGame<ValueType>> restrict(storm::storage::BitVector const &restrictedStateSpace) const = 0;

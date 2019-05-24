@@ -283,6 +283,7 @@ void schedulersExamples(){
         }
         std::cout << "]" << std::endl;
         resultDFWmp.scheduler->printToStream(std::cout, mdp);
+        sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *resultDFWmp.scheduler, "direct_fixed_mp_unfolding");
         std::cout << std::endl;
         std::cout << "FW schedulers" << std::endl;
         sw::storage::MaximalEndComponentDecompositionWindowMeanPayoffGame<double> mecGameMP(*mdp, "weights", 3);
@@ -299,6 +300,7 @@ void schedulersExamples(){
             }
             std::cout << "]" << std::endl;
             result.scheduler->printToStream(std::cout, mdp);
+            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "fixed_mp_game");
         }
         {
             std::cout << "Mean payoff unfolding based classification" << std::endl;
@@ -312,6 +314,7 @@ void schedulersExamples(){
             }
             std::cout << "]" << std::endl;
             result.scheduler->printToStream(std::cout, mdp);
+            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "fixed_mp_unfolding");
         }
         {
             std::cout << "Parity unfolding based classification" << std::endl;
@@ -325,6 +328,7 @@ void schedulersExamples(){
             }
             std::cout << "]" << std::endl;
             result.scheduler->printToStream(std::cout, mdp);
+            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "fixed_par_unfolding");
         }
         std::cout << "BW schedulers" << std::endl;
         sw::storage::MaximalEndComponentDecompositionWindowMeanPayoffGame<double> bwMPGames(*mdp, "weights");
@@ -345,6 +349,7 @@ void schedulersExamples(){
             }
             std::cout << "]" << std::endl;
             result.scheduler->printToStream(std::cout, mdp);
+            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "bounded_mp_memoryless");
         }
         {
             clock_t start = clock();
@@ -363,6 +368,7 @@ void schedulersExamples(){
             }
             std::cout << "]" << std::endl;
             result.scheduler->printToStream(std::cout, mdp);
+            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "bounded_par_memoryless");
         }
         {
             clock_t start = clock();
@@ -381,6 +387,7 @@ void schedulersExamples(){
                 std::cout << value << "  ";
             }
             std::cout << "]" << std::endl;
+            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "bounded_mp_game");
         }
         {
             clock_t start = clock();
@@ -398,6 +405,7 @@ void schedulersExamples(){
                 std::cout << value << "  ";
             }
             std::cout << "]" << std::endl;
+            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "fixed_par_unfolding");
         }
         /*
         {
