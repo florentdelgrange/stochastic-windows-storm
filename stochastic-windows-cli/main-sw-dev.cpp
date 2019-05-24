@@ -370,7 +370,7 @@ void schedulersExamples(){
             sw::BoundedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, bwMPGames, true);
             sw::BoundedWindow::BoundedWindowMeanPayoffObjective<double>
             boundedWindowObjective(*mdp, "weights", sw::BoundedWindow::ClassificationMethod::WindowGameWithBound);
-            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true);
+            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective);
 
             clock_t stop = clock();
             double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
@@ -387,7 +387,7 @@ void schedulersExamples(){
             std::cout << "Bounded Window Parity game based classification (with uniform bound) = unfolding based classification" << std::endl;
             sw::BoundedWindow::BoundedWindowParityObjective<double>
             boundedWindowObjective(*mdp, "priorities", sw::BoundedWindow::ClassificationMethod::WindowGameWithBound);
-            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true);
+            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective);
 
             clock_t stop = clock();
             double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
@@ -406,7 +406,7 @@ void schedulersExamples(){
             sw::BoundedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, bwMPGames, true);
             sw::BoundedWindow::BoundedWindowMeanPayoffObjective<double>
             boundedWindowObjective(*mdp, "weights", sw::BoundedWindow::ClassificationMethod::Unfolding);
-            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true);
+            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective);
 
             clock_t stop = clock();
             double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
@@ -418,7 +418,7 @@ void schedulersExamples(){
             }
             std::cout << "]" << std::endl;
         }
-         */
+        */
     }
 
 }

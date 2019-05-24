@@ -171,7 +171,7 @@ namespace sw {
             storm::storage::MemoryStructureBuilder<ValueType> memoryBuilder(M + 1, this->originalModel);
             // the last state of the memory structure is the sink state corresponding to the windows staying open for l_max steps
             windowMemory.unfoldingToMemoryStatesMapping[0] = M;
-            if (setLabels){
+            if (setLabels) {
                 memoryBuilder.setLabel(M, "⊥");
                 for (uint_fast64_t l = 0; l < this->l_max; ++ l) {
                     for (const auto& keyValue : windowSizeValueMapping[l]) {

@@ -60,12 +60,17 @@ namespace sw {
         uint_fast64_t BoundedWindowMeanPayoffObjective<ValueType>::getUniformBound() const {
             std::vector<ValueType> const& weights = this->mdp.getRewardModel(this->rewardModelName).getStateActionRewardVector();
             ValueType W = -1 * storm::utility::infinity<ValueType>();
+            storm::storage::MaximalEndComponentDecomposition<ValueType> mecDecomposition(this->mdp);
             {
                 ValueType absoluteWeight;
-                for (uint_fast64_t action = 0; action < this->mdp.getNumberOfChoices(); ++ action) {
-                    absoluteWeight = storm::utility::abs(weights[action]);
-                    if (W < absoluteWeight) {
-                        W = absoluteWeight;
+                for (storm::storage::MaximalEndComponent const& mec : mecDecomposition) {
+                    for (auto const& stateActionsPair : mec) {
+                        for (auto const& action : stateActionsPair.second) {
+                            absoluteWeight = storm::utility::abs(weights[action]);
+                            if (W < absoluteWeight) {
+                                W = absoluteWeight;
+                            }
+                        }
                     }
                 }
             }
@@ -129,8 +134,10 @@ namespace sw {
         uint_fast64_t BoundedWindowParityObjective<ValueType>::getUniformBound() const {
             std::vector<ValueType> const& priorities = this->mdp.getRewardModel(this->rewardModelName).getStateRewardVector();
             ValueType d = -1 * storm::utility::infinity<ValueType>();
-            {
-                for (uint_fast64_t state = 0; state < this->mdp.getNumberOfStates(); ++ state) {
+            storm::storage::MaximalEndComponentDecomposition<ValueType> mecDecomposition(this->mdp);
+            for (storm::storage::MaximalEndComponent const& mec : mecDecomposition) {
+                for (auto const& stateActionsPair : mec) {
+                    uint_fast64_t const& state = stateActionsPair.first;
                     if (d < priorities[state]) {
                         d = priorities[state];
                     }
