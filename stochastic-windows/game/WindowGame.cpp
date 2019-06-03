@@ -61,11 +61,11 @@ namespace sw {
         }
 
         template<typename ValueType>
-        WinningSetAndScheduler<ValueType> WindowGame<ValueType>::produceSchedulerForDirectFW() const {
+        WinningSetAndScheduler<ValueType> WindowGame<ValueType>::produceSchedulerForDirectFW(bool memoryStatesLabeling) const {
             STORM_LOG_ASSERT(l_max > 0, "no maximal window size (>0) set");
             BackwardTransitions backwardTransitions;
             this->initBackwardTransitions(backwardTransitions);
-            return directFW(backwardTransitions, true);
+            return directFW(backwardTransitions, true, memoryStatesLabeling);
         }
 
         template<typename ValueType>
@@ -79,13 +79,14 @@ namespace sw {
 
         template<typename ValueType>
         WinningSetAndScheduler<ValueType> WindowGame<ValueType>::directFW(BackwardTransitions &backwardTransitions,
-                                                                          bool produceScheduler) const {
+                                                                          bool produceScheduler,
+                                                                          bool memoryStatesLabeling) const {
             storm::storage::BitVector winGW = this->goodWin().winningSet;
             if (winGW == this->restrictedStateSpace or winGW.empty()) {
                 if (not produceScheduler or winGW.empty()) {
                     return WinningSetAndScheduler<ValueType>(std::move(winGW));
                 } else {
-                    return this->goodWin(true);
+                    return this->goodWin(true, memoryStatesLabeling);
                 }
             } else {
                 std::unique_ptr<WindowGame<ValueType>> safeGame = this->restrictToSafePart(winGW, backwardTransitions);
@@ -129,13 +130,13 @@ namespace sw {
         }
 
         template<typename ValueType>
-        WinningSetAndScheduler<ValueType> WindowGame<ValueType>::goodWin(bool produceScheduler) const {
+        WinningSetAndScheduler<ValueType> WindowGame<ValueType>::goodWin(bool produceScheduler, bool memoryStatesLabeling) const {
             // default goodWin: empty set
             return WinningSetAndScheduler<ValueType>(std::move(storm::storage::BitVector(this->restrictedStateSpace.size(), false)));
         }
 
         template<typename ValueType>
-        WinningSetAndScheduler<ValueType> WindowMeanPayoffGame<ValueType>::goodWin(bool produceScheduler) const {
+        WinningSetAndScheduler<ValueType> WindowMeanPayoffGame<ValueType>::goodWin(bool produceScheduler, bool memoryStatesLabeling) const {
             uint_fast64_t numberOfStates = this->restrictedStateSpace.getNumberOfSetBits();
             // C[l][s] is the best sum that can be ensured from state s in at most l steps
             std::vector<std::vector<ValueType>> C(this->l_max, std::vector<ValueType>(numberOfStates));
@@ -236,10 +237,20 @@ namespace sw {
                     // good reset: the sum is maximal by playing the action in less than l_max steps
                     // OR the arrival state and/or the action played does not belong to this game
                     memoryBuilder.setTransition(l, 0, storm::storage::BitVector(this->mdp.getNumberOfStates(), true), ~continueActions);
+                    if (memoryStatesLabeling) {
+                        std::ostringstream stream;
+                        stream << "l=" << l;
+                        memoryBuilder.setLabel(l, stream.str());
+                    }
                 }
                 // good reset: the current sum becomes positive within l_max steps;
                 // bad  reset: the current sum remains negative within l_max steps
                 memoryBuilder.setTransition(this->l_max - 1, 0, storm::storage::BitVector(this->mdp.getNumberOfStates(), true));
+                if (memoryStatesLabeling) {
+                    std::ostringstream stream;
+                    stream << "l=" << this->l_max - 1;
+                    memoryBuilder.setLabel(this->l_max - 1, stream.str());
+                }
                 storm::storage::MemoryStructure const& memory = memoryBuilder.build();
                 scheduler = std::unique_ptr<storm::storage::Scheduler<ValueType>>(
                         new storm::storage::Scheduler<ValueType>(this->mdp.getNumberOfStates(), memory)

@@ -57,7 +57,7 @@ namespace sw {
              *
              * @return the winning set for the GoodWindow objective
              */
-            virtual WinningSetAndScheduler<ValueType> goodWin(bool produceScheduler=false) const;
+            virtual WinningSetAndScheduler<ValueType> goodWin(bool produceScheduler=false, bool memoryStatesLabeling=false) const;
 
             /**
              * Computes the winning set of states from which there exists a strategy allowing to continually surely close
@@ -72,7 +72,7 @@ namespace sw {
              * Computes the winning set of states from which there exists a strategy allowing to continually surely close
              * all windows in l_max steps or less as well as the related strategy.
              */
-            WinningSetAndScheduler<ValueType> produceSchedulerForDirectFW() const;
+            WinningSetAndScheduler<ValueType> produceSchedulerForDirectFW(bool memoryStatesLabeling=false) const;
 
             /*!
              * Retrieves the considered Player 1 state space of this window game.
@@ -124,7 +124,7 @@ namespace sw {
             virtual std::unique_ptr<WindowGame<ValueType>> restrictToSafePart(storm::storage::BitVector const& safeStates,
                     BackwardTransitions& backwardTransitions) const = 0;
 
-            WinningSetAndScheduler<ValueType> directFW(BackwardTransitions &backwardTransitions, bool produceScheduler=false) const;
+            WinningSetAndScheduler<ValueType> directFW(BackwardTransitions &backwardTransitions, bool produceScheduler=false, bool memoryStatesLabeling=false) const;
         };
 
         template<typename ValueType>
@@ -162,7 +162,7 @@ namespace sw {
 
 
 
-            WinningSetAndScheduler<ValueType> goodWin(bool produceScheduler=false) const override;
+            WinningSetAndScheduler<ValueType> goodWin(bool produceScheduler=false, bool memoryStatesLabeling=false) const override;
             GameStates unbOpenWindow() const override;
             std::unique_ptr<WindowGame<ValueType>> restrict(storm::storage::BitVector const &restrictedStateSpace) const override ;
 
