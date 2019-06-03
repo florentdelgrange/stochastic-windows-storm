@@ -32,7 +32,8 @@ namespace sw {
             MaximalEndComponentClassifier(
                     storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
                     sw::storage::MaximalEndComponentDecompositionUnfolding<ValueType> const& mecDecompositionUnfolding,
-                    bool produceScheduler = false);
+                    bool produceScheduler = false,
+                    bool memoryStatesLabeling = false);
 
             /*!
              * This class allows to classify maximal end components as being good or not for the Fixed Window objective.
@@ -47,7 +48,8 @@ namespace sw {
             MaximalEndComponentClassifier(
                     storm::models::sparse::Mdp<ValueType, storm::models::sparse::StandardRewardModel<ValueType>> const &mdp,
                     sw::storage::MaximalEndComponentDecompositionWindowGame<ValueType> const& mecDecompositionGame,
-                    bool produceScheduler = false);
+                    bool produceScheduler = false,
+                    bool memoryStatesLabeling = false);
 
         };
 

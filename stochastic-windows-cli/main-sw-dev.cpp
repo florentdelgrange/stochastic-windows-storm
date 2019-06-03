@@ -212,6 +212,11 @@ void mecDecompositionPrintExamples() {
 };
 
 void schedulersExamples(){
+    sw::storage::SchedulerProductLabeling schedulerLabelingWeights;
+    sw::storage::SchedulerProductLabeling schedulerLabelingPriorities;
+
+    schedulerLabelingWeights.weights = "weights";
+    schedulerLabelingPriorities.priorities = "priorities";
 
     {
         std::string prismModelPath = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples/dfwMemory.prism";
@@ -232,7 +237,7 @@ void schedulersExamples(){
                 new sw::game::WindowMeanPayoffGame<double>(*mdp, "weights", 3, restrictedStateSpace, enabledActions)
         );
         std::cout << "DFW scheduler: memory requirements" << std::endl;
-        sw::game::WinningSetAndScheduler<double> winningSetAndScheduler = wmpGame->produceSchedulerForDirectFW();
+        sw::game::WinningSetAndScheduler<double> winningSetAndScheduler = wmpGame->produceSchedulerForDirectFW(true);
         //std::cout << winningSetAndScheduler.winningSet << std::endl;
         std::cout << winningSetAndScheduler.scheduler->getMemoryStructure()->toString() << std::endl;
         winningSetAndScheduler.scheduler->printToStream(std::cout, mdp);
@@ -243,6 +248,7 @@ void schedulersExamples(){
         std::vector<double> weightVector = weights.getStateActionRewardVector();
 
         sw::util::graphviz::GraphVizBuilder::mdpGraphWeightsExport(matrix, weightVector, "dfwMemoryExample");
+        sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *winningSetAndScheduler.scheduler, "dfwMemoryExampleScheduler", schedulerLabelingWeights);
     }
 
     // schedulers
@@ -276,14 +282,14 @@ void schedulersExamples(){
         winningSetAndScheduler.scheduler->printToStream(std::cout, mdp);
         std::cout << std::endl;
         std::cout << "DFW mp scheduler" << std::endl;
-        sw::storage::ValuesAndScheduler<double> resultDFWmp = sw::DirectFixedWindow::performMaxProb<double>(phiStates, dfwMpObjective, true);
+        sw::storage::ValuesAndScheduler<double> resultDFWmp = sw::DirectFixedWindow::performMaxProb<double>(phiStates, dfwMpObjective, true, true);
         std::cout << "[  ";
         for (double const& value : resultDFWmp.values) {
             std::cout << value << "  ";
         }
         std::cout << "]" << std::endl;
         resultDFWmp.scheduler->printToStream(std::cout, mdp);
-        sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *resultDFWmp.scheduler, "direct_fixed_mp_unfolding");
+        sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *resultDFWmp.scheduler, "direct_fixed_mp_unfolding", schedulerLabelingWeights);
         std::cout << std::endl;
         std::cout << "FW schedulers" << std::endl;
         sw::storage::MaximalEndComponentDecompositionWindowMeanPayoffGame<double> mecGameMP(*mdp, "weights", 3);
@@ -300,35 +306,35 @@ void schedulersExamples(){
             }
             std::cout << "]" << std::endl;
             result.scheduler->printToStream(std::cout, mdp);
-            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "fixed_mp_game");
+            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "fixed_mp_game", schedulerLabelingWeights);
         }
         {
             std::cout << "Mean payoff unfolding based classification" << std::endl;
             sw::FixedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, mecUnfoldingMP, true);
             std::cout << classifier.getMaximalEndComponentScheduler().getMemoryStructure()->toString() << std::endl;
             sw::FixedWindow::FixedWindowMeanPayoffObjective<double> fixedWindowObjective(*mdp, "weights", 3, false);
-            sw::storage::ValuesAndScheduler<double> result = sw::FixedWindow::performMaxProb(fixedWindowObjective, true);
+            sw::storage::ValuesAndScheduler<double> result = sw::FixedWindow::performMaxProb(fixedWindowObjective, true, true);
             std::cout << "[  ";
             for (double const& value : result.values) {
                 std::cout << value << "  ";
             }
             std::cout << "]" << std::endl;
             result.scheduler->printToStream(std::cout, mdp);
-            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "fixed_mp_unfolding");
+            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "fixed_mp_unfolding", schedulerLabelingWeights);
         }
         {
             std::cout << "Parity unfolding based classification" << std::endl;
             sw::FixedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, mecUnfoldingPar, true);
             std::cout << classifier.getMaximalEndComponentScheduler().getMemoryStructure()->toString() << std::endl;
             sw::FixedWindow::FixedWindowParityObjective<double> fixedWindowObjective(*mdp, "priorities", 3);
-            sw::storage::ValuesAndScheduler<double> result = sw::FixedWindow::performMaxProb(fixedWindowObjective, true);
+            sw::storage::ValuesAndScheduler<double> result = sw::FixedWindow::performMaxProb(fixedWindowObjective, true, true);
             std::cout << "[  ";
             for (double const& value : result.values) {
                 std::cout << value << "  ";
             }
             std::cout << "]" << std::endl;
             result.scheduler->printToStream(std::cout, mdp);
-            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "fixed_par_unfolding");
+            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "fixed_par_unfolding", schedulerLabelingPriorities);
         }
         std::cout << "BW schedulers" << std::endl;
         sw::storage::MaximalEndComponentDecompositionWindowMeanPayoffGame<double> bwMPGames(*mdp, "weights");
@@ -337,7 +343,7 @@ void schedulersExamples(){
             std::cout << "Bounded Window Mean Payoff game based classification (memoryless)" << std::endl;
             clock_t start = clock();
             sw::BoundedWindow::BoundedWindowMeanPayoffObjective<double> boundedWindowObjective(*mdp, "weights");
-            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true);
+            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true, true);
 
             clock_t stop = clock();
             double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
@@ -349,14 +355,14 @@ void schedulersExamples(){
             }
             std::cout << "]" << std::endl;
             result.scheduler->printToStream(std::cout, mdp);
-            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "bounded_mp_memoryless");
+            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "bounded_mp_memoryless", schedulerLabelingWeights);
         }
         {
             clock_t start = clock();
             std::cout << "Bounded Window Parity game based classification (memoryless)" << std::endl;
             sw::BoundedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, bwParGames, true);
             sw::BoundedWindow::BoundedWindowParityObjective<double> boundedWindowObjective(*mdp, "priorities");
-            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true);
+            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true, true);
 
             clock_t stop = clock();
             double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
@@ -368,7 +374,7 @@ void schedulersExamples(){
             }
             std::cout << "]" << std::endl;
             result.scheduler->printToStream(std::cout, mdp);
-            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "bounded_par_memoryless");
+            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "bounded_par_memoryless", schedulerLabelingPriorities);
         }
         {
             clock_t start = clock();
@@ -376,7 +382,7 @@ void schedulersExamples(){
             sw::BoundedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, bwMPGames, true);
             sw::BoundedWindow::BoundedWindowMeanPayoffObjective<double>
             boundedWindowObjective(*mdp, "weights", sw::BoundedWindow::ClassificationMethod::WindowGameWithBound);
-            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true);
+            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true, true);
 
             clock_t stop = clock();
             double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
@@ -406,7 +412,7 @@ void schedulersExamples(){
                 std::cout << value << "  ";
             }
             std::cout << "]" << std::endl;
-            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "bounded_par_game");
+            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "bounded_par_game", schedulerLabelingPriorities);
         }
         /*
         {

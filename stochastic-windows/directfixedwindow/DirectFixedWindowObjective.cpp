@@ -49,7 +49,8 @@ namespace sw {
         sw::storage::ValuesAndScheduler<ValueType> performMaxProb(
                 storm::storage::BitVector const& phiStates,
                 DirectFixedWindowObjective<ValueType> const& dfwObjective,
-                bool produceScheduler) {
+                bool produceScheduler,
+                bool memoryStatesLabeling) {
             std::vector<ValueType> result(dfwObjective.getMdp().getNumberOfStates(), 0);
             std::unique_ptr<WindowUnfolding<ValueType>> unfolding = dfwObjective.performUnfolding(phiStates);
             storm::storage::BitVector psiStates(unfolding->getMatrix().getRowGroupCount(), true);
@@ -80,7 +81,7 @@ namespace sw {
                 for (uint_fast64_t const& state : phiStates) {
                     result[state] = resultInUnfolding.values[unfolding->getInitialState(state)];
                 }
-                WindowMemory<ValueType> windowMemory = unfolding->generateMemory();
+                WindowMemory<ValueType> windowMemory = unfolding->generateMemory(memoryStatesLabeling);
                 std::unique_ptr<storm::storage::Scheduler<ValueType>>
                 scheduler = std::unique_ptr<storm::storage::Scheduler<ValueType>>(
                         new storm::storage::Scheduler<ValueType>(dfwObjective.getMdp().getNumberOfStates(), *windowMemory.memoryStructure)
@@ -124,8 +125,8 @@ namespace sw {
         template class DirectFixedWindowMeanPayoffObjective<storm::RationalNumber>;
         template class DirectFixedWindowParityObjective<double>;
 
-        template sw::storage::ValuesAndScheduler<double> performMaxProb<double>(storm::storage::BitVector const& phiStates, DirectFixedWindowObjective<double> const& dfwObjective, bool produceScheduler);
-        template sw::storage::ValuesAndScheduler<storm::RationalNumber> performMaxProb<storm::RationalNumber>(storm::storage::BitVector const& phiStates, DirectFixedWindowObjective<storm::RationalNumber> const& dfwObjective, bool produceScheduler);
+        template sw::storage::ValuesAndScheduler<double> performMaxProb<double>(storm::storage::BitVector const& phiStates, DirectFixedWindowObjective<double> const& dfwObjective, bool produceScheduler, bool memoryStatesLabeling);
+        template sw::storage::ValuesAndScheduler<storm::RationalNumber> performMaxProb<storm::RationalNumber>(storm::storage::BitVector const& phiStates, DirectFixedWindowObjective<storm::RationalNumber> const& dfwObjective, bool produceScheduler, bool memoryStatesLabeling);
 
     }
 }

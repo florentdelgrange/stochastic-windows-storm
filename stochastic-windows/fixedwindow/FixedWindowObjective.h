@@ -33,7 +33,7 @@ namespace sw {
              * @return a BitVector representing the good state space
              */
             virtual storm::storage::BitVector getGoodStateSpace() const = 0;
-            virtual sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler() const = 0;
+            virtual sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler(bool memoryStatesLabeling) const = 0;
 
         protected:
 
@@ -52,7 +52,7 @@ namespace sw {
                     bool windowGameBasedClassification = true);
 
             storm::storage::BitVector getGoodStateSpace() const override ;
-            sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler() const override;
+            sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler(bool memoryStatesLabeling = false) const override;
 
         private:
 
@@ -70,12 +70,12 @@ namespace sw {
                     uint_fast64_t const& l_max);
 
             storm::storage::BitVector getGoodStateSpace() const override ;
-            sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler() const override;
+            sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler(bool memoryStatesLabeling = false) const override;
 
         };
 
         template<typename ValueType>
-        sw::storage::ValuesAndScheduler<ValueType> performMaxProb(FixedWindowObjective<ValueType> const &fwObjective, bool produceScheduler = false);
+        sw::storage::ValuesAndScheduler<ValueType> performMaxProb(FixedWindowObjective<ValueType> const &fwObjective, bool produceScheduler = false, bool memoryStatesLabeling = false);
 
     }
 }

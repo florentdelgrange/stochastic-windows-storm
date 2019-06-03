@@ -51,18 +51,18 @@ namespace sw {
 
         template<typename ValueType>
         storage::GoodStateSpaceAndScheduler<ValueType>
-        FixedWindowMeanPayoffObjective<ValueType>::produceGoodScheduler() const {
+        FixedWindowMeanPayoffObjective<ValueType>::produceGoodScheduler(bool memoryStatesLabeling) const {
             std::unique_ptr<MaximalEndComponentClassifier<ValueType>> mecClassifier;
             if (this->windowGameClassification) {
                 sw::storage::MaximalEndComponentDecompositionWindowMeanPayoffGame<ValueType>
-                        mecGames(this->mdp, this->rewardModelName, this->l_max);
+                mecGames(this->mdp, this->rewardModelName, this->l_max);
                 mecClassifier = std::unique_ptr<MaximalEndComponentClassifier<ValueType>>(
-                        new MaximalEndComponentClassifier<ValueType>(this->mdp, mecGames, true));
+                        new MaximalEndComponentClassifier<ValueType>(this->mdp, mecGames, true, memoryStatesLabeling));
             } else {
                 sw::storage::MaximalEndComponentDecompositionUnfoldingMeanPayoff<ValueType>
-                        unfoldedMECs(this->mdp, this->rewardModelName, this->l_max);
+                unfoldedMECs(this->mdp, this->rewardModelName, this->l_max);
                 mecClassifier = std::unique_ptr<MaximalEndComponentClassifier<ValueType>>(
-                        new MaximalEndComponentClassifier<ValueType>(this->mdp, unfoldedMECs, true));
+                        new MaximalEndComponentClassifier<ValueType>(this->mdp, unfoldedMECs, true, memoryStatesLabeling));
             }
             storm::storage::BitVector goodStateSpace = mecClassifier->getGoodStateSpace();
             storm::storage::Scheduler<ValueType> scheduler = mecClassifier->getMaximalEndComponentScheduler();
@@ -79,19 +79,19 @@ namespace sw {
 
         template<typename ValueType>
         storage::GoodStateSpaceAndScheduler<ValueType>
-        FixedWindowParityObjective<ValueType>::produceGoodScheduler() const {
+        FixedWindowParityObjective<ValueType>::produceGoodScheduler(bool memoryStatesLabeling) const {
             sw::storage::MaximalEndComponentDecompositionUnfoldingParity<ValueType>
-                    unfoldedMECs(this->mdp, this->rewardModelName, this->l_max);
-            MaximalEndComponentClassifier<ValueType> mecClassifier(this->mdp, unfoldedMECs, true);
+            unfoldedMECs(this->mdp, this->rewardModelName, this->l_max);
+            MaximalEndComponentClassifier<ValueType> mecClassifier(this->mdp, unfoldedMECs, true, memoryStatesLabeling);
             storm::storage::BitVector goodStateSpace = mecClassifier.getGoodStateSpace();
             storm::storage::Scheduler<ValueType> scheduler = mecClassifier.getMaximalEndComponentScheduler();
             return storage::GoodStateSpaceAndScheduler<ValueType>(std::move(goodStateSpace), std::move(scheduler));
         }
 
         template<typename ValueType>
-        sw::storage::ValuesAndScheduler<ValueType> performMaxProb(FixedWindowObjective<ValueType> const& fwObjective, bool produceScheduler) {
+        sw::storage::ValuesAndScheduler<ValueType> performMaxProb(FixedWindowObjective<ValueType> const& fwObjective, bool produceScheduler, bool memoryStatesLabeling) {
             if (produceScheduler) {
-                storage::GoodStateSpaceAndScheduler<ValueType> goodStateSpaceAndScheduler = fwObjective.produceGoodScheduler();
+                storage::GoodStateSpaceAndScheduler<ValueType> goodStateSpaceAndScheduler = fwObjective.produceGoodScheduler(memoryStatesLabeling);
                 std::unique_ptr<storm::storage::Scheduler<ValueType>>
                 scheduler = std::unique_ptr<storm::storage::Scheduler<ValueType>>(
                         new storm::storage::Scheduler<ValueType>(fwObjective.getMdp().getNumberOfStates(), goodStateSpaceAndScheduler.scheduler.getMemoryStructure())
@@ -106,30 +106,7 @@ namespace sw {
                         goodStateSpaceAndScheduler.goodStateSpace,
                         false, // quantitative
                         true); // produce scheduler
-                /*
-                storm::storage::SparseMatrix<ValueType> transposedMatrix = fwObjective.getMdp().getTransitionMatrix().transpose(true);
-                storm::storage::MaximalEndComponentDecomposition<ValueType> badMECs(fwObjective.getMdp().getTransitionMatrix(),
-                                                                                    transposedMatrix,
-                                                                                    ~goodStateSpaceAndScheduler.goodStateSpace);
-                storm::storage::BitVector badStateSpace(fwObjective.getMdp().getNumberOfStates());
 
-                for (auto const& mec : badMECs) {
-                    for (auto const& stateActionsPair : mec) {
-                        badStateSpace.set(stateActionsPair.first, true);
-                    }
-                }
-
-                storm::modelchecker::helper::MDPSparseModelCheckingHelperReturnType<ValueType>
-                        result = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType>().computeUntilProbabilities(
-                        storm::Environment(),
-                        storm::solver::OptimizationDirection::Minimize, // we minimize the probability of reaching bad MECs
-                        fwObjective.getMdp().getTransitionMatrix(),
-                        transposedMatrix,
-                        storm::storage::BitVector(fwObjective.getMdp().getNumberOfStates(), true),
-                        badStateSpace,
-                        false, // quantitative
-                        true); // produce scheduler
-                */
                 for (uint_fast64_t state = 0; state < fwObjective.getMdp().getNumberOfStates(); ++ state) {
                     for (uint_fast64_t memory = 0; memory < scheduler->getNumberOfMemoryStates(); ++ memory) {
                         if (goodStateSpaceAndScheduler.goodStateSpace[state]) {
@@ -165,8 +142,8 @@ namespace sw {
         template class FixedWindowMeanPayoffObjective<storm::RationalNumber>;
         template class FixedWindowParityObjective<double>;
 
-        template sw::storage::ValuesAndScheduler<double> performMaxProb<double>(FixedWindowObjective<double> const& fwObjective, bool produceScheduler);
-        template sw::storage::ValuesAndScheduler<storm::RationalNumber> performMaxProb<storm::RationalNumber>(FixedWindowObjective<storm::RationalNumber> const& fwObjective, bool produceScheduler);
+        template sw::storage::ValuesAndScheduler<double> performMaxProb<double>(FixedWindowObjective<double> const& fwObjective, bool produceScheduler, bool memoryStatesLabeling);
+        template sw::storage::ValuesAndScheduler<storm::RationalNumber> performMaxProb<storm::RationalNumber>(FixedWindowObjective<storm::RationalNumber> const& fwObjective, bool produceScheduler, bool memoryStatesLabeling);
 
     }
 }

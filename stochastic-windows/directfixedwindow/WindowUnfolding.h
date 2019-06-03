@@ -82,7 +82,7 @@ namespace sw {
              * the product of the original MDP and the memory structure generated retrieves this unfolding;
              * and (ii) the mapping of each state of this unfolding to a memory state of the memory structure.
              */
-            WindowMemory<ValueType> generateMemory(bool setLabels=true) const;
+            WindowMemory<ValueType> generateMemory(bool setLabels=false) const;
 
             /*!
              * Retrieves the set of actions in the original MDP considered for this unfolding

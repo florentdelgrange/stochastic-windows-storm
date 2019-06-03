@@ -36,7 +36,7 @@ namespace sw {
                 storm::storage::SparseMatrix<ValueType> backwardTransitions = mdp.getBackwardTransitions();
                 for (uint_fast64_t const& k : this->goodMECs) {
                     storm::storage::Scheduler<ValueType> reachSafeStates(mdp.getNumberOfStates());
-                    storm::utility::graph::computeSchedulerProb1E(mecDecompositionGame.getGame(k).getStateSpace(), // good states has a probability one of reaching safe states in the same MEC
+                    storm::utility::graph::computeSchedulerProb1E(mecDecompositionGame.getGame(k).getStateSpace(), // good states have a probability one of reaching safe states in the same MEC
                                                                   mdp.getTransitionMatrix(), backwardTransitions, // transitions
                                                                   mecDecompositionGame.getGame(k).getStateSpace(), // phi
                                                                   mecDecompositionGame.getGame(k).getStateSpace() & this->safeStateSpace, // psi

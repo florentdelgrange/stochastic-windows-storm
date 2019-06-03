@@ -69,7 +69,8 @@ namespace sw {
         template<typename ValueType>
         sw::storage::ValuesAndScheduler<ValueType> performMaxProb(storm::storage::BitVector const &phiStates,
                 DirectFixedWindowObjective<ValueType> const &dfwObjective,
-                bool produceScheduler = false);
+                bool produceScheduler = false,
+                bool memoryStatesLabeling = false);
 
     }
 }

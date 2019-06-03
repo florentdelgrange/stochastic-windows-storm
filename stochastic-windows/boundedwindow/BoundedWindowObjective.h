@@ -35,7 +35,7 @@ namespace sw {
              * @return a BitVector representing the good state space
              */
             virtual storm::storage::BitVector getGoodStateSpace() const = 0;
-            virtual sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler() const = 0;
+            virtual sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler(bool memoryStatesLabeling) const = 0;
             /*!
              * get the window size l_max such that winning for FixedWindow(l_max) coincides with winning for BoundedWindow(l_max)
              */
@@ -56,7 +56,7 @@ namespace sw {
                     ClassificationMethod classificationMethod = MemorylessWindowGame);
 
             storm::storage::BitVector getGoodStateSpace() const override ;
-            sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler() const override;
+            sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler(bool memoryStatesLabeling = false) const override;
             uint_fast64_t getUniformBound() const override;
         };
 
@@ -70,13 +70,14 @@ namespace sw {
                     ClassificationMethod classificationMethod = MemorylessWindowGame);
 
             storm::storage::BitVector getGoodStateSpace() const override ;
-            sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler() const override;
+            sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler(bool memoryStatesLabeling = false) const override;
             uint_fast64_t getUniformBound() const override;
         };
 
         template<typename ValueType>
         sw::storage::ValuesAndScheduler<ValueType> performMaxProb(BoundedWindowObjective<ValueType> const &bwObjective,
-                                                                  bool produceScheduler = false);
+                                                                  bool produceScheduler = false,
+                                                                  bool memoryStatesLabeling = false);
 
     }
 

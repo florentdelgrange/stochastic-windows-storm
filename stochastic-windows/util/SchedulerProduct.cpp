@@ -9,7 +9,7 @@ namespace sw {
         template <typename ValueType>
         SchedulerProduct<ValueType>::SchedulerProduct(const storm::models::sparse::Model <ValueType> &sparseModel,
                                                       const storm::storage::Scheduler <ValueType> &scheduler,
-                                                      bool forceLabeling)
+                                                      SchedulerProductLabeling &&labelingOptions)
                                                       : storm::storage::SparseModelMemoryProduct<ValueType>(sparseModel, scheduler),
                                                         isInitialized(false),
                                                         memoryStateCount(scheduler.getNumberOfMemoryStates()),
@@ -17,7 +17,7 @@ namespace sw {
                                                         localMemory(scheduler.getMemoryStructure() ? boost::optional<storm::storage::MemoryStructure>() : boost::optional<storm::storage::MemoryStructure>(storm::storage::MemoryStructureBuilder<ValueType>::buildTrivialMemoryStructure(model))),
                                                         memory(scheduler.getMemoryStructure() ? scheduler.getMemoryStructure().get() : localMemory.get()),
                                                         scheduler(scheduler),
-                                                        forceLabeling(forceLabeling) {
+                                                        labelingOptions(std::move(labelingOptions)) {
             reachableStates = storm::storage::BitVector(model.getNumberOfStates() * memoryStateCount, false);
         }
 
@@ -56,6 +56,16 @@ namespace sw {
                         } else {
                             std::ostringstream stream;
                             stream << "a" << choice;
+                            std::string label = stream.str();
+                            if (not resultLabeling.containsLabel(label)) {
+                                resultLabeling.addLabel(label);
+                            }
+                            resultLabeling.addLabelToChoice(label, this->getResultState(modelState, memoryState));
+                        }
+                        if (labelingOptions.weights) {
+                            std::vector<ValueType> const& weights = model.getRewardModel(*labelingOptions.weights).getStateActionRewardVector();
+                            std::ostringstream stream;
+                            stream << "w=" << weights[choice];
                             std::string label = stream.str();
                             if (not resultLabeling.containsLabel(label)) {
                                 resultLabeling.addLabel(label);
@@ -295,6 +305,16 @@ namespace sw {
                         for (uint64_t memoryState = 0; memoryState < memoryStateCount; ++memoryState) {
                             if (this->isStateReachable(modelState, memoryState)) {
                                 resLabeledStates.set(this->getResultState(modelState, memoryState), true);
+                                if (labelingOptions.priorities) {
+                                    std::vector<ValueType> const& priorities = model.getRewardModel(*labelingOptions.priorities).getStateRewardVector();
+                                    std::ostringstream stream;
+                                    stream << "p=" << priorities[memoryState];
+                                    std::string label = stream.str();
+                                    if (not resultLabeling.containsLabel(label)) {
+                                        resultLabeling.addLabel(label);
+                                    }
+                                    resultLabeling.addLabelToState(label, this->getResultState(modelState, memoryState));
+                                }
                             }
                         }
                     }

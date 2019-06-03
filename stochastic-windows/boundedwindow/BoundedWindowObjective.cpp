@@ -80,7 +80,7 @@ namespace sw {
 
         template<typename ValueType>
         storage::GoodStateSpaceAndScheduler<ValueType>
-        BoundedWindowMeanPayoffObjective<ValueType>::produceGoodScheduler() const {
+        BoundedWindowMeanPayoffObjective<ValueType>::produceGoodScheduler(bool memoryStatesLabeling) const {
             std::unique_ptr<sw::util::MaximalEndComponentClassifier<ValueType>> mecClassifier;
             switch (this->classificationMethod) {
                 case MemorylessWindowGame: {
@@ -93,14 +93,14 @@ namespace sw {
                     sw::storage::MaximalEndComponentDecompositionWindowMeanPayoffGame<ValueType>
                             mecGames(this->mdp, this->rewardModelName, this->getUniformBound());
                     mecClassifier = std::unique_ptr<sw::FixedWindow::MaximalEndComponentClassifier<ValueType>>(
-                            new sw::FixedWindow::MaximalEndComponentClassifier<ValueType>(this->mdp, mecGames, true)
+                            new sw::FixedWindow::MaximalEndComponentClassifier<ValueType>(this->mdp, mecGames, true, memoryStatesLabeling)
                     );
                 } break;
                 case Unfolding: {
                     sw::storage::MaximalEndComponentDecompositionUnfoldingMeanPayoff<ValueType>
                             unfoldedMECs(this->mdp, this->rewardModelName, this->getUniformBound());
                     mecClassifier = std::unique_ptr<sw::FixedWindow::MaximalEndComponentClassifier<ValueType>>(
-                            new sw::FixedWindow::MaximalEndComponentClassifier<ValueType>(this->mdp, unfoldedMECs, true)
+                            new sw::FixedWindow::MaximalEndComponentClassifier<ValueType>(this->mdp, unfoldedMECs, true, memoryStatesLabeling)
                     );
                 } break;
             }
@@ -149,7 +149,7 @@ namespace sw {
 
         template<typename ValueType>
         storage::GoodStateSpaceAndScheduler<ValueType>
-        BoundedWindowParityObjective<ValueType>::produceGoodScheduler() const {
+        BoundedWindowParityObjective<ValueType>::produceGoodScheduler(bool memoryStatesLabeling) const {
             std::unique_ptr<sw::util::MaximalEndComponentClassifier<ValueType>> mecClassifier;
             switch (this->classificationMethod) {
                 case MemorylessWindowGame: {
@@ -162,7 +162,7 @@ namespace sw {
                     sw::storage::MaximalEndComponentDecompositionUnfoldingParity<ValueType>
                     unfoldedMECs(this->mdp, this->rewardModelName, this->getUniformBound());
                     mecClassifier = std::unique_ptr<sw::FixedWindow::MaximalEndComponentClassifier<ValueType>>(
-                            new sw::FixedWindow::MaximalEndComponentClassifier<ValueType>(this->mdp, unfoldedMECs, true)
+                            new sw::FixedWindow::MaximalEndComponentClassifier<ValueType>(this->mdp, unfoldedMECs, true, memoryStatesLabeling)
                     );
                 } break;
             }
@@ -172,9 +172,9 @@ namespace sw {
         }
 
         template<typename ValueType>
-        sw::storage::ValuesAndScheduler<ValueType> performMaxProb(BoundedWindowObjective<ValueType> const& bwObjective, bool produceScheduler) {
+        sw::storage::ValuesAndScheduler<ValueType> performMaxProb(BoundedWindowObjective<ValueType> const& bwObjective, bool produceScheduler, bool memoryStatesLabeling) {
             if (produceScheduler) {
-                storage::GoodStateSpaceAndScheduler<ValueType> goodStateSpaceAndScheduler = bwObjective.produceGoodScheduler();
+                storage::GoodStateSpaceAndScheduler<ValueType> goodStateSpaceAndScheduler = bwObjective.produceGoodScheduler(memoryStatesLabeling);
                 std::unique_ptr<storm::storage::Scheduler<ValueType>>
                         scheduler = std::unique_ptr<storm::storage::Scheduler<ValueType>>(
                         new storm::storage::Scheduler<ValueType>(bwObjective.getMdp().getNumberOfStates(), goodStateSpaceAndScheduler.scheduler.getMemoryStructure())
@@ -225,8 +225,8 @@ namespace sw {
     template class BoundedWindowMeanPayoffObjective<storm::RationalNumber>;
     template class BoundedWindowParityObjective<double>;
 
-    template sw::storage::ValuesAndScheduler<double> performMaxProb<double>(BoundedWindowObjective<double> const& bwObjective, bool produceScheduler);
-    template sw::storage::ValuesAndScheduler<storm::RationalNumber> performMaxProb<storm::RationalNumber>(BoundedWindowObjective<storm::RationalNumber> const& bwObjective, bool produceScheduler);
+    template sw::storage::ValuesAndScheduler<double> performMaxProb<double>(BoundedWindowObjective<double> const& bwObjective, bool produceScheduler, bool memoryStatesLabeling);
+    template sw::storage::ValuesAndScheduler<storm::RationalNumber> performMaxProb<storm::RationalNumber>(BoundedWindowObjective<storm::RationalNumber> const& bwObjective, bool produceScheduler, bool memoryStatesLabeling);
 
     }
 }

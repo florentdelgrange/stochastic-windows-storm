@@ -12,13 +12,18 @@
 namespace sw {
     namespace storage {
 
+        struct SchedulerProductLabeling {
+            boost::optional<std::string> weights;
+            boost::optional<std::string> priorities;
+        };
+
         template <typename ValueType>
         class SchedulerProduct : public storm::storage::SparseModelMemoryProduct<ValueType> {
         public:
 
             SchedulerProduct(storm::models::sparse::Model<ValueType> const& sparseModel,
                              storm::storage::Scheduler<ValueType> const& scheduler,
-                             bool forceLabeling = false);
+                             SchedulerProductLabeling && labelingOptions);
 
             // Invokes the building of the product under the specified scheduler (if given).
             std::shared_ptr<storm::models::sparse::Model<ValueType>> build();
@@ -65,7 +70,7 @@ namespace sw {
             boost::optional<storm::storage::MemoryStructure> localMemory;
             storm::storage::MemoryStructure const& memory;
             boost::optional<storm::storage::Scheduler<ValueType> const&>  scheduler;
-            bool forceLabeling;
+            SchedulerProductLabeling labelingOptions;
 
         };
 

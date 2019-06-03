@@ -267,23 +267,22 @@ namespace sw {
                         storm::models::sparse::Mdp<double> mdp,
                         storm::storage::Scheduler<double> const& scheduler,
                         std::string graphName = "mdp",
+                        boost::optional<sw::storage::SchedulerProductLabeling> labelingOptions = boost::none,
                         std::string outputDir = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples") {
 
                     storm::models::sparse::StateLabeling &stateLabeling = mdp.getStateLabeling();
 
                     for (uint_fast64_t state = 0; state < mdp.getNumberOfStates(); ++ state) {
-                        if (stateLabeling.getLabelsOfState(state).empty()) {
-                            std::ostringstream stream;
-                            stream << "s" << state;
-                            std::string label = stream.str();
-                            if (not stateLabeling.containsLabel(label)) {
-                                stateLabeling.addLabel(label);
-                            }
-                            stateLabeling.addLabelToState(label, state);
+                        std::ostringstream stream;
+                        stream << "s" << state;
+                        std::string label = stream.str();
+                        if (not stateLabeling.containsLabel(label)) {
+                            stateLabeling.addLabel(label);
                         }
+                        stateLabeling.addLabelToState(label, state);
                     }
 
-                    sw::storage::SchedulerProduct<double> product(mdp, scheduler);
+                    sw::storage::SchedulerProduct<double> product(mdp, scheduler, std::move(*labelingOptions));
                     std::shared_ptr<storm::models::sparse::Model<double>> model = product.build();
 
                     std::vector<std::string> stateNames = std::vector<std::string>(model->getNumberOfStates());
