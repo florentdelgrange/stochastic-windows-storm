@@ -49,28 +49,30 @@ namespace sw {
                 // soon as a state transits to the safe state space
                 uint_fast64_t M = windowMemory.memoryStructure->getNumberOfStates();
                 storm::storage::MemoryStructure::TransitionMatrix memoryUpdates(M + 1, std::vector<boost::optional<storm::storage::BitVector>>(M + 1));
-                for (uint_fast64_t memory = 0; memory < M; ++ memory) {
-                    for (uint_fast64_t next_memory = 0; next_memory < M; ++ next_memory) {
-                        memoryUpdates[memory + 1][next_memory + 1] = std::move(windowMemory.memoryStructure->getTransitionMatrix()[memory][next_memory]);
-                    }
-                    // memory state 0 is the "not good" memory region
-                    storm::storage::BitVector remainingTransitions(mdp.getNumberOfTransitions(), true);
-                    for (uint_fast64_t row = 0; row < mdp.getTransitionMatrix().getRowCount(); ++ row) {
-                        for (auto entryIt = mdp.getTransitionMatrix().getRow(row).begin(); entryIt < mdp.getTransitionMatrix().getRow(row).end(); ++ entryIt) {
-                            if (this->goodStateSpace[entryIt->getColumn()]) {
-                                uint_fast64_t unfoldingState = mecDecompositionUnfolding.getUnfolding().getInitialState(entryIt->getColumn());
-                                uint_fast64_t next_memory = windowMemory.unfoldingToMemoryStatesMapping[unfoldingState] + 1;
-                                if (not memoryUpdates[0][next_memory]) {
-                                    memoryUpdates[0][next_memory] = storm::storage::BitVector(mdp.getNumberOfTransitions(), false);
-                                }
-                                uint_fast64_t transition = entryIt - mdp.getTransitionMatrix().begin();
-                                memoryUpdates[0][next_memory]->set(transition);
-                                remainingTransitions.set(transition, false);
+                // memory state 0 is linked to the unsafe region of the MEC
+                storm::storage::BitVector remainingTransitions(mdp.getNumberOfTransitions(), true);
+                for (uint_fast64_t row = 0; row < mdp.getTransitionMatrix().getRowCount(); ++ row) {
+                    for (auto entryIt = mdp.getTransitionMatrix().getRow(row).begin(); entryIt < mdp.getTransitionMatrix().getRow(row).end(); ++ entryIt) {
+                        if (this->safeStateSpace[entryIt->getColumn()]) {
+                            uint_fast64_t unfoldingState = mecDecompositionUnfolding.getUnfolding().getInitialState(entryIt->getColumn());
+                            uint_fast64_t next_memory = windowMemory.unfoldingToMemoryStatesMapping[unfoldingState] + 1;
+                            if (not memoryUpdates[0][next_memory]) {
+                                memoryUpdates[0][next_memory] = storm::storage::BitVector(mdp.getNumberOfTransitions(), false);
                             }
+                            uint_fast64_t transition = entryIt - mdp.getTransitionMatrix().begin();
+                            memoryUpdates[0][next_memory]->set(transition);
+                            remainingTransitions.set(transition, false);
                         }
                     }
-                    memoryUpdates[0][0] = std::move(remainingTransitions);
                 }
+                memoryUpdates[0][0] = std::move(remainingTransitions);
+
+                for (uint_fast64_t memory = 0; memory < M; ++ memory) {
+                    for (uint_fast64_t next_memory = 0; next_memory < M; ++next_memory) {
+                        memoryUpdates[memory + 1][next_memory + 1] = std::move(windowMemory.memoryStructure->getTransitionMatrix()[memory][next_memory]);
+                    }
+                }
+
                 // state labels
                 storm::models::sparse::StateLabeling stateLabeling(M + 1);
                 for (uint_fast64_t memory = 0; memory < M; ++ memory) {

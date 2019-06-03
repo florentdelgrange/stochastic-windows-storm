@@ -30,7 +30,6 @@ namespace sw {
             /*!
              * initialize the input BackwardTransitions structure for this MDP game
              * @param backwardTransitions an empty BackwardTransitions structure to initialize
-             * @note in total-payoff games, actions may lead to states not belonging to the restricted state space
              */
             void initBackwardTransitions(BackwardTransitions &backwardTransitions) const override;
 

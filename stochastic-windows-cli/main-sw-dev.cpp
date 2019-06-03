@@ -387,7 +387,8 @@ void schedulersExamples(){
                 std::cout << value << "  ";
             }
             std::cout << "]" << std::endl;
-            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "bounded_mp_game");
+            // resulted file too large
+            // sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "bounded_mp_game");
         }
         {
             clock_t start = clock();

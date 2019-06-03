@@ -55,7 +55,6 @@ namespace sw {
                 T.p2States = storm::storage::BitVector(this->enabledActions.size(), false);
                 BackwardTransitions backwardTransitions;
                 WeakParityGame restrictedGame(this->mdp, this->rewardModelName, currentStateSpace, currentActionSpace);
-                this->initBackwardTransitions(backwardTransitions);
                 restrictedGame.initBackwardTransitions(backwardTransitions);
                 if (isEven(priority)) {
                     priorityAttractors = restrictedGame.attractorsP1(T, backwardTransitions);
