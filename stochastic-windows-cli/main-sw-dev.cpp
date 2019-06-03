@@ -275,7 +275,7 @@ void schedulersExamples(){
         std::cout << winningSetAndScheduler.scheduler->getMemoryStructure()->toString() << std::endl;
         winningSetAndScheduler.scheduler->printToStream(std::cout, mdp);
         std::cout << std::endl;
-        std::cout << "DFW mp scheduler (with unfolding)" << std::endl;
+        std::cout << "DFW mp scheduler" << std::endl;
         sw::storage::ValuesAndScheduler<double> resultDFWmp = sw::DirectFixedWindow::performMaxProb<double>(phiStates, dfwMpObjective, true);
         std::cout << "[  ";
         for (double const& value : resultDFWmp.values) {
@@ -376,7 +376,7 @@ void schedulersExamples(){
             sw::BoundedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, bwMPGames, true);
             sw::BoundedWindow::BoundedWindowMeanPayoffObjective<double>
             boundedWindowObjective(*mdp, "weights", sw::BoundedWindow::ClassificationMethod::WindowGameWithBound);
-            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective);
+            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true);
 
             clock_t stop = clock();
             double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
@@ -394,7 +394,7 @@ void schedulersExamples(){
             std::cout << "Bounded Window Parity game based classification (with uniform bound) = unfolding based classification" << std::endl;
             sw::BoundedWindow::BoundedWindowParityObjective<double>
             boundedWindowObjective(*mdp, "priorities", sw::BoundedWindow::ClassificationMethod::WindowGameWithBound);
-            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective);
+            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true);
 
             clock_t stop = clock();
             double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
@@ -405,7 +405,7 @@ void schedulersExamples(){
                 std::cout << value << "  ";
             }
             std::cout << "]" << std::endl;
-            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "fixed_par_unfolding");
+            sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, *result.scheduler, "bounded_par_game");
         }
         /*
         {
