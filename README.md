@@ -9,7 +9,7 @@ Get the original [Storm](http://www.stormchecker.org/index.html) source files fr
 ```
 git clone https://github.com/moves-rwth/storm.git
 ```
-### Build the *Windows* module
+### Build the *Window* module
 ```
 cd storm/src
 git remote add stochastic-windows https://github.com/theGreatGiorgio/stochastic-windows-storm.git
