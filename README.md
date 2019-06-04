@@ -26,7 +26,7 @@ Go the binaries directory and run
 ```
 ./storm-stochastic-windows
 ```
-Note that all storm's command line arguments are available.
+Note that all storm's command line options are available.
 Note also that the strategy/scheduler synthesis is only available for the policy iteration solver.
 To set it, run
 ```
