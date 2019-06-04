@@ -268,16 +268,16 @@ void schedulersExamples(){
                 phiStates);
         std::unique_ptr<sw::DirectFixedWindow::WindowUnfolding<double>> unfoldingDirectFixedPar = dfwParObjective.performUnfolding(
                 phiStates);
-        std::cout << "DFWmp: memory structure? " << unfoldingDirectFixedMP->generateMemory().memoryStructure->toString()
+        std::cout << "DFWmp: memory structure? " << unfoldingDirectFixedMP->generateMemory(true).memoryStructure->toString()
                   << std::endl;
         std::cout << "DFWpar: memory structure? "
-                  << unfoldingDirectFixedPar->generateMemory().memoryStructure->toString() << std::endl;
+                  << unfoldingDirectFixedPar->generateMemory(true).memoryStructure->toString() << std::endl;
         std::cout << "DFW scheduler: memory requirements (game version)" << std::endl;
         storm::storage::BitVector restrictedStateSpace(mdp->getNumberOfStates(), true);
         storm::storage::BitVector enabledActions(mdp->getNumberOfChoices(), true);
         std::unique_ptr<sw::game::WindowGame<double>>
                 wmpGame = std::unique_ptr<sw::game::WindowGame<double>>(new sw::game::WindowMeanPayoffGame<double>(*mdp, "weights", 3, restrictedStateSpace, enabledActions));
-        sw::game::WinningSetAndScheduler<double> winningSetAndScheduler = wmpGame->produceSchedulerForDirectFW();
+        sw::game::WinningSetAndScheduler<double> winningSetAndScheduler = wmpGame->produceSchedulerForDirectFW(true);
         std::cout << winningSetAndScheduler.scheduler->getMemoryStructure()->toString() << std::endl;
         winningSetAndScheduler.scheduler->printToStream(std::cout, mdp);
         std::cout << std::endl;
@@ -297,9 +297,9 @@ void schedulersExamples(){
         sw::storage::MaximalEndComponentDecompositionUnfoldingParity<double> mecUnfoldingPar(*mdp, "priorities", 3);
         {
             std::cout << "Mean payoff game based classification" << std::endl;
-            sw::FixedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, mecGameMP, true);
+            sw::FixedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, mecGameMP, true, true);
             sw::FixedWindow::FixedWindowMeanPayoffObjective<double> fixedWindowObjective(*mdp, "weights", 3);
-            sw::storage::ValuesAndScheduler<double> result = sw::FixedWindow::performMaxProb(fixedWindowObjective, true);
+            sw::storage::ValuesAndScheduler<double> result = sw::FixedWindow::performMaxProb(fixedWindowObjective, true, true);
             std::cout << "[  ";
             for (double const& value : result.values) {
                 std::cout << value << "  ";
@@ -310,7 +310,7 @@ void schedulersExamples(){
         }
         {
             std::cout << "Mean payoff unfolding based classification" << std::endl;
-            sw::FixedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, mecUnfoldingMP, true);
+            sw::FixedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, mecUnfoldingMP, true, true);
             std::cout << classifier.getMaximalEndComponentScheduler().getMemoryStructure()->toString() << std::endl;
             sw::FixedWindow::FixedWindowMeanPayoffObjective<double> fixedWindowObjective(*mdp, "weights", 3, false);
             sw::storage::ValuesAndScheduler<double> result = sw::FixedWindow::performMaxProb(fixedWindowObjective, true, true);
@@ -324,7 +324,7 @@ void schedulersExamples(){
         }
         {
             std::cout << "Parity unfolding based classification" << std::endl;
-            sw::FixedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, mecUnfoldingPar, true);
+            sw::FixedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, mecUnfoldingPar, true, true);
             std::cout << classifier.getMaximalEndComponentScheduler().getMemoryStructure()->toString() << std::endl;
             sw::FixedWindow::FixedWindowParityObjective<double> fixedWindowObjective(*mdp, "priorities", 3);
             sw::storage::ValuesAndScheduler<double> result = sw::FixedWindow::performMaxProb(fixedWindowObjective, true, true);
@@ -382,7 +382,7 @@ void schedulersExamples(){
             sw::BoundedWindow::MaximalEndComponentClassifier<double> classifier(*mdp, bwMPGames, true);
             sw::BoundedWindow::BoundedWindowMeanPayoffObjective<double>
             boundedWindowObjective(*mdp, "weights", sw::BoundedWindow::ClassificationMethod::WindowGameWithBound);
-            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true, true);
+            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true);
 
             clock_t stop = clock();
             double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
@@ -401,7 +401,7 @@ void schedulersExamples(){
             std::cout << "Bounded Window Parity game based classification (with uniform bound) = unfolding based classification" << std::endl;
             sw::BoundedWindow::BoundedWindowParityObjective<double>
             boundedWindowObjective(*mdp, "priorities", sw::BoundedWindow::ClassificationMethod::WindowGameWithBound);
-            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true);
+            sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowObjective, true, true);
 
             clock_t stop = clock();
             double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;

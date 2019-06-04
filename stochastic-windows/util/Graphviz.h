@@ -282,7 +282,7 @@ namespace sw {
                         stateLabeling.addLabelToState(label, state);
                     }
 
-                    sw::storage::SchedulerProduct<double> product(mdp, scheduler, std::move(*labelingOptions));
+                    sw::storage::SchedulerProduct<double> product(mdp, scheduler, *labelingOptions);
                     std::shared_ptr<storm::models::sparse::Model<double>> model = product.build();
 
                     std::vector<std::string> stateNames = std::vector<std::string>(model->getNumberOfStates());

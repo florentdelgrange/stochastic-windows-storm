@@ -23,7 +23,7 @@ namespace sw {
 
             SchedulerProduct(storm::models::sparse::Model<ValueType> const& sparseModel,
                              storm::storage::Scheduler<ValueType> const& scheduler,
-                             SchedulerProductLabeling && labelingOptions);
+                             SchedulerProductLabeling const& labelingOptions);
 
             // Invokes the building of the product under the specified scheduler (if given).
             std::shared_ptr<storm::models::sparse::Model<ValueType>> build();

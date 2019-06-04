@@ -9,7 +9,7 @@ namespace sw {
         template <typename ValueType>
         SchedulerProduct<ValueType>::SchedulerProduct(const storm::models::sparse::Model <ValueType> &sparseModel,
                                                       const storm::storage::Scheduler <ValueType> &scheduler,
-                                                      SchedulerProductLabeling &&labelingOptions)
+                                                      const SchedulerProductLabeling &labelingOptions)
                                                       : storm::storage::SparseModelMemoryProduct<ValueType>(sparseModel, scheduler),
                                                         isInitialized(false),
                                                         memoryStateCount(scheduler.getNumberOfMemoryStates()),
@@ -17,7 +17,7 @@ namespace sw {
                                                         localMemory(scheduler.getMemoryStructure() ? boost::optional<storm::storage::MemoryStructure>() : boost::optional<storm::storage::MemoryStructure>(storm::storage::MemoryStructureBuilder<ValueType>::buildTrivialMemoryStructure(model))),
                                                         memory(scheduler.getMemoryStructure() ? scheduler.getMemoryStructure().get() : localMemory.get()),
                                                         scheduler(scheduler),
-                                                        labelingOptions(std::move(labelingOptions)) {
+                                                        labelingOptions(labelingOptions) {
             reachableStates = storm::storage::BitVector(model.getNumberOfStates() * memoryStateCount, false);
         }
 
@@ -53,19 +53,24 @@ namespace sw {
                                 }
                                 resultLabeling.addLabelToChoice(label, this->getResultState(modelState, memoryState));
                             }
+                            if (labelingOptions.weights) {
+                                std::vector<ValueType> const& weights = model.getRewardModel(*labelingOptions.weights).getStateActionRewardVector();
+                                std::ostringstream stream;
+                                stream << weights[choice];
+                                std::string label = stream.str();
+                                if (not resultLabeling.containsLabel(label)) {
+                                    resultLabeling.addLabel(label);
+                                }
+                                resultLabeling.addLabelToChoice(label, this->getResultState(modelState, memoryState));
+                            }
                         } else {
                             std::ostringstream stream;
                             stream << "a" << choice;
-                            std::string label = stream.str();
-                            if (not resultLabeling.containsLabel(label)) {
-                                resultLabeling.addLabel(label);
+                            if (labelingOptions.weights) {
+                                std::vector<ValueType> const &weights =
+                                        model.getRewardModel(*labelingOptions.weights).getStateActionRewardVector();
+                                stream << ", " << weights[choice];
                             }
-                            resultLabeling.addLabelToChoice(label, this->getResultState(modelState, memoryState));
-                        }
-                        if (labelingOptions.weights) {
-                            std::vector<ValueType> const& weights = model.getRewardModel(*labelingOptions.weights).getStateActionRewardVector();
-                            std::ostringstream stream;
-                            stream << "w=" << weights[choice];
                             std::string label = stream.str();
                             if (not resultLabeling.containsLabel(label)) {
                                 resultLabeling.addLabel(label);
@@ -308,7 +313,7 @@ namespace sw {
                                 if (labelingOptions.priorities) {
                                     std::vector<ValueType> const& priorities = model.getRewardModel(*labelingOptions.priorities).getStateRewardVector();
                                     std::ostringstream stream;
-                                    stream << "p=" << priorities[memoryState];
+                                    stream << "p=" << priorities[modelState];
                                     std::string label = stream.str();
                                     if (not resultLabeling.containsLabel(label)) {
                                         resultLabeling.addLabel(label);

@@ -35,7 +35,7 @@ namespace sw {
              * @return a BitVector representing the good state space
              */
             virtual storm::storage::BitVector getGoodStateSpace() const = 0;
-            virtual sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler(bool memoryStatesLabeling) const = 0;
+            virtual sw::storage::GoodStateSpaceAndScheduler<ValueType> produceGoodScheduler(bool memoryStatesLabeling = false) const = 0;
             /*!
              * get the window size l_max such that winning for FixedWindow(l_max) coincides with winning for BoundedWindow(l_max)
              */
