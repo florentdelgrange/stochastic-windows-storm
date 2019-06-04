@@ -1,4 +1,4 @@
-# Stochastic Windows 
+# StormWind 
 ## Installation
 ### Requirements
 Make sure that you have set up all dependencies as required [here](http://www.stormchecker.org/documentation/installation/requirements.html).
