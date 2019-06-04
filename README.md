@@ -1,15 +1,15 @@
 # Stochastic Windows 
 ## Installation
 ### Requirements
-Make sure that you have set up all dependencies as required (here)[http://www.stormchecker.org/documentation/installation/requirements.html]
+Make sure that you have set up all dependencies as required [here](http://www.stormchecker.org/documentation/installation/requirements.html)
 Regarding to your OS version, you may have some issues with the installation of Boost or Carl.
-You can install them manually as described (here)[http://www.stormchecker.org/documentation/installation/manual-configuration.html].
+You can install them manually as described [here](http://www.stormchecker.org/documentation/installation/manual-configuration.html).
 ### Storm sources
-Get original (Storm)[http://www.stormchecker.org/index.html] sources from github as follows.
+Get the original [Storm](http://www.stormchecker.org/index.html) source files from github as follows.
 ```
 git clone https://github.com/moves-rwth/storm.git
 ```
-### Build the Stochastic Window module
+### Build the Stochastic Windows module
 ```
 cd storm/src
 git remote add stochastic-windows https://github.com/theGreatGiorgio/stochastic-windows-storm.git
