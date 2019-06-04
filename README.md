@@ -1,7 +1,7 @@
 # Stochastic Windows 
 ## Installation
 ### Requirements
-Make sure that you have set up all dependencies as required [here](http://www.stormchecker.org/documentation/installation/requirements.html)
+Make sure that you have set up all dependencies as required [here](http://www.stormchecker.org/documentation/installation/requirements.html).
 Regarding to your OS version, you may have some issues with the installation of Boost or Carl.
 You can install them manually as described [here](http://www.stormchecker.org/documentation/installation/manual-configuration.html).
 ### Storm sources
