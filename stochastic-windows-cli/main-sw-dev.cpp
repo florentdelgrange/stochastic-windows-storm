@@ -86,7 +86,7 @@ std::string minMaxMethodAsString() {
  */
 void initializeSettings() {
     storm::settings::mutableManager().setName("Stochastic Windows", "stochastic-windows");
-
+    /*
     storm::settings::addModule<storm::settings::modules::GeneralSettings>();
     storm::settings::addModule<storm::settings::modules::IOSettings>();
     storm::settings::addModule<storm::settings::modules::CoreSettings>();
@@ -101,12 +101,13 @@ void initializeSettings() {
     storm::settings::addModule<storm::settings::modules::ResourceSettings>();
     storm::settings::addModule<storm::settings::modules::GmmxxEquationSolverSettings>();
     storm::settings::addModule<storm::settings::modules::MultiplierSettings>();
+    */
 
     // DEBUG MODE
-    storm::utility::setLogLevel(l3pp::LogLevel::DEBUG);
+    // storm::utility::setLogLevel(l3pp::LogLevel::DEBUG);
 
-    storm::settings::mutableManager().printHelpForModule("minmax");
-    storm::settings::mutableManager().setFromString("--minmax:method pi");
+    // storm::settings::mutableManager().printHelpForModule("minmax");
+    // storm::settings::mutableManager().setFromString("--minmax:method pi");
     std::cout << "Equation solving method: " << minMaxMethodAsString() << std::endl;
 }
 
@@ -740,16 +741,24 @@ void predecessorListExample() {
 }
 
 int main(const int argc, const char** argv){
+    try {
+        storm::cli::process(argc, argv);
+        initializeSettings();
+        // storm::utility::setUp();
+        storm::cli::printHeader("Stochastic Windows (Storm backend)", argc, argv);
 
-    // storm::utility::setUp();
-    storm::cli::printHeader("Stochastic Windows (Storm backend)", argc, argv);
-    initializeSettings();
-
-    // mecDecompositionPrintExamples();
-    // graphVizExample();
-    windowExamples();
-    schedulersExamples();
-    // predecessorListExample();
+        // mecDecompositionPrintExamples();
+        // graphVizExample();
+        windowExamples();
+        schedulersExamples();
+        // predecessorListExample();
+    } catch (storm::exceptions::BaseException const& exception) {
+        STORM_LOG_ERROR("An exception caused Storm to terminate. The message of the exception is: " << exception.what());
+        return 1;
+    } catch (std::exception const& exception) {
+        STORM_LOG_ERROR("An unexpected exception occurred and caused Storm to terminate. The message of this exception is: " << exception.what());
+        return 2;
+    }
 
     return 0;
 }
