@@ -1,8 +1,8 @@
 # StormWind 
 ## Installation
 ### Requirements
-Make sure that you have set up all dependencies as required [here](http://www.stormchecker.org/documentation/installation/requirements.html).
-Regarding to your OS version, you may have some issues with the installation of Boost or Carl.
+Make sure you have set up all dependencies as required [here](http://www.stormchecker.org/documentation/installation/requirements.html).
+Depending of your OS version, you may have some issues with the installation of Boost or Carl.
 You can install them manually as described [here](http://www.stormchecker.org/documentation/installation/manual-configuration.html).
 ### Storm sources
 Get the original [Storm](http://www.stormchecker.org/index.html) source files from github as follows.
@@ -27,7 +27,7 @@ Go the binaries directory and run
 ./storm-stochastic-windows
 ```
 Note that all storm's command line options are available.
-Note also that the strategy/scheduler synthesis is only available for the policy iteration solver.
+Note also that strategy/scheduler synthesis is only available for the policy iteration solver.
 To set it, run
 ```
 ./storm-stochastic-windows --minmax:method pi
