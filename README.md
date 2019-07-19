@@ -22,7 +22,7 @@ make
 ```
 
 ## Run
-Go the binaries directory and run
+Go to binaries directory and run
 ```
 ./storm-stochastic-windows
 ```
