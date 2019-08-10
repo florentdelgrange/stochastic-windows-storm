@@ -429,7 +429,8 @@ namespace sw {
             for (uint_fast64_t state: stateSpace) {
                 s = oldToNewStateMapping[state];
                 X[s] = maximizerPhase ? -1 * storm::utility::infinity<ValueType>(): storm::utility::infinity<ValueType>();
-                for (uint_fast64_t next_state: *successors(state)) {
+                for (auto it = successors(state)->begin(); it != successors(state)->end(); ++ it) {
+                    uint_fast64_t next_state = *it;
                     s_prime = oldToNewStateMappingSucc[next_state];
                     x = w(state, next_state) + storm::utility::min(X_pre[s_prime], Y[s_prime]);
                     if ((maximizerPhase and x > X[s]) or (not maximizerPhase and x < X[s])) {
