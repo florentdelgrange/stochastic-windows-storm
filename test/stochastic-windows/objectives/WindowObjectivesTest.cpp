@@ -4,6 +4,7 @@
 
 #include <storm/settings/modules/MinMaxEquationSolverSettings.h>
 #include <stochastic-windows/fixedwindow/MaximalEndComponentClassifier.h>
+#include <stochastic-windows/fixedwindow/FixedWindowObjective.h>
 #include <stochastic-windows/prefixindependent/MaximalEndComponentDecompositionUnfolding.h>
 #include "gtest/gtest.h"
 #include "storm-parsers/parser/PrismParser.h"
@@ -17,11 +18,7 @@ namespace  {
     class ValueIterationSolverInitialization {
     public:
         ValueIterationSolverInitialization() {
-            auto const& minMaxSettings = storm::settings::getModule<storm::settings::modules::MinMaxEquationSolverSettings>();
-            auto minMaxEquationSolvingTechnique = minMaxSettings.getMinMaxEquationSolvingMethod();
-            if (minMaxEquationSolvingTechnique != storm::solver::MinMaxMethod::ValueIteration) {
-                storm::settings::mutableManager().setFromString("--minmax:method vi");
-            }
+            storm::settings::mutableManager().setFromString("--minmax:method vi");
         }
     };
 
@@ -29,9 +26,13 @@ namespace  {
     template<typename TestInit>
     class WindowObjectiveTest : public ::testing::Test {
     public:
-        const double precision = 1e-6;
+        const double precision = 1e-5;
         WindowObjectiveTest() {
-            TestInit();
+            auto const& minMaxSettings = storm::settings::getModule<storm::settings::modules::MinMaxEquationSolverSettings>();
+            auto minMaxEquationSolvingTechnique = minMaxSettings.getMinMaxEquationSolvingMethod();
+            if (minMaxEquationSolvingTechnique != storm::solver::MinMaxMethod::ValueIteration) {
+                TestInit();
+            }
             // model path
             std::string prismModelPath = STORM_TEST_RESOURCES_DIR "/mdp/window_mp_par.nm";
 
@@ -115,6 +116,28 @@ namespace  {
         sw::FixedWindow::MaximalEndComponentClassifier<double> gameClassifier(*this->getMDP(), games);
         ASSERT_EQ(classifierUnfoldingMP.getSafeStateSpace(), gameClassifier.getSafeStateSpace());
         ASSERT_EQ(classifierUnfoldingMP.getGoodStateSpace(), gameClassifier.getGoodStateSpace());
+    }
+
+    TYPED_TEST(WindowObjectiveTest, fixedWindowTest) {
+        // Fixed window objective: mean payoff game classification
+        sw::FixedWindow::FixedWindowMeanPayoffObjective<double> fixedWindowMPObjectiveGame(*this->getMDP(), "weights", 3);
+        sw::storage::ValuesAndScheduler<double> fwResult = sw::FixedWindow::performMaxProb(fixedWindowMPObjectiveGame);
+        std::vector<double> expectedResult = {1, 1, 0.875, 1, 1, 0.5, 1, 1, 0.5, 0, 0.5, 1};
+        for (uint_fast64_t state = 0; state < this->getMDP()->getNumberOfStates(); ++ state) {
+            EXPECT_NEAR(expectedResult[state], fwResult.values[state], this->precision);
+        }
+        // Fixed window objective: mean payoff with unfolding based classification
+        sw::FixedWindow::FixedWindowMeanPayoffObjective<double> fixedWindowMPObjectiveUnfolding(*this->getMDP(), "weights", 3, false);
+        fwResult = sw::FixedWindow::performMaxProb(fixedWindowMPObjectiveUnfolding);
+        for (uint_fast64_t state = 0; state < this->getMDP()->getNumberOfStates(); ++ state) {
+            EXPECT_NEAR(expectedResult[state], fwResult.values[state], this->precision);
+        }
+        // Fixed window objective: parity
+        sw::FixedWindow::FixedWindowParityObjective<double> fixedWindowParityObjective(*this->getMDP(), "priorities", 3);
+        fwResult = sw::FixedWindow::performMaxProb(fixedWindowParityObjective);
+        for (uint_fast64_t state = 0; state < this->getMDP()->getNumberOfStates(); ++ state) {
+            EXPECT_NEAR(expectedResult[state], fwResult.values[state], this->precision);
+        }
     }
 
 }
