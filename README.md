@@ -12,6 +12,7 @@ git clone https://github.com/moves-rwth/storm.git
 ### Build the storm *window* module
 ```
 cd storm/src
+git init .
 git remote add stochastic-windows https://github.com/theGreatGiorgio/stochastic-windows-storm.git
 git fetch --all
 git reset --hard stochastic-windows/master
