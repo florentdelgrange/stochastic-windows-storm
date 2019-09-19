@@ -2,7 +2,7 @@
 // Created by Florent Delgrange on 2019-08-15.
 //
 
-#include <stochastic-windows/game/TotalPayoffGame.h>
+#include "stochastic-windows/game/TotalPayoffGame.h"
 #include "gtest/gtest.h"
 #include "storm-parsers/parser/PrismParser.h"
 #include "storm/builder/ExplicitModelBuilder.h"
@@ -65,6 +65,7 @@ TEST(Attractors, attractorTest) {
     T.clear(); T.set(5); T.set(4);
     expectedSet = T; expectedSet.set(0); expectedSet.set(2); expectedSet.set(7); expectedSet.set(8); expectedSet.set(10);
     ASSERT_EQ(expectedSet, game.attractorsP1(T, backwardTransitions));
+    // P1 attractors of sets
     sw::game::GameStates S;
     S.p1States = storm::storage::BitVector(restrictedStateSpace.size(), false);
     S.p2States = storm::storage::BitVector(enabledActions.size(), false);
@@ -74,4 +75,155 @@ TEST(Attractors, attractorTest) {
     ASSERT_EQ(A.p1States, expectedSet);
     expectedSet = S.p2States; expectedSet.set(4); expectedSet.set(5); expectedSet.set(8); expectedSet.set(10);
     ASSERT_EQ(A.p2States, expectedSet);
+
+    // Singleton P2 attractors
+    S.p1States = storm::storage::BitVector(restrictedStateSpace.size(), false);
+    S.p2States = storm::storage::BitVector(enabledActions.size(), false);
+    // attractors of state 0
+    S.p1States.set(0);
+    storm::storage::BitVector expectedSetP1 = S.p1States;
+    storm::storage::BitVector expectedSetP2 = expectedSetP1; expectedSetP2.clear();
+    A = game.attractorsP2(S, backwardTransitions);
+    ASSERT_EQ(A.p1States, expectedSetP1);
+    ASSERT_EQ(A.p2States, expectedSetP2);
+    S.p1States.clear(); S.p2States.clear();
+    expectedSetP1.clear(); expectedSetP2.clear();
+
+    // attractors of state 1
+    S.p1States.set(1);
+    expectedSetP1.set(1);
+    expectedSetP2.set(0); expectedSetP2.set(2); expectedSetP2.set(9);
+    A = game.attractorsP2(S, backwardTransitions);
+    ASSERT_EQ(A.p1States, expectedSetP1);
+    ASSERT_EQ(A.p2States, expectedSetP2);
+    S.p1States.clear(); S.p2States.clear();
+    expectedSetP1.clear(); expectedSetP2.clear();
+
+    // attractors of state 2
+    S.p1States.set(2);
+    expectedSetP1.set(2);
+    expectedSetP2.set(1);
+    A = game.attractorsP2(S, backwardTransitions);
+    ASSERT_EQ(A.p1States, expectedSetP1);
+    ASSERT_EQ(A.p2States, expectedSetP2);
+    S.p1States.clear(); S.p2States.clear();
+    expectedSetP1.clear(); expectedSetP2.clear();
+
+    // attractors of state 3
+    S.p1States.set(3);
+    expectedSetP1.set(1); expectedSetP1.set(3); expectedSetP1.set(6);
+    expectedSetP2.set(0); expectedSetP2.set(2); expectedSetP2.set(4); expectedSetP2.set(8); expectedSetP2.set(9);
+    A = game.attractorsP2(S, backwardTransitions);
+    ASSERT_EQ(A.p1States, expectedSetP1);
+    ASSERT_EQ(A.p2States, expectedSetP2);
+    S.p1States.clear(); S.p2States.clear();
+    expectedSetP1.clear(); expectedSetP2.clear();
+
+    // attractors of state 4
+    S.p1States.set(4);
+    expectedSetP1.set(2); expectedSetP1.set(4); expectedSetP1.set(7); expectedSetP1.set(11);
+    expectedSetP2.set(1); expectedSetP2.set(3); expectedSetP2.set(5); expectedSetP2.set(6); expectedSetP2.set(10);
+    expectedSetP2.set(11); expectedSetP2.set(15); expectedSetP2.set(16);
+    A = game.attractorsP2(S, backwardTransitions);
+    ASSERT_EQ(A.p1States, expectedSetP1);
+    ASSERT_EQ(A.p2States, expectedSetP2);
+    S.p1States.clear(); S.p2States.clear();
+    expectedSetP1.clear(); expectedSetP2.clear();
+
+    // attractors of state 5
+    S.p1States.set(5);
+    expectedSetP1.set(2); expectedSetP1.set(5); expectedSetP1.set(8); expectedSetP1.set(10);
+    expectedSetP2.set(1); expectedSetP2.set(3); expectedSetP2.set(6); expectedSetP2.set(7); expectedSetP2.set(12);
+    expectedSetP2.set(14); expectedSetP2.set(15);
+    A = game.attractorsP2(S, backwardTransitions);
+    ASSERT_EQ(A.p1States, expectedSetP1);
+    ASSERT_EQ(A.p2States, expectedSetP2);
+    S.p1States.clear(); S.p2States.clear();
+    expectedSetP1.clear(); expectedSetP2.clear();
+
+    // attractors of state 6
+    S.p1States.set(6);
+    expectedSetP1.set(1); expectedSetP1.set(3); expectedSetP1.set(6);
+    expectedSetP2.set(0); expectedSetP2.set(2); expectedSetP2.set(4); expectedSetP2.set(8); expectedSetP2.set(9);
+    A = game.attractorsP2(S, backwardTransitions);
+    ASSERT_EQ(A.p1States, expectedSetP1);
+    ASSERT_EQ(A.p2States, expectedSetP2);
+    S.p1States.clear(); S.p2States.clear();
+    expectedSetP1.clear(); expectedSetP2.clear();
+
+    // attractors of state 7
+    S.p1States.set(7);
+    expectedSetP1.set(2); expectedSetP1.set(4); expectedSetP1.set(7); expectedSetP1.set(11);
+    expectedSetP2.set(1); expectedSetP2.set(3); expectedSetP2.set(5); expectedSetP2.set(6); expectedSetP2.set(10);
+    expectedSetP2.set(11); expectedSetP2.set(15); expectedSetP2.set(16);
+    A = game.attractorsP2(S, backwardTransitions);
+    ASSERT_EQ(A.p1States, expectedSetP1);
+    ASSERT_EQ(A.p2States, expectedSetP2);
+    S.p1States.clear(); S.p2States.clear();
+    expectedSetP1.clear(); expectedSetP2.clear();
+
+    // attractors of state 8
+    S.p1States.set(8);
+    expectedSetP1.set(2); expectedSetP1.set(5); expectedSetP1.set(8); expectedSetP1.set(10);
+    expectedSetP2.set(1); expectedSetP2.set(3); expectedSetP2.set(6); expectedSetP2.set(7); expectedSetP2.set(12);
+    expectedSetP2.set(14); expectedSetP2.set(15);
+    A = game.attractorsP2(S, backwardTransitions);
+    ASSERT_EQ(A.p1States, expectedSetP1);
+    ASSERT_EQ(A.p2States, expectedSetP2);
+    S.p1States.clear(); S.p2States.clear();
+    expectedSetP1.clear(); expectedSetP2.clear();
+
+    // attractors of state 8
+    S.p1States.set(8);
+    expectedSetP1.set(2); expectedSetP1.set(5); expectedSetP1.set(8); expectedSetP1.set(10);
+    expectedSetP2.set(1); expectedSetP2.set(3); expectedSetP2.set(6); expectedSetP2.set(7); expectedSetP2.set(12);
+    expectedSetP2.set(14); expectedSetP2.set(15);
+    A = game.attractorsP2(S, backwardTransitions);
+    ASSERT_EQ(A.p1States, expectedSetP1);
+    ASSERT_EQ(A.p2States, expectedSetP2);
+    S.p1States.clear(); S.p2States.clear();
+    expectedSetP1.clear(); expectedSetP2.clear();
+
+    // attractors of state 9
+    S.p1States.set(9);
+    expectedSetP1.set(9);
+    expectedSetP2.set(6); expectedSetP2.set(13); expectedSetP2.set(15);
+    A = game.attractorsP2(S, backwardTransitions);
+    ASSERT_EQ(A.p1States, expectedSetP1);
+    ASSERT_EQ(A.p2States, expectedSetP2);
+    S.p1States.clear(); S.p2States.clear();
+    expectedSetP1.clear(); expectedSetP2.clear();
+
+    // attractors of state 10
+    S.p1States.set(10);
+    expectedSetP1.set(10);
+    expectedSetP2.set(7);
+    A = game.attractorsP2(S, backwardTransitions);
+    ASSERT_EQ(A.p1States, expectedSetP1);
+    ASSERT_EQ(A.p2States, expectedSetP2);
+    S.p1States.clear(); S.p2States.clear();
+    expectedSetP1.clear(); expectedSetP2.clear();
+
+    // attractors of state 11
+    S.p1States.set(11);
+    expectedSetP1.set(11);
+    expectedSetP2.set(11); expectedSetP2.set(16);
+    A = game.attractorsP2(S, backwardTransitions);
+    ASSERT_EQ(A.p1States, expectedSetP1);
+    ASSERT_EQ(A.p2States, expectedSetP2);
+    S.p1States.clear(); S.p2States.clear();
+    expectedSetP1.clear(); expectedSetP2.clear();
+
+    // attractors of set S = {4, 10}, A = {0}
+    S.p1States.set(4); S.p1States.set(10); S.p2States.set(0);
+    expectedSetP1.set(0); expectedSetP1.set(2); expectedSetP1.set(4); expectedSetP1.set(5); expectedSetP1.set(7);
+    expectedSetP1.set(8); expectedSetP1.set(10); expectedSetP1.set(11);
+    expectedSetP2.set(0); expectedSetP2.set(1); expectedSetP2.set(3); expectedSetP2.set(5); expectedSetP2.set(6);
+    expectedSetP2.set(7); expectedSetP2.set(10); expectedSetP2.set(11); expectedSetP2.set(12);
+    expectedSetP2.set(14); expectedSetP2.set(15); expectedSetP2.set(16);
+    A = game.attractorsP2(S, backwardTransitions);
+    ASSERT_EQ(A.p1States, expectedSetP1);
+    ASSERT_EQ(A.p2States, expectedSetP2);
+    S.p1States.clear(); S.p2States.clear();
+    expectedSetP1.clear(); expectedSetP2.clear();
 }

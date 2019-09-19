@@ -34,6 +34,7 @@ TEST(TotalPayoffGames, valueIterationTest) {
     ASSERT_EQ(-1 * storm::utility::infinity<double>(), values[9]);
     ASSERT_EQ(-1 * storm::utility::infinity<double>(), values[10]);
     EXPECT_NEAR(-3, values[11], precision);
+    // Min total payoff sup values
     values = game.minTotalPayoffSup();
     ASSERT_EQ(-1 * storm::utility::infinity<double>(), values[0]);
     ASSERT_EQ(-1 * storm::utility::infinity<double>(), values[1]);
