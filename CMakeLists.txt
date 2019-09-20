@@ -25,6 +25,6 @@ add_subdirectory(storm-conv-cli)
 add_subdirectory(stochastic-windows)
 add_subdirectory(stochastic-windows-cli)
 
-# add_subdirectory(test)
+add_subdirectory(test)
 
 set(STORM_TARGETS ${STORM_TARGETS} PARENT_SCOPE)
