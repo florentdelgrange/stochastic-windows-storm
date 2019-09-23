@@ -156,7 +156,6 @@ namespace  {
             EXPECT_NEAR(expectedResult[state], result.values[state], this->precision);
         }
         // different classification methods (with pseudo-polynomial memory)
-        /* time out
         {
             sw::BoundedWindow::BoundedWindowMeanPayoffObjective<double> boundedWindowObjective(*this->getMDP(),
                                                                                                "weights",
@@ -166,6 +165,14 @@ namespace  {
                 EXPECT_NEAR(expectedResult[state], result.values[state], this->precision);
             }
         }
+        {
+            sw::BoundedWindow::BoundedWindowParityObjective<double> boundedWindowObjective(*this->getMDP(), "priorities", sw::BoundedWindow::ClassificationMethod::WindowGameWithBound);
+            result = sw::BoundedWindow::performMaxProb(boundedWindowObjective);
+            for (uint_fast64_t state = 0; state < this->getMDP()->getNumberOfStates(); ++ state) {
+                EXPECT_NEAR(expectedResult[state], result.values[state], this->precision);
+            }
+        }
+        /* time out
         {
             sw::BoundedWindow::BoundedWindowMeanPayoffObjective<double> boundedWindowObjective = sw::BoundedWindow::BoundedWindowMeanPayoffObjective<double>(
                     *this->getMDP(), "weights", sw::BoundedWindow::ClassificationMethod::Unfolding);
