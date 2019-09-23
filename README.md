@@ -16,6 +16,7 @@ git init .
 git remote add stochastic-windows https://github.com/theGreatGiorgio/stochastic-windows-storm.git
 git fetch --all
 git reset --hard stochastic-windows/master
+cp -R test/stochastic-windows/resources/* ../resources/examples/testfiles/
 mkdir ../build
 cd ../build
 cmake ..
