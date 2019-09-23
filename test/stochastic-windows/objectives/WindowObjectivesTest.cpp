@@ -6,6 +6,7 @@
 #include <stochastic-windows/fixedwindow/MaximalEndComponentClassifier.h>
 #include <stochastic-windows/fixedwindow/FixedWindowObjective.h>
 #include <stochastic-windows/prefixindependent/MaximalEndComponentDecompositionUnfolding.h>
+#include <stochastic-windows/boundedwindow/BoundedWindowObjective.h>
 #include "gtest/gtest.h"
 #include "storm-parsers/parser/PrismParser.h"
 #include "storm/builder/ExplicitModelBuilder.h"
@@ -138,6 +139,42 @@ namespace  {
         for (uint_fast64_t state = 0; state < this->getMDP()->getNumberOfStates(); ++ state) {
             EXPECT_NEAR(expectedResult[state], fwResult.values[state], this->precision);
         }
+    }
+
+    TYPED_TEST(WindowObjectiveTest, boundedWindowTest) {
+        // Mean Payoff
+        sw::BoundedWindow::BoundedWindowMeanPayoffObjective<double> boundedWindowMPObjectiveGame(*this->getMDP(), "weights");
+        sw::storage::ValuesAndScheduler<double> result = sw::BoundedWindow::performMaxProb(boundedWindowMPObjectiveGame);
+        std::vector<double> expectedResult = {1, 1, 0.875, 1, 1, 0.5, 1, 1, 0.5, 0, 0.5, 1};
+        for (uint_fast64_t state = 0; state < this->getMDP()->getNumberOfStates(); ++ state) {
+            EXPECT_NEAR(expectedResult[state], result.values[state], this->precision);
+        }
+        // Parity
+        sw::BoundedWindow::BoundedWindowParityObjective<double> boundedWindowParityObjective(*this->getMDP(), "priorities");
+        result = sw::BoundedWindow::performMaxProb(boundedWindowParityObjective);
+        for (uint_fast64_t state = 0; state < this->getMDP()->getNumberOfStates(); ++ state) {
+            EXPECT_NEAR(expectedResult[state], result.values[state], this->precision);
+        }
+        // different classification methods (with pseudo-polynomial memory)
+        /* time out
+        {
+            sw::BoundedWindow::BoundedWindowMeanPayoffObjective<double> boundedWindowObjective(*this->getMDP(),
+                                                                                               "weights",
+                                                                                               sw::BoundedWindow::ClassificationMethod::WindowGameWithBound);
+            result = sw::BoundedWindow::performMaxProb(boundedWindowObjective);
+            for (uint_fast64_t state = 0; state < this->getMDP()->getNumberOfStates(); ++state) {
+                EXPECT_NEAR(expectedResult[state], result.values[state], this->precision);
+            }
+        }
+        {
+            sw::BoundedWindow::BoundedWindowMeanPayoffObjective<double> boundedWindowObjective = sw::BoundedWindow::BoundedWindowMeanPayoffObjective<double>(
+                    *this->getMDP(), "weights", sw::BoundedWindow::ClassificationMethod::Unfolding);
+            result = sw::BoundedWindow::performMaxProb(boundedWindowObjective);
+            for (uint_fast64_t state = 0; state < this->getMDP()->getNumberOfStates(); ++state) {
+                EXPECT_NEAR(expectedResult[state], result.values[state], this->precision);
+            }
+        }
+        */
     }
 
 }
