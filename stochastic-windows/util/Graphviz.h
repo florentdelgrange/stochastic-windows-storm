@@ -216,6 +216,39 @@ namespace sw {
                     mdpGraphExport(matrix, weightVector, std::vector<double>(), graphName, outputDir, stateNames, actionNames, xlabels);
                 }
 
+                static void mdpGraphExport(storm::models::sparse::Mdp<double> const& mdp,
+                                           std::string stateRewardVectorName,
+                                           std::string stateActionRewardVectorName,
+                                           std::string graphName = "mdp",
+                                           std::string outputDir = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples") {
+
+                    std::vector<std::string> stateNames(mdp.getNumberOfStates()), actionNames(mdp.getNumberOfChoices());
+                    for (uint_fast64_t state = 0; state < mdp.getNumberOfStates(); ++ state) {
+                        std::ostringstream stream;
+                        uint_fast64_t i = mdp.getStateLabeling().getLabelsOfState(state).size();
+                        for (std::string const &label : mdp.getStateLabeling().getLabelsOfState(state)) {
+                            --i;
+                            stream << label << (i ? ", " : "");
+                        }
+                    }
+
+                    if (mdp.hasChoiceLabeling()) {
+                        for (uint_fast64_t action = 0; action < mdp.getNumberOfChoices(); ++ action) {
+                            std::ostringstream stream;
+                            uint_fast64_t i = mdp.getChoiceLabeling().getLabelsOfChoice(action).size();
+                            for (std::string const& label : mdp.getChoiceLabeling().getLabelsOfChoice(action)) {
+                                -- i;
+                                stream << label << (i ? ", " : "");
+                            }
+                        }
+                    }
+
+                    std::vector<double> weightVector = stateActionRewardVectorName != "" ? mdp.getRewardModel(stateActionRewardVectorName).getStateActionRewardVector() : std::vector<double>();
+                    std::vector<double> priorityVector = stateRewardVectorName != "" ? mdp.getRewardModel(stateRewardVectorName).getStateRewardVector() : std::vector<double>();
+                    mdpGraphExport(mdp.getTransitionMatrix(), weightVector, std::vector<double>(), graphName, outputDir, stateNames, actionNames);
+
+                }
+
                 static void unfoldedECsExport(
                     storm::storage::SparseMatrix<double> &originalMatrix,
                     sw::storage::MaximalEndComponentDecompositionUnfolding<double> &unfoldedECs,
