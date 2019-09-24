@@ -210,7 +210,7 @@ namespace sw {
             std::unique_ptr<storm::storage::Scheduler<ValueType>> scheduler;
             if (produceScheduler) {
                 storm::storage::MemoryStructureBuilder<ValueType> memoryBuilder(this->l_max, this->mdp);
-                storm::storage::BitVector unsafeStates = ~this->restrictedStateSpace;
+                storm::storage::BitVector unsafeStates = ~this->restrictedStateSpace, allStates = storm::storage::BitVector(this->mdp.getNumberOfStates(), true);
                 storm::Environment env;
                 auto precision = storm::utility::convertNumber<ValueType>(env.solver().minMax().getPrecision());
                 bool relative = env.solver().minMax().getRelativeTerminationCriterion();
@@ -232,11 +232,12 @@ namespace sw {
                             }
                         }
                     }
+                    storm::storage::BitVector resetActions = ~continueActions;
                     // choosing an action that does not ensure to make the current sum positive
                     memoryBuilder.setTransition(l, l + 1, this->restrictedStateSpace, continueActions);
                     // good reset: the sum is maximal by playing the action in less than l_max steps
                     // OR the arrival state and/or the action played does not belong to this game
-                    memoryBuilder.setTransition(l, 0, storm::storage::BitVector(this->mdp.getNumberOfStates(), true), ~continueActions);
+                    memoryBuilder.setTransition(l, 0, allStates, resetActions);
                     if (memoryStatesLabeling) {
                         std::ostringstream stream;
                         stream << "l=" << l;
