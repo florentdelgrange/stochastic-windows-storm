@@ -151,14 +151,14 @@ namespace sw {
 
                     for (uint_fast64_t state = 0; state < matrix.getRowGroupCount(); ++state) {
                         Graph::vertex_descriptor s;
-                        if (stateNames[state] == "")
+                        if (stateNames[state].empty())
                             s = add_vertex(Nodes::State{'s' + std::to_string(state), priorityVector[state]}, g);
                         else
                             s = add_vertex(Nodes::State{stateNames[state], priorityVector[state]}, g);
                         stateVertices[state] = s;
                         for (uint_fast64_t row = groups[state]; row < groups[state + 1]; ++row) {
                             Graph::vertex_descriptor a;
-                            if (actionNames[row] == "")
+                            if (actionNames[row].empty())
                                 a = add_vertex(Nodes::Action{'a' + std::to_string(row), weightVector[row], row}, g);
                             else
                                 a = add_vertex(Nodes::Action{actionNames[row], weightVector[row], row}, g);
@@ -229,6 +229,7 @@ namespace sw {
                         for (std::string const &label : mdp.getStateLabeling().getLabelsOfState(state)) {
                             --i;
                             stream << label << (i ? ", " : "");
+                            stateNames[state] = stream.str();
                         }
                     }
 
@@ -239,13 +240,14 @@ namespace sw {
                             for (std::string const& label : mdp.getChoiceLabeling().getLabelsOfChoice(action)) {
                                 -- i;
                                 stream << label << (i ? ", " : "");
+                                actionNames[action] = stream.str();
                             }
                         }
                     }
 
                     std::vector<double> weightVector = stateActionRewardVectorName != "" ? mdp.getRewardModel(stateActionRewardVectorName).getStateActionRewardVector() : std::vector<double>();
                     std::vector<double> priorityVector = stateRewardVectorName != "" ? mdp.getRewardModel(stateRewardVectorName).getStateRewardVector() : std::vector<double>();
-                    mdpGraphExport(mdp.getTransitionMatrix(), weightVector, std::vector<double>(), graphName, outputDir, stateNames, actionNames);
+                    mdpGraphExport(mdp.getTransitionMatrix(), weightVector, std::vector<double>(), graphName, outputDir, std::move(stateNames), std::move(actionNames));
 
                 }
 
