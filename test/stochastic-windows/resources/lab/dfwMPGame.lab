@@ -5,6 +5,7 @@ init s_0 s_1 s_2 s_3 s_4 s_5 s_6
 0 init s_0
 1 s_1
 2 s_2
+3 s_3
 4 s_4
 5 s_5
 6 s_6
