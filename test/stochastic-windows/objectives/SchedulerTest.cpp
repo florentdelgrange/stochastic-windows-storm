@@ -32,28 +32,14 @@ TEST(SchedulerTest, meanPayoffWindowGameTest) {
         std::vector<uint_fast64_t> currentState = {0, 1, 2, 3, 0};
         for (uint_fast64_t step = 0; step < 4; ++step) {
             choice = scheduler.getChoice(currentState[step], currentMemory);
-            uint_fast64_t row = mdp.getTransitionMatrix().getRowGroupIndices()[currentState[step]] +
-                                choice.getDeterministicChoice();
-            auto entryIt = mdp.getTransitionMatrix().getRow(row).begin();
-            while (entryIt->getColumn() != currentState[step + 1]) {
-                ++entryIt;
-            }
-            uint_fast64_t transitionIndex = entryIt - mdp.getTransitionMatrix().begin();
-            currentMemory = scheduler.getMemoryStructure()->getSuccessorMemoryState(currentMemory, transitionIndex);
+            currentMemory = scheduler.getMemoryStructure()->getSuccessorMemoryState(mdp, currentMemory, currentState[step], choice.getDeterministicChoice(), currentState[step + 1]);
         }
         choice = scheduler.getChoice(0, currentMemory);
         ASSERT_EQ(choice.getDeterministicChoice(), 1);
         currentState = {0, 4, 5, 6, 0};
         for (uint_fast64_t step = 0; step < 4; ++step) {
             choice = scheduler.getChoice(currentState[step], currentMemory);
-            uint_fast64_t row = mdp.getTransitionMatrix().getRowGroupIndices()[currentState[step]] +
-                                choice.getDeterministicChoice();
-            auto entryIt = mdp.getTransitionMatrix().getRow(row).begin();
-            while (entryIt->getColumn() != currentState[step + 1]) {
-                ++entryIt;
-            }
-            uint_fast64_t transitionIndex = entryIt - mdp.getTransitionMatrix().begin();
-            currentMemory = scheduler.getMemoryStructure()->getSuccessorMemoryState(currentMemory, transitionIndex);
+            currentMemory = scheduler.getMemoryStructure()->getSuccessorMemoryState(mdp, currentMemory, currentState[step], choice.getDeterministicChoice(), currentState[step + 1]);
         }
         choice = scheduler.getChoice(0, currentMemory);
         ASSERT_EQ(choice.getDeterministicChoice(), 0);
@@ -61,14 +47,7 @@ TEST(SchedulerTest, meanPayoffWindowGameTest) {
         std::vector<uint_fast64_t> currentState = {0, 4, 5, 6, 0};
         for (uint_fast64_t step = 0; step < 4; ++step) {
             choice = scheduler.getChoice(currentState[step], currentMemory);
-            uint_fast64_t row = mdp.getTransitionMatrix().getRowGroupIndices()[currentState[step]] +
-                                choice.getDeterministicChoice();
-            auto entryIt = mdp.getTransitionMatrix().getRow(row).begin();
-            while (entryIt->getColumn() != currentState[step + 1]) {
-                ++entryIt;
-            }
-            uint_fast64_t transitionIndex = entryIt - mdp.getTransitionMatrix().begin();
-            currentMemory = scheduler.getMemoryStructure()->getSuccessorMemoryState(currentMemory, transitionIndex);
+            currentMemory = scheduler.getMemoryStructure()->getSuccessorMemoryState(mdp, currentMemory, currentState[step], choice.getDeterministicChoice(), currentState[step + 1]);
         }
         choice = scheduler.getChoice(0, currentMemory);
         ASSERT_EQ(choice.getDeterministicChoice(), 0);
@@ -76,14 +55,7 @@ TEST(SchedulerTest, meanPayoffWindowGameTest) {
         choice = scheduler.getChoice(0, currentMemory);
         for (uint_fast64_t step = 0; step < 4; ++step) {
             choice = scheduler.getChoice(currentState[step], currentMemory);
-            uint_fast64_t row = mdp.getTransitionMatrix().getRowGroupIndices()[currentState[step]] +
-                                choice.getDeterministicChoice();
-            auto entryIt = mdp.getTransitionMatrix().getRow(row).begin();
-            while (entryIt->getColumn() != currentState[step + 1]) {
-                ++entryIt;
-            }
-            uint_fast64_t transitionIndex = entryIt - mdp.getTransitionMatrix().begin();
-            currentMemory = scheduler.getMemoryStructure()->getSuccessorMemoryState(currentMemory, transitionIndex);
+            currentMemory = scheduler.getMemoryStructure()->getSuccessorMemoryState(mdp, currentMemory, currentState[step], choice.getDeterministicChoice(), currentState[step + 1]);
         }
         choice = scheduler.getChoice(0, currentMemory);
         ASSERT_EQ(choice.getDeterministicChoice(), 1);
