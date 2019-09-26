@@ -133,7 +133,7 @@ namespace sw {
 
             /**
              * Consider the MDP as a game for window mean-payoff objectives.
-             * Related window algorithms' implementations for the particular case of MDPs as games are the ones from
+             * Window Mean-payoff Game implementations are from
              * Chatterjee K., Doyen L., Randour M., Raskin JF. (2013) Looking at Mean-Payoff and Total-Payoff through Windows.
              * In: Van Hung D., Ogawa M. (eds) Automated Technology for Verification and Analysis. Lecture Notes in Computer Science, vol 8172. Springer, Cham
              * arXiv:1302.4248v3
