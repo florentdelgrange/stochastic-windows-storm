@@ -3,11 +3,36 @@
 //
 
 #include <storm/models/sparse/Mdp.h>
+#include <storm/settings/modules/MinMaxEquationSolverSettings.h>
+#include <storm-parsers/parser/PrismParser.h>
 #include "gtest/gtest.h"
 #include "storm/builder/ExplicitModelBuilder.h"
 #include "storm-parsers/parser/NondeterministicModelParser.h"
 #include "stochastic-windows/util/Graphviz.h"
 #include "stochastic-windows/fixedwindow/FixedWindowObjective.h"
+
+TEST(SchedulerTest, memoryUpdateFunction) {
+    auto const& minMaxSettings = storm::settings::getModule<storm::settings::modules::MinMaxEquationSolverSettings>();
+    auto minMaxEquationSolvingTechnique = minMaxSettings.getMinMaxEquationSolvingMethod();
+    if (minMaxEquationSolvingTechnique != storm::solver::MinMaxMethod::PolicyIteration) {
+        storm::settings::mutableManager().setFromString("--minmax:method pi");
+    }
+
+    std::string prismModelPath = STORM_TEST_RESOURCES_DIR "/mdp/window_mp_par.nm";
+
+    storm::prism::Program program = storm::parser::PrismParser::parse(prismModelPath);
+    storm::builder::BuilderOptions options = storm::builder::BuilderOptions(true, true);
+    std::shared_ptr<storm::models::sparse::Model<double>> model = storm::builder::ExplicitModelBuilder<double>(program, options).build();
+    std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = model->as<storm::models::sparse::Mdp<double>>();
+
+    sw::FixedWindow::FixedWindowParityObjective<double> objective(*mdp, "priorities", 3);
+    sw::storage::ValuesAndScheduler<double> valuesAndScheduler = sw::FixedWindow::performMaxProb(objective, true, true);
+    storm::storage::Scheduler<double> scheduler = *valuesAndScheduler.scheduler;
+
+    ASSERT_EQ(scheduler.getChoice(1, 0).getDeterministicChoice(), 0);
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, 0, 1, 0, 1), 0);
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, 0, 1, 0, 3), 4);
+}
 
 TEST(SchedulerTest, meanPayoffWindowGameTest) {
     std::string tra_file = STORM_TEST_RESOURCES_DIR "/tra/dfwMPGame.tra";
