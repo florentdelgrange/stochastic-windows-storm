@@ -13,6 +13,8 @@ namespace sw {
     namespace storage {
 
         struct SchedulerProductLabeling {
+            explicit SchedulerProductLabeling(boost::optional<std::string> &&weights = boost::none, boost::optional<std::string> &&priorities = boost::none)
+            : weights(std::move(weights)), priorities(std::move(priorities)) {}
             boost::optional<std::string> weights;
             boost::optional<std::string> priorities;
         };
