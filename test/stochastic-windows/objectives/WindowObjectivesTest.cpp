@@ -30,8 +30,7 @@ namespace  {
         const double precision = 1e-5;
         WindowObjectiveTest() {
             auto const& minMaxSettings = storm::settings::getModule<storm::settings::modules::MinMaxEquationSolverSettings>();
-            auto minMaxEquationSolvingTechnique = minMaxSettings.getMinMaxEquationSolvingMethod();
-            if (minMaxEquationSolvingTechnique != storm::solver::MinMaxMethod::ValueIteration) {
+            if (not minMaxSettings.isMinMaxEquationSolvingMethodSet()) {
                 TestInit();
             }
             // model path
