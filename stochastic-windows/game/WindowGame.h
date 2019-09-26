@@ -17,7 +17,7 @@ namespace sw {
 
         template<typename ValueType>
         struct WinningSetAndScheduler {
-            WinningSetAndScheduler(storm::storage::BitVector &&winningSet, std::unique_ptr<storm::storage::Scheduler<ValueType>>&& scheduler = nullptr)
+            explicit WinningSetAndScheduler(storm::storage::BitVector &&winningSet, std::unique_ptr<storm::storage::Scheduler<ValueType>>&& scheduler = nullptr)
             : winningSet(std::move(winningSet)), scheduler(std::move(scheduler)) {}
             storm::storage::BitVector winningSet;
             std::unique_ptr<storm::storage::Scheduler<ValueType>> scheduler;
