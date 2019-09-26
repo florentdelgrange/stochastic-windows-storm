@@ -86,3 +86,35 @@ TEST(SchedulerTest, meanPayoffWindowGameTest) {
         ASSERT_EQ(choice.getDeterministicChoice(), 1);
     }
 }
+
+TEST(SchedulerTest, parityWindowGameTest) {
+    auto const& minMaxSettings = storm::settings::getModule<storm::settings::modules::MinMaxEquationSolverSettings>();
+    auto minMaxEquationSolvingTechnique = minMaxSettings.getMinMaxEquationSolvingMethod();
+    if (minMaxEquationSolvingTechnique != storm::solver::MinMaxMethod::PolicyIteration) {
+        storm::settings::mutableManager().setFromString("--minmax:method pi");
+    }
+
+    std::string prismModelPath = STORM_TEST_RESOURCES_DIR "/mdp/window_par_memory_example.nm";
+    std::string stateRewardModel = "priorities";
+
+    storm::prism::Program program = storm::parser::PrismParser::parse(prismModelPath);
+    storm::builder::BuilderOptions options = storm::builder::BuilderOptions(true, true);
+    std::shared_ptr<storm::models::sparse::Model<double>> model = storm::builder::ExplicitModelBuilder<double>(program, options).build();
+    std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = model->as<storm::models::sparse::Mdp<double>>();
+
+    sw::FixedWindow::FixedWindowParityObjective<double> objective(*mdp, stateRewardModel, 5);
+    sw::storage::ValuesAndScheduler<double> valuesAndScheduler = sw::FixedWindow::performMaxProb(objective, true, true);
+    storm::storage::Scheduler<double> scheduler = *valuesAndScheduler.scheduler;
+    // storm::storage::BitVector initialStates(mdp->getNumberOfStates(), false);
+    // initialStates.set(0, true);
+    // storm::storage::BitVector enabledActions(mdp->getNumberOfChoices(), true);
+    // sw::util::graphviz::GraphVizBuilder::mdpUnfoldingExport(mdp->getTransitionMatrix(), sw::DirectFixedWindow::WindowUnfoldingParity<double>(*mdp, stateRewardModel, 5, initialStates, enabledActions));
+    // sw::util::graphviz::GraphVizBuilder::mdpGraphExport(*mdp, stateRewardModel, "", "windowParityGame");
+    // sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, scheduler, "windowParityGame_schedulerProduct");
+    ASSERT_EQ(scheduler.getChoice(6, 5).getDeterministicChoice(), 0);
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, 5, 6, 0, 8), 6);
+    ASSERT_EQ(scheduler.getChoice(6, 9).getDeterministicChoice(), 1);
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, 9, 6, 1, 9), 10);
+    ASSERT_EQ(scheduler.getChoice(6, 13).getDeterministicChoice(), 2);
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, 13, 6, 2, 10), 14);
+}
