@@ -398,7 +398,7 @@ namespace sw {
                     for (const auto &entry : this->originalMatrix.getRow(action)) {
                         uint_fast64_t successorState = entry.getColumn();
                         ValueType p = entry.getValue();
-                        ValueType const& updatedPriority = storm::utility::min<ValueType>(value, priority[successorState]);
+                        ValueType const& updatedPriority = this->isEven(value) ? value : storm::utility::min<ValueType>(value, priority[successorState]);
                         // j is the index of successorState
                         uint_fast64_t j;
                         if (this->isEven(updatedPriority)) {
