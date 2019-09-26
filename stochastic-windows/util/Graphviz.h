@@ -97,11 +97,6 @@ namespace sw {
 
                 /**
                  * Export the MDP (encoded as a sparse matrix) to a dot file depicting the MDP
-                 * @param matrix
-                 * @param weightVector
-                 * @param priorityVector
-                 * @param graphName
-                 * @param stateNames
                  */
                 static void mdpGraphExport(storm::storage::SparseMatrix<double> const &matrix,
                                            std::vector<double> weightVector = std::vector<double>(),
@@ -245,9 +240,9 @@ namespace sw {
                         }
                     }
 
-                    std::vector<double> weightVector = stateActionRewardVectorName != "" ? mdp.getRewardModel(stateActionRewardVectorName).getStateActionRewardVector() : std::vector<double>();
                     std::vector<double> priorityVector = stateRewardVectorName != "" ? mdp.getRewardModel(stateRewardVectorName).getStateRewardVector() : std::vector<double>();
-                    mdpGraphExport(mdp.getTransitionMatrix(), weightVector, std::vector<double>(), graphName, outputDir, std::move(stateNames), std::move(actionNames));
+                    std::vector<double> weightVector = stateActionRewardVectorName != "" ? mdp.getRewardModel(stateActionRewardVectorName).getStateActionRewardVector() : std::vector<double>();
+                    mdpGraphExport(mdp.getTransitionMatrix(), weightVector, priorityVector, graphName, outputDir, std::move(stateNames), std::move(actionNames));
 
                 }
 
@@ -302,7 +297,7 @@ namespace sw {
                         storm::models::sparse::Mdp<double> mdp,
                         storm::storage::Scheduler<double> const& scheduler,
                         std::string graphName = "mdp",
-                        boost::optional<sw::storage::SchedulerProductLabeling> labelingOptions = boost::none,
+                        sw::storage::SchedulerProductLabeling labelingOptions = sw::storage::SchedulerProductLabeling(),
                         std::string outputDir = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples") {
 
                     storm::models::sparse::StateLabeling &stateLabeling = mdp.getStateLabeling();
@@ -317,7 +312,7 @@ namespace sw {
                         stateLabeling.addLabelToState(label, state);
                     }
 
-                    sw::storage::SchedulerProduct<double> product(mdp, scheduler, *labelingOptions);
+                    sw::storage::SchedulerProduct<double> product(mdp, scheduler, labelingOptions);
                     std::shared_ptr<storm::models::sparse::Model<double>> model = product.build();
 
                     std::vector<std::string> stateNames = std::vector<std::string>(model->getNumberOfStates());
