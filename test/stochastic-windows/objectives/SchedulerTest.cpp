@@ -30,9 +30,13 @@ TEST(SchedulerTest, memoryUpdateFunction) {
     sw::storage::ValuesAndScheduler<double> valuesAndScheduler = sw::FixedWindow::performMaxProb(objective, true, true);
     storm::storage::Scheduler<double> scheduler = *valuesAndScheduler.scheduler;
 
+    uint_fast64_t currentMemoryState, expectedArrivalMemoryState;
+    currentMemoryState = scheduler.getMemoryStructure()->getInitialMemoryStates()[0];
+    expectedArrivalMemoryState = currentMemoryState;
     ASSERT_EQ(scheduler.getChoice(1, 0).getDeterministicChoice(), 0);
-    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, 0, 1, 0, 1), 0);
-    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, 0, 1, 0, 3), 4);
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, currentMemoryState, 1, 0, 1), expectedArrivalMemoryState);
+    expectedArrivalMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(3, 0)").getNextSetIndex(0);
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, currentMemoryState, 1, 0, 3), expectedArrivalMemoryState);
 }
 
 TEST(SchedulerTest, meanPayoffWindowGameTest) {
@@ -112,12 +116,34 @@ TEST(SchedulerTest, parityWindowGameTest) {
     // sw::util::graphviz::GraphVizBuilder::mdpUnfoldingExport(mdp->getTransitionMatrix(), sw::DirectFixedWindow::WindowUnfoldingParity<double>(*mdp, stateRewardModel, 5, initialStates, enabledActions));
     // sw::util::graphviz::GraphVizBuilder::mdpGraphExport(*mdp, stateRewardModel, "", "windowParityGame");
     // sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, scheduler, "windowParityGame_schedulerProduct");
-    ASSERT_EQ(scheduler.getChoice(6, 5).getDeterministicChoice(), 0);
-    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, 5, 6, 0, 8), 6);
-    ASSERT_EQ(scheduler.getChoice(6, 9).getDeterministicChoice(), 1);
-    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, 9, 6, 1, 9), 10);
-    ASSERT_EQ(scheduler.getChoice(6, 13).getDeterministicChoice(), 2);
-    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, 13, 6, 2, 10), 14);
+
+    auto getChoice = [&] (uint_fast64_t state, uint_fast64_t action) -> std::uint_fast64_t {
+        return action - mdp->getTransitionMatrix().getRowGroupIndices()[state];
+    };
+    uint_fast64_t currentMemoryState, expectedArrivalMemoryState, state, choice, nextState;
+
+    state = 6;
+    nextState = 8;
+    currentMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(5, 3)").getNextSetIndex(0);
+    expectedArrivalMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(4, 0)").getNextSetIndex(0);
+    choice = getChoice(state, 6);
+    ASSERT_EQ(scheduler.getChoice(state, currentMemoryState).getDeterministicChoice(), choice);
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, currentMemoryState, state, choice, nextState), expectedArrivalMemoryState);
+
+    nextState = 10;
+    currentMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(1, 1)").getNextSetIndex(0);
+    expectedArrivalMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(1, 2)").getNextSetIndex(0);
+    choice = getChoice(state, 8);
+    ASSERT_EQ(scheduler.getChoice(state, currentMemoryState).getDeterministicChoice(), choice);
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, currentMemoryState, state, choice, nextState), expectedArrivalMemoryState);
+
+
+    nextState = 9;
+    currentMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(3, 2)").getNextSetIndex(0);
+    expectedArrivalMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(3, 3)").getNextSetIndex(0);
+    choice = getChoice(state, 7);
+    ASSERT_EQ(scheduler.getChoice(state, currentMemoryState).getDeterministicChoice(), choice);
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, currentMemoryState, state, choice, nextState), expectedArrivalMemoryState);
 }
 
 TEST(SchedulerTest, directFixedWindowMeanPayoffSchedulerTest) {
@@ -240,6 +266,95 @@ TEST(SchedulerTest, directFixedWindowMeanPayoffSchedulerTest) {
     currentMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(-2, 2)").getNextSetIndex(0);
     expectedArrivalMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("⊥").getNextSetIndex(0);
     choice = getChoice(state, 13);
+    ASSERT_EQ(scheduler.getChoice(state, currentMemoryState).getDeterministicChoice(), choice);
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, currentMemoryState, state, choice, nextState), expectedArrivalMemoryState);
+}
+
+TEST(SchedulerTest, directFixedWindowMeanParitySchedulerTest) {
+    auto const& minMaxSettings = storm::settings::getModule<storm::settings::modules::MinMaxEquationSolverSettings>();
+    auto minMaxEquationSolvingTechnique = minMaxSettings.getMinMaxEquationSolvingMethod();
+    if (minMaxEquationSolvingTechnique != storm::solver::MinMaxMethod::PolicyIteration) {
+        storm::settings::mutableManager().setFromString("--minmax:method pi");
+    }
+
+    std::string prismModelPath = STORM_TEST_RESOURCES_DIR "/mdp/window_mp_par.nm";
+
+    storm::prism::Program program = storm::parser::PrismParser::parse(prismModelPath);
+    storm::builder::BuilderOptions options = storm::builder::BuilderOptions(true, true);
+    std::shared_ptr<storm::models::sparse::Model<double>> model = storm::builder::ExplicitModelBuilder<double>(program, options).build();
+    std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = model->as<storm::models::sparse::Mdp<double>>();
+
+    sw::DirectFixedWindow::DirectFixedWindowParityObjective<double> objective(*mdp, "priorities", 3);
+    sw::storage::ValuesAndScheduler<double> valuesAndScheduler = sw::DirectFixedWindow::performMaxProb(mdp->getInitialStates(), objective, true, true);
+    storm::storage::Scheduler<double> scheduler = *valuesAndScheduler.scheduler;
+    // sw::util::graphviz::GraphVizBuilder::schedulerExport(*mdp, scheduler, "direct_fixed_par");
+
+    auto getChoice = [&] (uint_fast64_t state, uint_fast64_t action) -> std::uint_fast64_t {
+        return action - mdp->getTransitionMatrix().getRowGroupIndices()[state];
+    };
+    uint_fast64_t currentMemoryState, expectedArrivalMemoryState, state, choice, nextState;
+
+    state = 0;
+    nextState = 2;
+    currentMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(3, 0)").getNextSetIndex(0);
+    expectedArrivalMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(0, 0)").getNextSetIndex(0);
+    choice = getChoice(state, 1);
+    ASSERT_EQ(scheduler.getChoice(state, currentMemoryState).getDeterministicChoice(), choice);
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, currentMemoryState, state, choice, nextState), expectedArrivalMemoryState);
+
+    state = 2;
+    nextState = 5;
+    currentMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(0, 0)").getNextSetIndex(0);
+    expectedArrivalMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(3, 0)").getNextSetIndex(0);
+    choice = getChoice(state, 3);
+    ASSERT_EQ(scheduler.getChoice(state, currentMemoryState).getDeterministicChoice(), choice);
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, currentMemoryState, state, choice, nextState), expectedArrivalMemoryState);
+    nextState = 4;
+    expectedArrivalMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(0, 0)").getNextSetIndex(0);
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, currentMemoryState, state, choice, nextState), expectedArrivalMemoryState);
+
+    state = 5;
+    nextState = 8;
+    currentMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(3, 0)").getNextSetIndex(0);
+    expectedArrivalMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(1, 1)").getNextSetIndex(0);
+    choice = getChoice(state, 6);
+    ASSERT_EQ(scheduler.getChoice(state, currentMemoryState).getDeterministicChoice(), choice);
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, currentMemoryState, state, choice, nextState), expectedArrivalMemoryState);
+    nextState = 9;
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, currentMemoryState, state, choice, nextState), expectedArrivalMemoryState);
+    nextState = 4;
+    expectedArrivalMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(0, 0)").getNextSetIndex(0);
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, currentMemoryState, state, choice, nextState), expectedArrivalMemoryState);
+
+    state = 8;
+    nextState = 5;
+    currentMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(1, 1)").getNextSetIndex(0);
+    expectedArrivalMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("⊥").getNextSetIndex(0);
+    choice = getChoice(state, 12);
+    ASSERT_EQ(scheduler.getChoice(state, currentMemoryState).getDeterministicChoice(), choice);
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, currentMemoryState, state, choice, nextState), expectedArrivalMemoryState);
+
+    state = 9;
+    nextState = 9;
+    currentMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(1, 1)").getNextSetIndex(0);
+    expectedArrivalMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("⊥").getNextSetIndex(0);
+    choice = getChoice(state, 13);
+    ASSERT_EQ(scheduler.getChoice(state, currentMemoryState).getDeterministicChoice(), choice);
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, currentMemoryState, state, choice, nextState), expectedArrivalMemoryState);
+
+    state = 4;
+    nextState = 7;
+    currentMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(0, 0)").getNextSetIndex(0);
+    expectedArrivalMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(3, 0)").getNextSetIndex(0);
+    choice = getChoice(state, 5);
+    ASSERT_EQ(scheduler.getChoice(state, currentMemoryState).getDeterministicChoice(), choice);
+    ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, currentMemoryState, state, choice, nextState), expectedArrivalMemoryState);
+
+    state = 7;
+    nextState = 4;
+    currentMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(3, 0)").getNextSetIndex(0);
+    expectedArrivalMemoryState = scheduler.getMemoryStructure()->getStateLabeling().getStates("(0, 0)").getNextSetIndex(0);
+    choice = getChoice(state, 10);
     ASSERT_EQ(scheduler.getChoice(state, currentMemoryState).getDeterministicChoice(), choice);
     ASSERT_EQ(scheduler.getMemoryStructure()->getSuccessorMemoryState(*mdp, currentMemoryState, state, choice, nextState), expectedArrivalMemoryState);
 }
