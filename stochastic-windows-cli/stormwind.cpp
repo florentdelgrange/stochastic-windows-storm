@@ -3,28 +3,14 @@
 //
 
 #include "storm-config.h"
-#include "storm-parsers/parser/AutoParser.h"
-#include "storm/storage/MaximalEndComponentDecomposition.h"
-#include "storm/models/sparse/MarkovAutomaton.h"
 #include "storm/models/sparse/Mdp.h"
-#include "storm/models/sparse/StandardRewardModel.h"
-#include "storm/builder/ExplicitModelBuilder.h"
 #include "storm/storage/SymbolicModelDescription.h"
-#include "storm-parsers/parser/PrismParser.h"
 #include <iostream>
-#include <stochastic-windows/prefixindependent/MaximalEndComponentDecompositionUnfolding.h>
-#include <stochastic-windows/directfixedwindow/DirectFixedWindowObjective.h>
-#include <stochastic-windows/game/WindowGame.h>
-#include <stochastic-windows/game/PredecessorsSquaredLinkedList.h>
-#include <stochastic-windows/prefixindependent/MaximalEndComponentDecompositionWindowGame.h>
-#include <stochastic-windows/fixedwindow/MaximalEndComponentClassifier.h>
-#include <stochastic-windows/fixedwindow/FixedWindowObjective.h>
-#include <stochastic-windows/game/TotalPayoffGame.h>
-#include <stochastic-windows/game/WeakParityGame.h>
-#include <stochastic-windows/boundedwindow/BoundedWindowObjective.h>
 
 #include "storm/utility/initialize.h"
 
+#include "stochastic-windows/settings/modules/StochasticWindowsSettings.h"
+#include "storm/settings/modules/ModuleSettings.h"
 #include "storm/settings/modules/GeneralSettings.h"
 #include "storm/settings/modules/CoreSettings.h"
 #include "storm/settings/modules/IOSettings.h"
@@ -44,7 +30,6 @@
 
 #include <storm/environment/solver/MinMaxSolverEnvironment.h>
 
-#include <storm/utility/builder.h>
 #include <storm/storage/sparse/ModelComponents.h>
 #include <storm/models/sparse/StateLabeling.h>
 
@@ -74,7 +59,8 @@ namespace sw {
          * Initialize the settings manager.
          */
         void initializeSettings() {
-            storm::settings::mutableManager().setName("StormWind", "stormwind");
+            storm::settings::mutableManager().setName("StormWind", "stochastic-windows");
+            storm::settings::addModule<storm::settings::modules::StochasticWindowsSettings>();
             storm::settings::addModule<storm::settings::modules::GeneralSettings>();
             storm::settings::addModule<storm::settings::modules::IOSettings>();
             storm::settings::addModule<storm::settings::modules::CoreSettings>();
@@ -90,29 +76,26 @@ namespace sw {
             storm::settings::addModule<storm::settings::modules::ResourceSettings>();
             storm::settings::addModule<storm::settings::modules::GmmxxEquationSolverSettings>();
             storm::settings::addModule<storm::settings::modules::MultiplierSettings>();
-            // storm::settings::addModule<storm::settings::modules::AbstractionSettings>();
             storm::settings::addModule<storm::settings::modules::JitBuilderSettings>();
-
-            // storm::settings::mutableManager().printHelpForModule("minmax");
-            // storm::settings::mutableManager().setFromString("--minmax:method pi");
         }
 
         template <storm::dd::DdType DdType, typename BuildValueType, typename VerificationValueType = BuildValueType>
         void processInputWithValueTypeAndDdlib(storm::cli::SymbolicInput const& input) {
-            auto coreSettings = storm::settings::getModule<storm::settings::modules::CoreSettings>();
+            const auto& coreSettings = storm::settings::getModule<storm::settings::modules::CoreSettings>();
 
             // For several engines, no model building step is performed, but the verification is started right away.
             storm::settings::modules::CoreSettings::Engine engine = coreSettings.getEngine();
 
             std::shared_ptr<storm::models::ModelBase> model = storm::cli::buildPreprocessExportModelWithValueTypeAndDdlib<DdType, BuildValueType, VerificationValueType>(input, engine);
+            std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = model->as<storm::models::sparse::Mdp<double>>();
 
         }
 
         template <typename ValueType>
         void processInputWithValueType(storm::cli::SymbolicInput const& input) {
-            auto coreSettings = storm::settings::getModule<storm::settings::modules::CoreSettings>();
-            auto generalSettings = storm::settings::getModule<storm::settings::modules::GeneralSettings>();
-            auto bisimulationSettings = storm::settings::getModule<storm::settings::modules::BisimulationSettings>();
+            const auto& coreSettings = storm::settings::getModule<storm::settings::modules::CoreSettings>();
+            const auto& generalSettings = storm::settings::getModule<storm::settings::modules::GeneralSettings>();
+            const auto& bisimulationSettings = storm::settings::getModule<storm::settings::modules::BisimulationSettings>();
 
             if (coreSettings.getDdLibraryType() == storm::dd::DdType::CUDD && coreSettings.isDdLibraryTypeSetFromDefaultValue() && generalSettings.isExactSet()) {
                 STORM_LOG_INFO("Switching to DD library sylvan to allow for rational arithmetic.");
@@ -135,7 +118,7 @@ namespace sw {
             // Parse and preprocess symbolic input (PRISM, JANI, properties, etc.)
             storm::cli::SymbolicInput symbolicInput = storm::cli::parseAndPreprocessSymbolicInput();
 
-            auto generalSettings = storm::settings::getModule<storm::settings::modules::GeneralSettings>();
+            const auto& generalSettings = storm::settings::getModule<storm::settings::modules::GeneralSettings>();
             if (generalSettings.isParametricSet()) {
 #ifdef STORM_HAVE_CARL
                 sw::cli::processInputWithValueType<storm::RationalFunction>(symbolicInput);
@@ -151,9 +134,7 @@ namespace sw {
             } else {
                 sw::cli::processInputWithValueType<double>(symbolicInput);
             }
-
         }
-
     }
 }
 
