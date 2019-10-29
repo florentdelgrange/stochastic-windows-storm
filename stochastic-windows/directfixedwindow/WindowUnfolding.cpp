@@ -359,9 +359,14 @@ namespace sw {
             return i;
         }
 
-        template<typename ValueType>
-        bool WindowUnfoldingParity<ValueType>::isEven(ValueType const& priority) {
-            return storm::utility::isZero(storm::utility::mod<ValueType>(priority, 2));
+        template<>
+        bool WindowUnfoldingParity<storm::RationalNumber>::isEven(storm::RationalNumber const& priority) {
+            return storm::utility::isAlmostZero(storm::utility::mod<double>(priority.get_d(), 2));
+        }
+
+        template<>
+        bool WindowUnfoldingParity<double>::isEven(double const& priority) {
+            return storm::utility::isAlmostZero(storm::utility::mod<double>(priority, 2));
         }
 
         template<typename ValueType>
@@ -423,5 +428,6 @@ namespace sw {
         template class WindowUnfoldingMeanPayoff<double>;
         template class WindowUnfoldingMeanPayoff<storm::RationalNumber>;
         template class WindowUnfoldingParity<double>;
+        template class WindowUnfoldingParity<storm::RationalNumber>;
     }
 }

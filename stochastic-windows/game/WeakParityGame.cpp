@@ -75,9 +75,14 @@ namespace sw {
             return W;
         }
 
-        template <typename ValueType>
-        bool WeakParityGame<ValueType>::isEven(ValueType priority) const {
-            return storm::utility::isZero(storm::utility::mod<ValueType>(priority, 2));
+        template <>
+        bool WeakParityGame<storm::RationalNumber>::isEven(storm::RationalNumber priority) const {
+            return storm::utility::isAlmostZero(storm::utility::mod<double>(priority.get_d(), 2));
+        }
+
+        template <>
+        bool WeakParityGame<double>::isEven(double priority) const {
+            return storm::utility::isAlmostZero(storm::utility::mod<double>(priority, 2));
         }
 
         template<typename ValueType>
@@ -103,6 +108,7 @@ namespace sw {
         }
 
         template class WeakParityGame<double>;
+        template class WeakParityGame<storm::RationalNumber>;
     }
 
 }

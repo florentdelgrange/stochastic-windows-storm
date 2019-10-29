@@ -32,10 +32,13 @@
 
 #include <storm/storage/sparse/ModelComponents.h>
 #include <storm/models/sparse/StateLabeling.h>
+#include <storm/models/sparse/StandardRewardModel.h>
 
 #include "storm-cli-utilities/cli.h"
 #include "storm-cli-utilities/model-handling.h"
 
+#include "stochastic-windows/directfixedwindow/DirectFixedWindowObjective.h"
+#include "stochastic-windows/fixedwindow/FixedWindowObjective.h"
 #include "stochastic-windows/util/Graphviz.h"
 
 namespace sw {
@@ -85,9 +88,82 @@ namespace sw {
 
             // For several engines, no model building step is performed, but the verification is started right away.
             storm::settings::modules::CoreSettings::Engine engine = coreSettings.getEngine();
+            // build the model
 
             std::shared_ptr<storm::models::ModelBase> model = storm::cli::buildPreprocessExportModelWithValueTypeAndDdlib<DdType, BuildValueType, VerificationValueType>(input, engine);
-            std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = model->as<storm::models::sparse::Mdp<double>>();
+            std::shared_ptr<storm::models::sparse::Mdp<VerificationValueType>> mdp = model->as<storm::models::sparse::Mdp<VerificationValueType>>();
+
+            const auto& swSettings = storm::settings::getModule<storm::settings::modules::StochasticWindowsSettings>();
+            const auto& ioSettings = storm::settings::getModule<storm::settings::modules::IOSettings>();
+
+            // change transitions reward models to state actions reward models
+            std::unordered_map<std::string, storm::models::sparse::StandardRewardModel<VerificationValueType>> rewardModels = mdp->getRewardModels();
+            for (auto const& rewardModelTuple : rewardModels) {
+                std::string const& rewardModelName = rewardModelTuple.first;
+                storm::models::sparse::StandardRewardModel<VerificationValueType> const& rewardModel = rewardModelTuple.second;
+                if (rewardModel.hasTransitionRewards()) {
+                    storm::models::sparse::StandardRewardModel<VerificationValueType> newRewardModel = rewardModel;
+                    mdp->removeRewardModel(rewardModelName);
+                    newRewardModel.reduceToStateBasedRewards(mdp->getTransitionMatrix());
+                    mdp->addRewardModel(rewardModelName, rewardModel);
+                }
+            }
+
+            storm::settings::modules::StochasticWindowsSettings::WindowObjective windowObjective = swSettings.getWindowObjective();
+            std::unique_ptr<sw::storage::ValuesAndScheduler<VerificationValueType>> result;
+            bool produceScheduler = not swSettings.isExportSchedulerToDotFileSet() or ioSettings.isExportSchedulerSet();
+            sw::BoundedWindow::ClassificationMethod classificationMethod = swSettings.getClassificationMethod();
+            switch (windowObjective) {
+                case storm::settings::modules::StochasticWindowsSettings::WindowObjective::DirectFixedWindowMeanPayoffObjective :
+                case storm::settings::modules::StochasticWindowsSettings::WindowObjective::DirectFixedWindowParityObjective : {
+                    std::unique_ptr<sw::DirectFixedWindow::DirectFixedWindowObjective<VerificationValueType>> objective =
+                            windowObjective == storm::settings::modules::StochasticWindowsSettings::WindowObjective::DirectFixedWindowMeanPayoffObjective ?
+                            std::unique_ptr<sw::DirectFixedWindow::DirectFixedWindowObjective<VerificationValueType>>(new sw::DirectFixedWindow::DirectFixedWindowMeanPayoffObjective<VerificationValueType>(*mdp, swSettings.getRewardModelName(), swSettings.getMaximalWindowSize())) :
+                            std::unique_ptr<sw::DirectFixedWindow::DirectFixedWindowObjective<VerificationValueType>>(new sw::DirectFixedWindow::DirectFixedWindowParityObjective<VerificationValueType>(*mdp, swSettings.getRewardModelName(), swSettings.getMaximalWindowSize()));
+                    result = std::unique_ptr<sw::storage::ValuesAndScheduler<VerificationValueType>>(
+                            new sw::storage::ValuesAndScheduler<VerificationValueType>(
+                                    sw::DirectFixedWindow::performMaxProb(mdp->getInitialStates(), *objective, produceScheduler, swSettings.isSchedulerLabelsSet())));
+                    break;
+                }
+                case storm::settings::modules::StochasticWindowsSettings::WindowObjective::FixedWindowMeanPayoffObjective:
+                case storm::settings::modules::StochasticWindowsSettings::WindowObjective::FixedWindowParityObjective: {
+                    bool windowGameBasedClassificationMethod = classificationMethod == sw::BoundedWindow::ClassificationMethod::WindowGameWithBound;
+                    if (classificationMethod == sw::BoundedWindow::ClassificationMethod::MemorylessWindowGame) {
+                        STORM_LOG_THROW(true, storm::exceptions::IllegalArgumentException, "A Bounded Window Game classification method cannot be used for a Fixed Window Objective.");
+                    }
+                    std::unique_ptr<sw::FixedWindow::FixedWindowObjective<VerificationValueType>> objective =
+                            windowObjective == storm::settings::modules::StochasticWindowsSettings::WindowObjective::FixedWindowMeanPayoffObjective ?
+                            std::unique_ptr<sw::FixedWindow::FixedWindowObjective<VerificationValueType>>(new sw::FixedWindow::FixedWindowMeanPayoffObjective<VerificationValueType>(*mdp, swSettings.getRewardModelName(), swSettings.getMaximalWindowSize(), windowGameBasedClassificationMethod)) :
+                            std::unique_ptr<sw::FixedWindow::FixedWindowObjective<VerificationValueType>>(new sw::FixedWindow::FixedWindowParityObjective<VerificationValueType>(*mdp, swSettings.getRewardModelName(), swSettings.getMaximalWindowSize()));
+
+                    result = std::unique_ptr<sw::storage::ValuesAndScheduler<VerificationValueType>>(
+                            new sw::storage::ValuesAndScheduler<VerificationValueType>(
+                                    sw::FixedWindow::performMaxProb(*objective, produceScheduler, swSettings.isSchedulerLabelsSet())));
+                    break;
+                }
+                case storm::settings::modules::StochasticWindowsSettings::WindowObjective::BoundedWindowMeanPayoffObjective:
+                case storm::settings::modules::StochasticWindowsSettings::WindowObjective::BoundedWindowParityObjective: {
+                    std::unique_ptr<sw::BoundedWindow::BoundedWindowObjective<VerificationValueType>> objective =
+                            windowObjective == storm::settings::modules::StochasticWindowsSettings::WindowObjective::BoundedWindowMeanPayoffObjective ?
+                            std::unique_ptr<sw::BoundedWindow::BoundedWindowObjective<VerificationValueType>>(new sw::BoundedWindow::BoundedWindowMeanPayoffObjective<VerificationValueType>(*mdp, swSettings.getRewardModelName(), classificationMethod)) :
+                            std::unique_ptr<sw::BoundedWindow::BoundedWindowObjective<VerificationValueType>>(new sw::BoundedWindow::BoundedWindowParityObjective<VerificationValueType>(*mdp, swSettings.getRewardModelName(), classificationMethod));
+                    result = std::unique_ptr<sw::storage::ValuesAndScheduler<VerificationValueType>>(
+                            new sw::storage::ValuesAndScheduler<VerificationValueType>(
+                                    sw::BoundedWindow::performMaxProb(*objective, produceScheduler, swSettings.isSchedulerLabelsSet())));
+                    break;
+                }
+            }
+            STORM_PRINT("max. probability from initial states:" << std::endl);
+            for (uint_fast64_t state : mdp->getInitialStates()) {
+                std::ostringstream stream;
+                uint_fast64_t i = mdp->getLabelsOfState(state).size();
+                for (std::string const& label : mdp->getLabelsOfState(state)) {
+                    -- i;
+                    std::cout << label << (i ? ", " : "");
+                }
+                mdp->getLabelsOfState(state).empty() ? (std::cout << "s" << state << " ") : std::cout;
+                std::cout << ": " << result->values[state] << std::endl;
+            }
 
         }
 
@@ -120,11 +196,7 @@ namespace sw {
 
             const auto& generalSettings = storm::settings::getModule<storm::settings::modules::GeneralSettings>();
             if (generalSettings.isParametricSet()) {
-#ifdef STORM_HAVE_CARL
-                sw::cli::processInputWithValueType<storm::RationalFunction>(symbolicInput);
-#else
-                STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "No parameters are supported in this build.");
-#endif
+                STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "No parameters are supported for window objectives.");
             } else if (generalSettings.isExactSet()) {
 #ifdef STORM_HAVE_CARL
                 sw::cli::processInputWithValueType<storm::RationalNumber>(symbolicInput);
@@ -141,14 +213,15 @@ namespace sw {
 int main(const int argc, const char** argv){
     try {
         storm::utility::setUp();
-        storm::cli::printHeader("StormWind, with Storm", argc, argv);
+        storm::cli::printHeader("StormWind, running on Storm", argc, argv);
         sw::cli::initializeSettings();
+        storm::settings::mutableManager().setFromString("--buildfull");
 
         storm::utility::Stopwatch totalTimer(true);
         storm::cli::parseOptions(argc, argv);
 
-        sw::cli::processOptions();
         std::cout << "Equation solving method: " << sw::cli::minMaxMethodAsString() << std::endl;
+        sw::cli::processOptions();
 
         totalTimer.stop();
         if (storm::settings::getModule<storm::settings::modules::ResourceSettings>().isPrintTimeAndMemorySet()) {

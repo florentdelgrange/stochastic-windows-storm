@@ -124,6 +124,7 @@ namespace sw {
         template class DirectFixedWindowMeanPayoffObjective<double>;
         template class DirectFixedWindowMeanPayoffObjective<storm::RationalNumber>;
         template class DirectFixedWindowParityObjective<double>;
+        template class DirectFixedWindowParityObjective<storm::RationalNumber>;
 
         template sw::storage::ValuesAndScheduler<double> performMaxProb<double>(storm::storage::BitVector const& phiStates, DirectFixedWindowObjective<double> const& dfwObjective, bool produceScheduler, bool memoryStatesLabeling);
         template sw::storage::ValuesAndScheduler<storm::RationalNumber> performMaxProb<storm::RationalNumber>(storm::storage::BitVector const& phiStates, DirectFixedWindowObjective<storm::RationalNumber> const& dfwObjective, bool produceScheduler, bool memoryStatesLabeling);

@@ -20,12 +20,18 @@ namespace storm {
             class StochasticWindowsSettings : public ModuleSettings {
             public:
                 enum class WindowObjective {DirectFixedWindowMeanPayoffObjective, DirectFixedWindowParityObjective, FixedWindowMeanPayoffObjective, FixedWindowParityObjective, BoundedWindowMeanPayoffObjective, BoundedWindowParityObjective};
+                enum class ClassicalObjective {MeanPayoff, Parity};
 
                 StochasticWindowsSettings();
 
+                bool isExportSchedulerToDotFileSet() const;
+                std::string getExportSchedulerDotFileName() const;
                 bool isSchedulerLabelsSet() const;
 
                 WindowObjective getWindowObjective() const;
+                ClassicalObjective getClassicalObjective() const;
+
+                std::string getRewardModelName() const;
 
                 sw::BoundedWindow::ClassificationMethod getClassificationMethod() const;
 
@@ -42,6 +48,7 @@ namespace storm {
                 static const std::string exportDotSchedulerOptionName;
                 static const std::string classificationMethodOptionName;
                 static const std::string schedulerLabels;
+                static const std::string rewardModelOptionName;
             };
 
         }

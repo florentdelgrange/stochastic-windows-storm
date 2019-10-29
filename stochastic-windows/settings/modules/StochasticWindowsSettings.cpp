@@ -13,6 +13,7 @@ namespace storm {
             const std::string StochasticWindowsSettings::exportDotSchedulerOptionName = "exportdotscheduler";
             const std::string StochasticWindowsSettings::classificationMethodOptionName = "classificationmethod";
             const std::string StochasticWindowsSettings::schedulerLabels = "schedulerslabels";
+            const std::string StochasticWindowsSettings::rewardModelOptionName = "rew";
 
             StochasticWindowsSettings::StochasticWindowsSettings() : ModuleSettings(moduleName) {
                 std::vector<std::string> windowVariants = {"dfw", "fw", "bw"};
@@ -23,6 +24,9 @@ namespace storm {
                     .addValidatorString(ArgumentValidatorFactory::createMultipleChoiceValidator(windowVariants)).build())
                     .addArgument(storm::settings::ArgumentBuilder::createStringArgument("long run objective", "The long run objective to be strengthened with the window mecanism.")
                     .addValidatorString(ArgumentValidatorFactory::createMultipleChoiceValidator(longRunObjectives))
+                    .build()).build());
+                this->addOption(storm::settings::OptionBuilder(moduleName, rewardModelOptionName, false, "The reward model to consider for the window objective").setIsRequired(true)
+                    .addArgument(storm::settings::ArgumentBuilder::createStringArgument("reward model name", "the name of the reward model to consider")
                     .build()).build());
                 this->addOption(storm::settings::OptionBuilder(moduleName, windowSize, false, "Sets the maximal window size.").setIsAdvanced()
                     .addArgument(storm::settings::ArgumentBuilder::createUnsignedIntegerArgument("value", "The window size.")
@@ -65,6 +69,18 @@ namespace storm {
                 return this->getOption(windowSize).getArgumentByName("value").getValueAsUnsignedInteger();
             }
 
+            std::string StochasticWindowsSettings::getRewardModelName() const {
+                return this->getOption(rewardModelOptionName).getArgumentByName("reward model name").getValueAsString();
+            }
+
+            std::string StochasticWindowsSettings::getExportSchedulerDotFileName() const {
+                return this->getOption(exportDotSchedulerOptionName).getArgumentByName("filename").getValueAsString();
+            }
+
+            bool StochasticWindowsSettings::isExportSchedulerToDotFileSet() const {
+                return this->getOption(exportDotSchedulerOptionName).getHasOptionBeenSet();
+            }
+
             bool StochasticWindowsSettings::check() const {
                 return true;
             }
@@ -72,6 +88,16 @@ namespace storm {
             void StochasticWindowsSettings::finalize() {
 
             }
+
+            StochasticWindowsSettings::ClassicalObjective StochasticWindowsSettings::getClassicalObjective() const {
+                std::string longRunObjective = this->getOption(objectiveOptionName).getArgumentByName("long run objective").getValueAsString();
+                if (longRunObjective == "mp") {
+                    return StochasticWindowsSettings::ClassicalObjective::MeanPayoff;
+                } else {
+                    return StochasticWindowsSettings::ClassicalObjective::Parity;
+                }
+            }
+
         }
     }
 }

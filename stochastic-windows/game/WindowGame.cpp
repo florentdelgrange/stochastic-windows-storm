@@ -463,6 +463,7 @@ namespace sw {
         template class WindowMeanPayoffGame<double>;
         template class WindowMeanPayoffGame<storm::RationalNumber>;
         template class WindowParityGame<double>;
+        template class WindowParityGame<storm::RationalNumber>;
 
     }
 }

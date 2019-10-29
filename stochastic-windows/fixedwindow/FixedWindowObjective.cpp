@@ -141,6 +141,7 @@ namespace sw {
         template class FixedWindowMeanPayoffObjective<double>;
         template class FixedWindowMeanPayoffObjective<storm::RationalNumber>;
         template class FixedWindowParityObjective<double>;
+        template class FixedWindowParityObjective<storm::RationalNumber>;
 
         template sw::storage::ValuesAndScheduler<double> performMaxProb<double>(FixedWindowObjective<double> const& fwObjective, bool produceScheduler, bool memoryStatesLabeling);
         template sw::storage::ValuesAndScheduler<storm::RationalNumber> performMaxProb<storm::RationalNumber>(FixedWindowObjective<storm::RationalNumber> const& fwObjective, bool produceScheduler, bool memoryStatesLabeling);

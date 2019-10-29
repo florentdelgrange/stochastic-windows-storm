@@ -14,8 +14,14 @@ namespace sw {
 
         template <typename ValueType>
         struct ValuesAndScheduler {
-            ValuesAndScheduler(std::vector<ValueType> &&values, std::unique_ptr<storm::storage::Scheduler<ValueType>>&& scheduler = nullptr)
+            explicit ValuesAndScheduler(std::vector<ValueType> &&values, std::unique_ptr<storm::storage::Scheduler<ValueType>>&& scheduler = nullptr)
             : values(std::move(values)), scheduler(std::move(scheduler)) {}
+            ValuesAndScheduler(ValuesAndScheduler<ValueType> &&other) noexcept : values(std::move(other.values)), scheduler(std::move(other.scheduler)) {}
+            ValuesAndScheduler<ValueType>& operator=(const sw::storage::ValuesAndScheduler<double>& other) {
+                this->values = other.values;
+                this->scheduler = std::unique_ptr<storm::storage::Scheduler<ValueType>>(new storm::storage::Scheduler<ValueType>(*this->scheduler));
+                return *this;
+            }
             // The values computed for input states.
             std::vector<ValueType> values;
             // A scheduler, if it was computed.

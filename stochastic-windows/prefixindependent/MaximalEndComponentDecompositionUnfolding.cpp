@@ -99,3 +99,4 @@ template class sw::storage::MaximalEndComponentDecompositionUnfoldingMeanPayoff<
 template class sw::storage::MaximalEndComponentDecompositionUnfoldingParity<double>;
 template class sw::storage::MaximalEndComponentDecompositionUnfolding<storm::RationalNumber>;
 template class sw::storage::MaximalEndComponentDecompositionUnfoldingMeanPayoff<storm::RationalNumber>;
+template class sw::storage::MaximalEndComponentDecompositionUnfoldingParity<storm::RationalNumber>;

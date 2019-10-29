@@ -143,7 +143,8 @@ namespace sw {
                     }
                 }
             }
-            auto d_int = storm::utility::convertNumber<uint_fast64_t>(storm::utility::ceil(d / 2));
+            auto d_double = storm::utility::convertNumber<double>(d);
+            auto d_int = storm::utility::convertNumber<uint_fast64_t>(storm::utility::ceil(d_double / 2));
             return d_int * this->mdp.getNumberOfStates();
         }
 
@@ -224,6 +225,7 @@ namespace sw {
     template class BoundedWindowMeanPayoffObjective<double>;
     template class BoundedWindowMeanPayoffObjective<storm::RationalNumber>;
     template class BoundedWindowParityObjective<double>;
+    template class BoundedWindowParityObjective<storm::RationalNumber>;
 
     template sw::storage::ValuesAndScheduler<double> performMaxProb<double>(BoundedWindowObjective<double> const& bwObjective, bool produceScheduler, bool memoryStatesLabeling);
     template sw::storage::ValuesAndScheduler<storm::RationalNumber> performMaxProb<storm::RationalNumber>(BoundedWindowObjective<storm::RationalNumber> const& bwObjective, bool produceScheduler, bool memoryStatesLabeling);

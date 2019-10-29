@@ -125,6 +125,7 @@ namespace sw {
         template class  MaximalEndComponentDecompositionWindowMeanPayoffGame<double>;
         template class  MaximalEndComponentDecompositionWindowMeanPayoffGame<storm::RationalNumber>;
         template class  MaximalEndComponentDecompositionWindowParityGame<double>;
+        template class  MaximalEndComponentDecompositionWindowParityGame<storm::RationalNumber>;
 
     }
 }
