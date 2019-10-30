@@ -142,7 +142,7 @@ namespace storm {
             }
             out << ":" << std::endl;
             STORM_LOG_WARN_COND(!(skipUniqueChoices && model == nullptr), "Can not skip unique choices if the model is not given.");
-            out << std::setw(widthOfStates) << "model state:" << "    " << (isMemorylessScheduler() ? "" : " memory:     ") << "choice(s)" << (isMemorylessScheduler() ? "" : "     update:     ") << std::endl;
+            out << std::setw(widthOfStates) << "model state:" << "    " << (isMemorylessScheduler() ? "" : " memory:     ") << "action index:" << (isMemorylessScheduler() ? "" : "     update:     ") << std::endl;
                 for (uint_fast64_t state = 0; state < schedulerChoices.front().size(); ++state) {
                     // Check whether the state is skipped
                     if (skipUniqueChoices && model != nullptr && model->getTransitionMatrix().getRowGroupSize(state) == 1) {
@@ -187,7 +187,7 @@ namespace storm {
                                 if (memoryStructure and model != nullptr) {
                                     SparseMatrix<ValueType> const& modelTransitions = model->getTransitionMatrix();
                                     std::vector<boost::optional<storm::storage::BitVector>> nextMemories(memoryStructure->getNumberOfStates());
-                                    out << std::setw(20);
+                                    out << std::setw(24);
                                     uint_fast64_t row = model->getTransitionMatrix().getRowGroupIndices()[state] + choice.getDeterministicChoice();
                                     for (auto entryIt = modelTransitions.getRow(row).begin(); entryIt < modelTransitions.getRow(row).end(); ++ entryIt) {
                                         uint_fast64_t transitionIndex = entryIt - modelTransitions.begin();
@@ -199,7 +199,7 @@ namespace storm {
                                     }
                                     for (uint_fast64_t m = 0; m < memoryStructure->getNumberOfStates(); ++ m) {
                                         if (nextMemories[m]) {
-                                            out << *nextMemories[m] << ": " << "m" << m << "   ";
+                                            out << *nextMemories[m] << ": " << "m" << m << "; ";
                                         }
                                     }
                                 }
@@ -233,7 +233,7 @@ namespace storm {
             }
             out << "___________________________________________________________________" << std::endl;
         }
-
+        
         template class Scheduler<double>;
         template class Scheduler<float>;
         template class Scheduler<storm::RationalNumber>;

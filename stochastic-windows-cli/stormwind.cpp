@@ -27,6 +27,7 @@
 #include "storm/settings/modules/JitBuilderSettings.h"
 #include "storm/settings/modules/TopologicalEquationSolverSettings.h"
 #include "storm/settings/modules/MultiplierSettings.h"
+#include "storm/api/export.h"
 
 #include <storm/environment/solver/MinMaxSolverEnvironment.h>
 
@@ -164,7 +165,11 @@ namespace sw {
                 mdp->getLabelsOfState(state).empty() ? (std::cout << "s" << state << " ") : std::cout;
                 std::cout << ": " << result->values[state] << std::endl;
             }
-
+            if (ioSettings.isExportSchedulerSet()) {
+                storm::storage::Scheduler<VerificationValueType> const& scheduler = *result->scheduler;
+                STORM_PRINT_AND_LOG("Exporting scheduler ... ")
+                storm::api::exportScheduler(mdp->template as<storm::models::sparse::Model<VerificationValueType>>(), scheduler, ioSettings.getExportSchedulerFilename());
+            }
         }
 
         template <typename ValueType>
