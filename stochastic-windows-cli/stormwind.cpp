@@ -83,8 +83,38 @@ namespace sw {
             storm::settings::addModule<storm::settings::modules::JitBuilderSettings>();
         }
 
-        template <storm::dd::DdType DdType, typename BuildValueType, typename VerificationValueType = BuildValueType>
-        void processInputWithValueTypeAndDdlib(storm::cli::SymbolicInput const& input) {
+
+        std::string getWindowObjectiveAsString() {
+            const auto& swSettings = storm::settings::getModule<storm::settings::modules::StochasticWindowsSettings>();
+            storm::settings::modules::StochasticWindowsSettings::WindowObjective windowObjective = swSettings.getWindowObjective();
+            switch (windowObjective) {
+                case storm::settings::modules::StochasticWindowsSettings::WindowObjective::DirectFixedWindowMeanPayoffObjective :
+                    return "Direct fixed window mean payoff";
+                case storm::settings::modules::StochasticWindowsSettings::WindowObjective::DirectFixedWindowParityObjective :
+                    return "Direct fixed window parity";
+                case storm::settings::modules::StochasticWindowsSettings::WindowObjective::FixedWindowMeanPayoffObjective:
+                    return "Fixed window mean payoff";
+                case storm::settings::modules::StochasticWindowsSettings::WindowObjective::FixedWindowParityObjective:
+                    return "Fixed window parity";
+                case storm::settings::modules::StochasticWindowsSettings::WindowObjective::BoundedWindowMeanPayoffObjective:
+                    return "Bounded window mean payoff";
+                case storm::settings::modules::StochasticWindowsSettings::WindowObjective::BoundedWindowParityObjective:
+                    return "Bounded window parity";
+            }
+        }
+
+        std::string getClassificationMethodAsString() {
+            const auto& swSettings = storm::settings::getModule<storm::settings::modules::StochasticWindowsSettings>();
+            sw::BoundedWindow::ClassificationMethod classificationMethod = swSettings.getClassificationMethod();
+            switch (classificationMethod) {
+                case sw::BoundedWindow::ClassificationMethod::Unfolding : return "unfolding";
+                case sw::BoundedWindow::ClassificationMethod::WindowGameWithBound :  return "window game with polynomial memory strategy";
+                case sw::BoundedWindow::ClassificationMethod::MemorylessWindowGame : return "window game with memoryless strategy";
+            }
+        }
+
+    template <storm::dd::DdType DdType, typename BuildValueType, typename VerificationValueType = BuildValueType>
+    void processInputWithValueTypeAndDdlib(storm::cli::SymbolicInput const& input) {
             const auto& coreSettings = storm::settings::getModule<storm::settings::modules::CoreSettings>();
 
             // For several engines, no model building step is performed, but the verification is started right away.
@@ -114,6 +144,9 @@ namespace sw {
             std::unique_ptr<sw::storage::ValuesAndScheduler<VerificationValueType>> result;
             bool produceScheduler = not swSettings.isExportSchedulerToDotFileSet() or ioSettings.isExportSchedulerSet();
             sw::BoundedWindow::ClassificationMethod classificationMethod = swSettings.getClassificationMethod();
+            std::cout << "Objective: " << getWindowObjectiveAsString() << std::endl;
+            std::cout << "End component classification method: " << getClassificationMethodAsString() << std::endl;
+            std::cout << std::endl;
             switch (windowObjective) {
                 case storm::settings::modules::StochasticWindowsSettings::WindowObjective::DirectFixedWindowMeanPayoffObjective :
                 case storm::settings::modules::StochasticWindowsSettings::WindowObjective::DirectFixedWindowParityObjective : {

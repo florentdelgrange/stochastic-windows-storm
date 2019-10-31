@@ -56,12 +56,12 @@ namespace storm {
             sw::BoundedWindow::ClassificationMethod StochasticWindowsSettings::getClassificationMethod() const {
                 std::string method = this->getOption(classificationMethodOptionName).getArgumentByName("name").getValueAsString();
                 std::string windowVariant = this->getOption(objectiveOptionName).getArgumentByName("window variant").getValueAsString();
-                if (windowVariant == "default") {
+                if (method == "default") {
                     if (windowVariant == "dfw") return sw::BoundedWindow::ClassificationMethod::Unfolding;
                     else if (windowVariant == "fw") return sw::BoundedWindow::ClassificationMethod::WindowGameWithBound;
                     else return sw::BoundedWindow::ClassificationMethod::MemorylessWindowGame;
-                } else if (windowVariant == "bwgame") return sw::BoundedWindow::ClassificationMethod::MemorylessWindowGame;
-                else if (windowVariant == "dfwgame") return sw::BoundedWindow::ClassificationMethod::WindowGameWithBound;
+                } else if (method == "bwgame") return sw::BoundedWindow::ClassificationMethod::MemorylessWindowGame;
+                else if (method == "dfwgame") return sw::BoundedWindow::ClassificationMethod::WindowGameWithBound;
                 else return sw::BoundedWindow::ClassificationMethod::Unfolding;
             }
 
