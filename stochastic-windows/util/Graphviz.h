@@ -98,9 +98,10 @@ namespace sw {
                 /**
                  * Export the MDP (encoded as a sparse matrix) to a dot file depicting the MDP
                  */
-                static void mdpGraphExport(storm::storage::SparseMatrix<double> const &matrix,
-                                           std::vector<double> weightVector = std::vector<double>(),
-                                           std::vector<double> priorityVector = std::vector<double>(),
+                template <typename ValueType>
+                static void mdpGraphExport(storm::storage::SparseMatrix<ValueType> const &matrix,
+                                           std::vector<ValueType> weightVector = std::vector<ValueType>(),
+                                           std::vector<ValueType> priorityVector = std::vector<ValueType>(),
                                            std::string graphName = "mdp",
                                            std::string outputDir = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples",
                                            std::vector<std::string> stateNames = std::vector<std::string>(),
@@ -108,14 +109,14 @@ namespace sw {
                                            bool xlabels = false) {
 
                     if (weightVector.empty()) {
-                        std::vector<double> zeroRewards(matrix.getRowCount(), 0.);
+                        std::vector<ValueType> zeroRewards(matrix.getRowCount(), storm::utility::zero<ValueType>());
                         weightVector.reserve(zeroRewards.size());
                         weightVector.insert(weightVector.end(), zeroRewards.begin(), zeroRewards.end());
                     } else
                         assert(weightVector.size() == matrix.getRowCount());
 
                     if (priorityVector.empty()) {
-                        std::vector<double> noPriority(matrix.getRowGroupCount(), -1.);
+                        std::vector<ValueType> noPriority(matrix.getRowGroupCount(), storm::utility::convertNumber<ValueType>(-1.));
                         priorityVector.reserve(noPriority.size());
                         priorityVector.insert(priorityVector.end(), noPriority.begin(), noPriority.end());
                     } else
@@ -147,16 +148,16 @@ namespace sw {
                     for (uint_fast64_t state = 0; state < matrix.getRowGroupCount(); ++state) {
                         Graph::vertex_descriptor s;
                         if (stateNames[state].empty())
-                            s = add_vertex(Nodes::State{'s' + std::to_string(state), priorityVector[state]}, g);
+                            s = add_vertex(Nodes::State{'s' + std::to_string(state), storm::utility::convertNumber<double>(priorityVector[state])}, g);
                         else
-                            s = add_vertex(Nodes::State{stateNames[state], priorityVector[state]}, g);
+                            s = add_vertex(Nodes::State{stateNames[state], storm::utility::convertNumber<double>(priorityVector[state])}, g);
                         stateVertices[state] = s;
                         for (uint_fast64_t row = groups[state]; row < groups[state + 1]; ++row) {
                             Graph::vertex_descriptor a;
                             if (actionNames[row].empty())
-                                a = add_vertex(Nodes::Action{'a' + std::to_string(row), weightVector[row], row}, g);
+                                a = add_vertex(Nodes::Action{'a' + std::to_string(row), storm::utility::convertNumber<double>(weightVector[row]), row}, g);
                             else
-                                a = add_vertex(Nodes::Action{actionNames[row], weightVector[row], row}, g);
+                                a = add_vertex(Nodes::Action{actionNames[row], storm::utility::convertNumber<double>(weightVector[row]), row}, g);
                             add_edge(s, a, Transitions::Choice{}, g);
                             actionVertices[row] = a;
                         }
@@ -166,7 +167,7 @@ namespace sw {
                         for (uint_fast64_t row = groups[state]; row < groups[state + 1]; ++row) {
                             for (auto entry : matrix.getRow(row)) {
                                 nextState = entry.getColumn();
-                                p = entry.getValue();
+                                p = storm::utility::convertNumber<double>(entry.getValue());
                                 if (p != storm::utility::zero<double>()) {
                                     add_edge(actionVertices[row], stateVertices[nextState],
                                              Transitions::ProbabilityTransition{p}, g);
@@ -176,7 +177,13 @@ namespace sw {
                     }
 
                     {
-                        std::ofstream dot_file(outputDir + "/" + graphName + ".dot");
+                        std::ofstream dot_file;
+                        if (outputDir == "") {
+                            dot_file = std::ofstream(graphName);
+                        }
+                        else {
+                            dot_file = std::ofstream(outputDir + "/" + graphName + ".dot");
+                        }
                         boost::dynamic_properties dp;
 
                         dp.property("node_id", boost::make_transform_value_property_map(&sw::util::graphviz::id_of,
@@ -201,17 +208,19 @@ namespace sw {
                     }
                 }
 
-                static void mdpGraphWeightsExport(storm::storage::SparseMatrix<double> const &matrix,
-                                                  std::vector<double> weightVector = std::vector<double>(),
+                template <typename ValueType>
+                static void mdpGraphWeightsExport(storm::storage::SparseMatrix<ValueType> const &matrix,
+                                                  std::vector<ValueType> weightVector = std::vector<ValueType>(),
                                                   std::string graphName = "mdp",
                                                   std::string outputDir = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples",
                                                   std::vector<std::string> stateNames = std::vector<std::string>(),
                                                   std::vector<std::string> actionNames = std::vector<std::string>(),
                                                   bool xlabels = false) {
-                    mdpGraphExport(matrix, weightVector, std::vector<double>(), graphName, outputDir, stateNames, actionNames, xlabels);
+                    mdpGraphExport<ValueType>(matrix, weightVector, std::vector<ValueType>(), graphName, outputDir, stateNames, actionNames, xlabels);
                 }
 
-                static void mdpGraphExport(storm::models::sparse::Mdp<double> const& mdp,
+                template <typename ValueType>
+                static void mdpGraphExport(storm::models::sparse::Mdp<ValueType> const& mdp,
                                            std::string stateRewardVectorName,
                                            std::string stateActionRewardVectorName,
                                            std::string graphName = "mdp",
@@ -240,8 +249,8 @@ namespace sw {
                         }
                     }
 
-                    std::vector<double> priorityVector = stateRewardVectorName != "" ? mdp.getRewardModel(stateRewardVectorName).getStateRewardVector() : std::vector<double>();
-                    std::vector<double> weightVector = stateActionRewardVectorName != "" ? mdp.getRewardModel(stateActionRewardVectorName).getStateActionRewardVector() : std::vector<double>();
+                    std::vector<ValueType> priorityVector = stateRewardVectorName != "" ? mdp.getRewardModel(stateRewardVectorName).getStateRewardVector() : std::vector<ValueType>();
+                    std::vector<ValueType> weightVector = stateActionRewardVectorName != "" ? mdp.getRewardModel(stateActionRewardVectorName).getStateActionRewardVector() : std::vector<ValueType>();
                     mdpGraphExport(mdp.getTransitionMatrix(), weightVector, priorityVector, graphName, outputDir, std::move(stateNames), std::move(actionNames));
 
                 }
@@ -289,16 +298,16 @@ namespace sw {
                     }
                     std::ostringstream stream;
                     stream << graphName << "_windowUnfolding";
-                    mdpGraphExport(windowUnfolding.getMatrix(), std::vector<double>(), std::vector<double>(),
+                    mdpGraphExport<double>(windowUnfolding.getMatrix(), std::vector<double>(), std::vector<double>(),
                                    stream.str(), outputDir, stateNames, actionNames);
                 }
 
+                template <typename ValueType>
                 static void schedulerExport(
-                        storm::models::sparse::Mdp<double> mdp,
-                        storm::storage::Scheduler<double> const& scheduler,
-                        std::string graphName = "mdp",
+                        storm::models::sparse::Mdp<ValueType> mdp,
+                        storm::storage::Scheduler<ValueType> const& scheduler,
                         sw::storage::SchedulerProductLabeling labelingOptions = sw::storage::SchedulerProductLabeling(),
-                        std::string outputDir = STORM_SOURCE_DIR "/src/stochastic-windows/util/graphviz-examples") {
+                        std::string outputName="./scheduler") {
 
                     storm::models::sparse::StateLabeling &stateLabeling = mdp.getStateLabeling();
 
@@ -312,8 +321,8 @@ namespace sw {
                         stateLabeling.addLabelToState(label, state);
                     }
 
-                    sw::storage::SchedulerProduct<double> product(mdp, scheduler, labelingOptions);
-                    std::shared_ptr<storm::models::sparse::Model<double>> model = product.build();
+                    sw::storage::SchedulerProduct<ValueType> product(mdp, scheduler, labelingOptions);
+                    std::shared_ptr<storm::models::sparse::Model<ValueType>> model = product.build();
 
                     std::vector<std::string> stateNames = std::vector<std::string>(model->getNumberOfStates());
                     std::vector<std::string> actionNames = std::vector<std::string>(model->getNumberOfChoices());
@@ -340,10 +349,7 @@ namespace sw {
                         }
                     }
 
-                    std::ostringstream stream;
-                    stream << graphName << "_scheduler_product";
-                    mdpGraphExport(model->getTransitionMatrix(), std::vector<double>(), std::vector<double>(),
-                                   stream.str(), outputDir, stateNames, actionNames);
+                    mdpGraphExport<ValueType>(model->getTransitionMatrix(), std::vector<ValueType>(), std::vector<ValueType>(), outputName, "", stateNames, actionNames);
                 }
 
             };

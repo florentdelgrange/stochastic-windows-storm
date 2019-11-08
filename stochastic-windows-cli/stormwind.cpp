@@ -142,7 +142,7 @@ namespace sw {
 
             storm::settings::modules::StochasticWindowsSettings::WindowObjective windowObjective = swSettings.getWindowObjective();
             std::unique_ptr<sw::storage::ValuesAndScheduler<VerificationValueType>> result;
-            bool produceScheduler = not swSettings.isExportSchedulerToDotFileSet() or ioSettings.isExportSchedulerSet();
+            bool produceScheduler = swSettings.isExportSchedulerToDotFileSet() or ioSettings.isExportSchedulerSet();
             sw::BoundedWindow::ClassificationMethod classificationMethod = swSettings.getClassificationMethod();
             std::cout << "Objective: " << getWindowObjectiveAsString() << std::endl;
             std::cout << "End component classification method: " << getClassificationMethodAsString() << std::endl;
@@ -202,6 +202,29 @@ namespace sw {
                 storm::storage::Scheduler<VerificationValueType> const& scheduler = *result->scheduler;
                 STORM_PRINT_AND_LOG("Exporting scheduler ... ")
                 storm::api::exportScheduler(mdp->template as<storm::models::sparse::Model<VerificationValueType>>(), scheduler, ioSettings.getExportSchedulerFilename());
+            }
+            if (ioSettings.isExportDotSet()) {
+                auto parityOrMeanPayoff = [&] (storm::settings::modules::StochasticWindowsSettings::ClassicalObjective objective) -> std::string {
+                    return swSettings.getClassicalObjective() == objective ? swSettings.getRewardModelName() : "";
+                };
+                sw::util::graphviz::GraphVizBuilder::mdpGraphExport<VerificationValueType>(
+                        *mdp,
+                        parityOrMeanPayoff(storm::settings::modules::StochasticWindowsSettings::ClassicalObjective::Parity),
+                        parityOrMeanPayoff(storm::settings::modules::StochasticWindowsSettings::ClassicalObjective::MeanPayoff),
+                        ioSettings.getExportDotFilename(),
+                        ""
+                );
+            }
+            if (swSettings.isExportSchedulerToDotFileSet()) {
+                sw::storage::SchedulerProductLabeling labeling;
+                if (swSettings.isSchedulerLabelsSet()) {
+                    if (swSettings.getClassicalObjective() == storm::settings::modules::StochasticWindowsSettings::ClassicalObjective::Parity) {
+                        labeling.priorities = swSettings.getRewardModelName();
+                    } else {
+                        labeling.weights = swSettings.getRewardModelName();
+                    }
+                }
+                sw::util::graphviz::GraphVizBuilder::schedulerExport<VerificationValueType>(*mdp, *result->scheduler, labeling, swSettings.getExportSchedulerDotFileName());
             }
         }
 
