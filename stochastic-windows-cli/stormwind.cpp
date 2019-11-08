@@ -143,7 +143,13 @@ namespace sw {
             storm::settings::modules::StochasticWindowsSettings::WindowObjective windowObjective = swSettings.getWindowObjective();
             std::unique_ptr<sw::storage::ValuesAndScheduler<VerificationValueType>> result;
             bool produceScheduler = swSettings.isExportSchedulerToDotFileSet() or ioSettings.isExportSchedulerSet();
-            sw::BoundedWindow::ClassificationMethod classificationMethod = swSettings.getClassificationMethod();
+            auto const& minMaxSettings = storm::settings::getModule<storm::settings::modules::MinMaxEquationSolverSettings>();
+            auto minMaxEquationSolvingTechnique = minMaxSettings.getMinMaxEquationSolvingMethod();
+            if(produceScheduler and minMaxEquationSolvingTechnique != storm::solver::MinMaxMethod::PolicyIteration) {
+                STORM_LOG_ERROR("Equation solving method Policy Iteration is required to produce a scheduler (with --minmax:method pi).");
+            }
+            assert(not produceScheduler or minMaxEquationSolvingTechnique == storm::solver::MinMaxMethod::PolicyIteration);
+        sw::BoundedWindow::ClassificationMethod classificationMethod = swSettings.getClassificationMethod();
             std::cout << "Objective: " << getWindowObjectiveAsString() << std::endl;
             std::cout << "End component classification method: " << getClassificationMethodAsString() << std::endl;
             std::cout << std::endl;
