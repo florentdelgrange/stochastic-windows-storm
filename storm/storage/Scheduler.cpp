@@ -140,7 +140,22 @@ namespace storm {
             if (!isMemorylessScheduler()) {
                 out << " with " << getNumberOfMemoryStates() << " memory states";
             }
-            out << ":" << std::endl;
+            if (this->getMemoryStructure() and not this->getMemoryStructure()->getStateLabeling().getLabels().empty()) {
+                out << std::endl;
+                out << "___________________________________________________________________" << std::endl;
+                out << "Memory states labels:" << std::endl;
+                for (std::string const& label : this->getMemoryStructure()->getStateLabeling().getLabels()) {
+                    out << std::setw(widthOfStates) << label << ": [ ";
+                    for (auto const& memoryState : this->getMemoryStructure()->getStateLabeling().getStates(label)) {
+                        out << "m" << memoryState;
+                    }
+                    out << " ] " << std::endl;
+                }
+                out << "___________________________________________________________________" << std::endl;
+            }
+            else {
+                out << ":" << std::endl;
+            }
             STORM_LOG_WARN_COND(!(skipUniqueChoices && model == nullptr), "Can not skip unique choices if the model is not given.");
             out << std::setw(widthOfStates) << "model state:" << "    " << (isMemorylessScheduler() ? "" : " memory:     ") << "action index:" << (isMemorylessScheduler() ? "" : "     update:     ") << std::endl;
                 for (uint_fast64_t state = 0; state < schedulerChoices.front().size(); ++state) {
