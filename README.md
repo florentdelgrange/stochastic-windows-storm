@@ -51,7 +51,7 @@ The strategy/scheduler synthesis is only available for the policy iteration solv
 ```
 ./storm-stochastic-windows --minmax:method pi --prism "mdp.nm" --objective bw mp --rew "weights" --windowsize 3 --io:exportscheduler "scheduler.txt" --io:exportdot "mdp.dot" --exportdotscheduler "scheduler.dot" --schedulerslabels
 ```
-This will display the maximal probability of satisfying the bounded window mean payoff objective of maximal window size 3 in the MDP encoded in the prism file `mdp.nm`, where the weights are encoded in the reward model of name `weights`. This will also write the input model to the dot file `mdp.dot` and write the linked strategy to the file `/scheduler.txt` and to the dot file `scheduler.dot` by displaying the weights of actions on this dot file (via the option `--schedulerslabels`). One can then visualize the strategy in pdf format with graphviz as follows:
+This will display the maximal probability of satisfying the bounded window mean payoff objective of maximal window size 3 in the MDP encoded in the prism file `mdp.nm`, where the weights are encoded in the reward model of name `weights`. This will also write the input model to the dot file `mdp.dot` and write the linked strategy to the file `/scheduler.txt` and to the dot file `scheduler.dot` by displaying the labels of its memory states in this dot file (via the option `--schedulerslabels`). One can then visualize the strategy in pdf format with graphviz as follows:
 ```
 dot -Tpdf scheduler.dot -o scheduler.pdf
 ```
