@@ -44,7 +44,7 @@ Note that you can also display the I/O options by typping
 ```
 
 ### Synthesis
-The strategy/scheduler synthesis is only available for the policy iteration solver (you can set it with the option `--minmax:method pi`). You can retrieve the strategy in a text file via the option `--io:exportscheduler` or via in a dotfile via the option `exportdotscheduler`.
+The strategy/scheduler synthesis is only available for the policy iteration solver (you can set it with the option `--minmax:method pi`). You can retrieve the strategy in a text file via the option `--io:exportscheduler` or in a dotfile via the option `exportdotscheduler`.
 
 ### Example
 
