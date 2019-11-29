@@ -136,7 +136,7 @@ namespace sw {
                     storm::models::sparse::StandardRewardModel<VerificationValueType> newRewardModel = rewardModel;
                     mdp->removeRewardModel(rewardModelName);
                     newRewardModel.reduceToStateBasedRewards(mdp->getTransitionMatrix());
-                    mdp->addRewardModel(rewardModelName, rewardModel);
+                    mdp->addRewardModel(rewardModelName, newRewardModel);
                 }
             }
 
@@ -193,7 +193,7 @@ namespace sw {
                     break;
                 }
             }
-            STORM_PRINT("max. probability from initial states:" << std::endl);
+            STORM_PRINT("Result (Pmax) from initial states:" << std::endl);
             for (uint_fast64_t state : mdp->getInitialStates()) {
                 std::ostringstream stream;
                 uint_fast64_t i = mdp->getLabelsOfState(state).size();
